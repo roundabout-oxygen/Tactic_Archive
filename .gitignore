@@ -1,0 +1,56 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Keep official release APK
+!release/*.apk
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+app/build/
+
+# Gradle files
+.gradle/
+buildOutputCleanup/
+
+# Local configuration file (contains local SDK path - DO NOT COMMIT)
+local.properties
+
+# Log Files
+*.log
+
+# Android Studio / IntelliJ IDEA
+.navigation/
+captures/
+*.iml
+.idea/
+.idea_modules/
+
+# Keystore files
+*.jks
+*.keystore
+
+# External native build folder
+.externalNativeBuild
+.cxx/
+
+# Google Services
+google-services.json
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Kotlin
+.kotlin/

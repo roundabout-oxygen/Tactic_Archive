@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Archive - 対戦履歴管理ツール</title>
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="index.css">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+    <div id="device-wrapper">
+        <div id="device-frame">
+            <div id="app-container">
+                <!-- Navigation Header -->
+                <header class="app-header">
+                    <div class="logo" style="gap: 7px; display: flex; align-items: center;">
+                        <img src="icon.png" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(0, 163, 255, 0.4);">
+                        <span style="font-size: 13px; font-weight: 800;">Tactical Archive</span>
+                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.1.12</span>
+                    </div>
+                    <nav class="nav-tabs" style="gap: 8px; margin-left: auto;">
+                        <button class="tab-btn active" data-tab="attack" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fa-solid fa-bolt"></i> Attack
+                        </button>
+                        <button class="tab-btn" data-tab="upload" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fa-solid fa-circle-plus"></i> Upload
+                        </button>
+                        <button class="tab-btn" data-tab="roster" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fa-solid fa-address-book"></i> Roster
+                        </button>
+                        <button class="tab-btn" data-tab="settings" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fa-solid fa-gear"></i> Settings
+                        </button>
+                    </nav>
+                </header>
+
+                <!-- Tab Contents -->
+                <main class="app-content">
+                    
+                    <!-- 1. ATTACK TAB -->
+                    <section id="tab-attack" class="tab-pane active" style="height: 100%; width: 100%; overflow: hidden; box-sizing: border-box;">
+                        <!-- History List (Left side, takes remaining space) -->
+                        <div class="history-list-wrapper" style="flex: 1; min-width: 0; height: 100%; overflow-y: auto; margin-bottom: 0; box-shadow: none; border: 1px solid var(--border-color); border-radius: 10px; box-sizing: border-box;">
+                            <table class="history-table" style="width: 100%; table-layout: fixed;">
+                                <tbody id="attack-history-items">
+                                   <!-- Dynamic content loaded here -->
+                                   <tr>
+                                       <td colspan="6" class="empty-state">
+                                           <i class="fa-solid fa-box-open"></i>
+                                           <p>攻撃の対戦履歴が見つかりません。スクショをアップロードしてください。</p>
+                                       </td>
+                                   </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Sidebar controls (Right side) -->
+                        <div class="history-sidebar" style="width: 100px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: flex-start; box-sizing: border-box;">
+                            <div class="search-box" style="width: 100%; margin-bottom: 0; flex-grow: 0 !important; height: 32px; position: relative;">
+                                <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; margin: 0; color: var(--text-muted);"></i>
+                                <input type="text" id="search-commander-attack" placeholder="検索..." style="height: 32px; padding: 0 8px 0 22px; font-size: 11px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none; margin: 0;">
+                                <button id="btn-clear-search-attack" class="clear-search-btn" style="display:none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">&times;</button>
+                            </div>
+                            
+                            <!-- Stats Dashboard (Inline version next to search) -->
+                            <div class="stats-dashboard inline-stats" style="display: flex; flex-direction: column; gap: 6px; background: rgba(0, 163, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; cursor: pointer; width: 100%; box-sizing: border-box; flex-grow: 0 !important;">
+                                <div class="stat-item" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; color: var(--text-primary);">
+                                    <span class="stat-lbl" style="color: var(--text-secondary); font-weight: 500;">戦数:</span>
+                                    <span class="stat-num" id="stat-total-battles-attack" style="font-size: 11px;">0</span>
+                                </div>
+                                <div style="height: 1px; background: rgba(0, 163, 255, 0.15);"></div>
+                                <div class="stat-item highlight" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; color: var(--color-blue);">
+                                    <span class="stat-lbl" style="color: var(--text-secondary); font-weight: 500;">勝率:</span>
+                                    <span class="stat-num" id="stat-win-rate-attack" style="font-size: 11px;">0%</span>
+                                </div>
+                                <div style="height: 1px; background: rgba(0, 163, 255, 0.15);"></div>
+                                <div class="stat-item" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; color: var(--text-primary);">
+                                    <span class="stat-lbl" style="color: var(--text-secondary); font-weight: 500;">勝敗:</span>
+                                    <span class="stat-num" id="stat-win-lose-ratio-attack" style="font-size: 11px;">0/0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. UPLOAD TAB -->
+                    <section id="tab-upload" class="tab-pane">
+                        <div class="upload-container" id="drop-zone">
+                            <div class="upload-prompt">
+                                <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                                <h3 style="font-size: 15px; margin-bottom: 6px; line-height: 1.5; color: var(--text-primary);">リザルトのスクリーンショットを貼ってください。<br>複数枚同時に読み込み可能</h3>
+                                <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+                                <button class="btn-primary" onclick="document.getElementById('file-input').click()" style="margin-top: 10px;">
+                                    画像を選択
+                                </button>
+                            </div>
+                            
+                            <!-- Hidden Canvas for processing -->
+                            <canvas id="proc-canvas" style="display: none;"></canvas>
+                        </div>
+                        
+                        <!-- Scanner Animation Screen -->
+                        <div class="scanner-screen" id="scanner-screen" style="display: none;">
+                            <div class="scanner-frame">
+                                <img id="scanning-img" src="" alt="Scanning...">
+                                <div class="laser-line"></div>
+                                <div class="scan-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+                                    <div class="scan-status">
+                                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                        <span id="scan-status-text">画像を解析中...</span>
+                                    </div>
+                                    <button class="btn-secondary btn-sm" id="btn-cancel-scan" style="height: 30px; padding: 0 14px; font-size: 11px; font-weight: 700; background: rgba(255, 51, 102, 0.2); border: 1px solid rgba(255, 51, 102, 0.6); color: #ff3366; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
+                                        <i class="fa-solid fa-xmark"></i> 取り込みキャンセル
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 3. ROSTER TAB -->
+                    <section id="tab-roster" class="tab-pane" style="height: 100%; width: 100%; overflow: hidden; box-sizing: border-box;">
+                        <!-- Roster Grid -->
+                        <div class="roster-grid-wrapper" style="height: 100%; width: 100%; overflow-y: auto; box-sizing: border-box;">
+                            <div class="roster-grid" id="roster-items">
+                                <!-- Dynamic content -->
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-book-open-reader"></i>
+                                    <p>生徒データが登録されていません。Settingsタブから一括取り込みなどを行ってください。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 4. SETTINGS TAB -->
+                    <section id="tab-settings" class="tab-pane" style="height: 100%; width: 100%; overflow-y: auto; box-sizing: border-box; padding: 8px 12px;">
+                        <div class="settings-container">
+                            <div class="settings-header">
+                                <div class="settings-title-group">
+                                    <i class="fa-solid fa-sliders" style="color: var(--color-blue); font-size: 15px;"></i>
+                                    <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">システム設定 ＆ 辞書管理</h3>
+                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.1.12</span>
+                                </div>
+                                <div class="roster-summary" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary);">
+                                    <i class="fa-solid fa-users" style="color: var(--color-blue);"></i>
+                                    <span>登録生徒数: <b id="roster-count" style="color: var(--text-primary); font-size: 12px;">0</b> 人</span>
+                                </div>
+                            </div>
+
+                            <!-- 1 Column x N Rows Tile Grid -->
+                            <div class="settings-list">
+                                <!-- Tile 1: Opponent Name Rename Dictionary -->
+                                <div class="settings-tile" id="btn-manage-renames">
+                                    <div class="tile-icon warning"><i class="fa-solid fa-book-bookmark"></i></div>
+                                    <div class="tile-content">
+                                        <div class="tile-title">対戦相手名　修正辞書</div>
+                                        <div class="tile-desc">スクショ読み込み時に対戦相手のOCR読み込みが上手くいかない場合は正しい名前に修正するとリネーム辞書に登録され、次回から自動でリネームされるようになります。</div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                                </div>
+
+                                <!-- Tile 2: Bulk Student Roster Registration -->
+                                <div class="settings-tile" id="btn-bulk-roster" style="border-color: rgba(5, 150, 105, 0.3);">
+                                    <div class="tile-icon success" style="background: rgba(5, 150, 105, 0.12); color: #059669;"><i class="fa-solid fa-folder-plus"></i></div>
+                                    <div class="tile-content">
+                                        <div class="tile-title" style="color: #047857;">生徒図鑑(Roster)　一括登録</div>
+                                        <div class="tile-desc">Rosterタブの生徒図鑑をまとめて登録します。ここから登録すると戦績には追加されません。</div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                                </div>
+
+                                <!-- Tile 3: Data Backup -->
+                                <div class="settings-tile" id="btn-db-backup">
+                                    <div class="tile-icon success"><i class="fa-solid fa-database"></i></div>
+                                    <div class="tile-content">
+                                        <div class="tile-title">バックアップ</div>
+                                        <div class="tile-desc">項目別にバックアップ可能です。JSON形式。</div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                                </div>
+
+                                <!-- Tile 4: Data Restore -->
+                                <div class="settings-tile" id="btn-db-restore">
+                                    <div class="tile-icon danger"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                    <div class="tile-content">
+                                        <div class="tile-title">リストア</div>
+                                        <div class="tile-desc">項目別にリストア可能です。JSON形式。</div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                                </div>
+
+                                <!-- Tile 5: Data Deletion / Clear -->
+                                <div class="settings-tile" id="btn-db-delete" style="border-color: rgba(255, 51, 102, 0.25);">
+                                    <div class="tile-icon danger" style="background: rgba(255, 51, 102, 0.15); color: #ff3366;"><i class="fa-solid fa-trash-can"></i></div>
+                                    <div class="tile-content">
+                                        <div class="tile-title" style="color: #ff3366;">データ削除 / 初期化</div>
+                                        <div class="tile-desc">項目別に削除可能です。</div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                                </div>
+                            </div>
+
+                            <!-- Hidden inputs for file selections -->
+                            <input type="file" id="db-restore-input" accept=".json,application/json,text/plain,*/*" style="display: none;">
+                            <input type="file" id="bulk-roster-input" accept="image/*" multiple style="display: none;">
+                        </div>
+                    </section>
+
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: UPLOAD REVIEW & REVIEW WORKFLOW (取り込み確認画面) -->
+    <div class="modal-overlay" id="review-modal">
+        <div class="modal-card review-modal-card">
+            <div class="modal-header">
+                <div class="header-left-group" style="display: flex; align-items: center; gap: 12px;">
+                    <h2 style="font-size: 16px; margin: 0;"><i class="fa-solid fa-clipboard-check"></i> 対戦履歴の取り込み</h2>
+                    <span class="modal-date" id="review-date-str" style="font-size: 13px; color: var(--text-secondary); background: rgba(0, 163, 255, 0.08); padding: 4px 8px; border-radius: 6px;">2026-07-24</span>
+                </div>
+                <div class="header-right-actions" style="display: flex; gap: 8px;">
+                    <button class="btn-secondary btn-sm" id="btn-open-inspector" style="height: 34px; padding: 0 10px; font-size: 12px; background: rgba(0, 163, 255, 0.1); border-color: rgba(0, 163, 255, 0.4); color: var(--primary-color);"><i class="fa-solid fa-crop-simple"></i> トリミング確認</button>
+                    <button class="btn-secondary btn-sm" id="btn-review-cancel" style="height: 34px; padding: 0 12px; font-size: 13px;"><i class="fa-solid fa-forward"></i> スキップ</button>
+                    <button class="btn-primary btn-sm" id="btn-review-save" style="height: 34px; padding: 0 12px; font-size: 13px;"><i class="fa-solid fa-check"></i> 取り込み完了</button>
+                </div>
+            </div>
+            <div class="modal-body review-modal-body">
+                <div class="review-layout">
+                    <!-- Left: Teams & Match Info -->
+                    <div class="review-left">
+                        <!-- Win/Lose Toggle -->
+                        <div class="result-toggle-group" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <button class="result-toggle-btn win active" id="review-win-btn" style="flex: 1; margin: 0;">WIN</button>
+                            <button class="result-toggle-btn lose" id="review-lose-btn" style="flex: 1; margin: 0;">LOSE</button>
+                        </div>
+                        
+                        <!-- Attack Team -->
+                        <div class="team-review-section">
+                            <h3 class="team-title attack"><i class="fa-solid fa-swords"></i> 攻撃編成 (味方6人) <span class="tip">※アイコンタップで生徒変更</span></h3>
+                            <div class="formation-grid" id="review-attack-team">
+                                <!-- 6 slots -->
+                                <div class="student-slot" data-team="attack" data-index="0">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot" data-team="attack" data-index="1">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot" data-team="attack" data-index="2">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot" data-team="attack" data-index="3">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot special-slot" data-team="attack" data-index="4">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">Sp</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot special-slot" data-team="attack" data-index="5">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">Sp</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VS Indicator & Defender Name -->
+                        <div class="vs-row">
+                            <span class="vs-badge">VS</span>
+                            <div class="opponent-input-group">
+                                <div class="slot-icon-wrapper mini" id="review-opponent-avatar-wrapper">
+                                    <div class="slot-placeholder mini">?</div>
+                                </div>
+                                <input type="text" id="review-opponent-name" placeholder="対戦相手のプレイヤー名を入力...">
+                            </div>
+                            <!-- OCR Raw Source Crop Image for Visual Verification -->
+                            <div class="opp-ocr-preview-box" id="review-opp-ocr-crop-wrapper" style="display: none; align-items: center; justify-content: center; height: 36px; max-width: 220px; flex-shrink: 0; background: #ffffff; border: 1.5px solid var(--border-color); border-radius: 8px; padding: 2px 8px; box-sizing: border-box; overflow: hidden;" title="スクリーンショットの対戦相手名（OCR元）">
+                                <img id="review-opp-ocr-crop-img" style="height: 100%; max-width: 100%; object-fit: contain; display: block;" alt="OCR元画像">
+                            </div>
+                        </div>
+
+                        <!-- Defense Team -->
+                        <div class="team-review-section">
+                            <h3 class="team-title defense"><i class="fa-solid fa-shield-halved"></i> 防衛編成 (敵6人) <span class="tip">※アイコンタップで生徒変更</span></h3>
+                            <div class="formation-grid" id="review-defense-team">
+                                <!-- 6 slots -->
+                                <div class="student-slot" data-team="defense" data-index="0">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot" data-team="defense" data-index="1">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot" data-team="defense" data-index="2">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot" data-team="defense" data-index="3">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">生徒</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot special-slot" data-team="defense" data-index="4">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">Sp</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                                <div class="student-slot special-slot" data-team="defense" data-index="5">
+                                    <div class="slot-icon-wrapper"><div class="slot-placeholder">Sp</div></div>
+                                    <div class="slot-name">未登録</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Metadata (Utility, Date, Notes, Custom Tags) -->
+                    <div class="review-right">
+                        <!-- Date selector -->
+                        <div class="form-group">
+                            <label class="form-label"><i class="fa-solid fa-calendar"></i> 対戦日 (Date)</label>
+                            <input type="date" id="review-date-input" class="form-input">
+                        </div>
+
+                        <!-- Utility Level -->
+                        <div class="form-group">
+                            <label class="form-label"><i class="fa-solid fa-star"></i> 実用度 (Utility)</label>
+                            <div class="utility-select-group">
+                                <label class="utility-label-btn low">
+                                    <input type="radio" name="review-utility" value="低"> 低
+                                </label>
+                                <label class="utility-label-btn mid">
+                                    <input type="radio" name="review-utility" value="中"> 中
+                                </label>
+                                <label class="utility-label-btn high" checked>
+                                    <input type="radio" name="review-utility" value="高" checked> 高
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label class="form-label"><i class="fa-solid fa-comment-dots"></i> メモ (Notes)</label>
+                            <textarea id="review-notes" class="form-textarea" placeholder="対戦のメモや立ち回りを入力..."></textarea>
+                        </div>
+                        
+                        <!-- Custom Tag Boxes -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label"><i class="fa-solid fa-tags"></i> カスタム枠 (Custom Tags)</label>
+                            <div style="display: flex; gap: 10px;">
+                                <div class="custom-tag-box" id="review-box1" data-box-index="1" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
+                                <div class="custom-tag-box" id="review-box2" data-box-index="2" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: STUDENT SELECTOR (生徒選択ポップアップ) -->
+    <div class="modal-overlay" id="selector-modal">
+        <div class="modal-card selector-modal-card">
+            <div class="modal-header">
+                <h2>生徒を選択</h2>
+                <button class="close-btn" id="btn-selector-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="selector-controls" style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+                    <div class="search-box" style="flex-grow: 1; position: relative; height: 34px;">
+                        <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; margin: 0; color: var(--text-muted);"></i>
+                        <input type="text" id="search-selector" placeholder="生徒名で検索..." style="height: 34px; padding: 0 10px 0 30px; font-size: 12px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                    </div>
+                    <button class="btn-primary" id="btn-selector-add-student" style="flex-shrink: 0; padding: 0 12px; height: 34px; display: flex; align-items: center; gap: 6px; font-size: 12px; border-radius: 6px; box-sizing: border-box; margin: 0;">
+                        <i class="fa-solid fa-plus"></i> 新規生徒追加
+                    </button>
+                </div>
+                <div class="selector-grid" id="selector-roster-items">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: STUDENT ADD/EDIT (新規生徒登録ポップアップ) -->
+    <div class="modal-overlay" id="student-modal" style="align-items: flex-start; padding-top: 4px; z-index: 3000;">
+        <div class="modal-card student-modal-card" style="width: 720px; max-width: 98%; display: flex; flex-direction: column; padding: 6px 12px; box-sizing: border-box;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+                <h2 id="student-modal-title" style="font-size: 12px; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-user-plus" style="color: var(--color-blue);"></i> 新規生徒追加</h2>
+                <div class="header-actions-group" style="display: flex; gap: 6px;">
+                    <button class="btn-secondary btn-sm" id="btn-student-cancel" style="height: 28px; padding: 0 10px; font-size: 11px;">キャンセル</button>
+                    <button class="btn-primary btn-sm" id="btn-student-save" style="height: 28px; padding: 0 14px; font-size: 11px; font-weight: 700;">登録</button>
+                </div>
+            </div>
+            <div class="modal-body" style="display: flex; gap: 10px; padding: 0; align-items: center;">
+                <!-- Left: Icon + Input -->
+                <div style="flex: 1.2; display: flex; gap: 6px; align-items: center;">
+                    <div class="icon-upload-area" id="icon-drop-zone" style="flex-shrink: 0; width: 34px; height: 34px; border: 1.5px dashed var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; background: #fff;" onclick="document.getElementById('student-icon-input').click()" title="タップしてアイコン変更">
+                        <img id="add-student-icon-preview" src="" alt="Icon" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                        <div class="icon-upload-placeholder" id="add-student-placeholder" style="display: flex; flex-direction: column; align-items: center; font-size: 8px; color: var(--text-muted); text-align: center;">
+                            <i class="fa-solid fa-image" style="font-size: 11px;"></i>
+                            <span>変更</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <input type="text" id="add-student-name" class="form-input" placeholder="生徒名 (例: アツコ)" style="height: 34px; font-size: 12px; font-weight: 600; padding: 0 8px; border-radius: 6px; width: 100%; box-sizing: border-box; margin: 0;">
+                    </div>
+                    <span id="autocomplete-count-hint" style="font-size: 10px; color: var(--color-blue); font-weight: bold; flex-shrink: 0;"></span>
+                </div>
+
+                <!-- Right: Autocomplete Suggestion Chips Container in Side Space -->
+                <div id="student-autocomplete-list" style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 3px; max-height: 48px; min-height: 34px; overflow-y: auto; padding: 3px 6px; background: rgba(14, 30, 48, 0.05); border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box; align-items: center;">
+                    <span style="font-size: 10px; color: var(--text-muted); padding: 1px 4px;">生徒名を入力すると前方一致で候補が表示されます</span>
+                </div>
+
+                <input type="file" id="student-icon-input" accept="image/*" style="display: none;">
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: BATTLE DETAIL & EDIT (対戦履歴詳細・編集ポップアップ) -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal-card review-modal-card">
+            <div class="modal-header header-detail">
+                <div class="header-left">
+                    <button class="back-arrow-btn" id="btn-detail-back">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h2>履歴詳細・編集</h2>
+                    <span class="detail-calendar-text">
+                        <i class="fa-regular fa-calendar"></i> <span id="detail-date-str">2026-07-24</span>
+                    </span>
+                </div>
+                <div class="header-right-actions">
+                    <button class="btn-detail-action delete" id="btn-detail-delete" title="削除">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                    <button class="btn-detail-action cancel" id="btn-detail-cancel" title="キャンセル">
+                        <i class="fa-solid fa-xmark"></i> キャンセル
+                    </button>
+                    <button class="btn-detail-action save" id="btn-detail-save">
+                        <i class="fa-solid fa-floppy-disk"></i> 保存
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body review-modal-body">
+                <div class="review-layout">
+                    <!-- Left Column: Teams & Outcomes -->
+                    <div class="review-left">
+                        <!-- Win/Lose Toggle -->
+                        <div class="result-toggle-group" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <button class="result-toggle-btn win active" id="detail-win-btn" style="flex: 1; margin: 0;">WIN</button>
+                            <button class="result-toggle-btn lose" id="detail-lose-btn" style="flex: 1; margin: 0;">LOSE</button>
+                        </div>
+                        
+                        <!-- Attack Team -->
+                        <div class="team-review-section">
+                            <h3 class="team-title attack"><i class="fa-solid fa-swords"></i> 攻撃編成 (味方6人) <span class="tip">※アイコンタップで生徒変更</span></h3>
+                            <div class="formation-grid" id="detail-attack-team">
+                                <!-- Dynamic slots -->
+                            </div>
+                        </div>
+
+                        <!-- VS Indicator & Defender Name -->
+                        <div class="vs-row">
+                            <span class="vs-badge">VS</span>
+                            <div class="opponent-input-group">
+                                <div class="slot-icon-wrapper mini" id="detail-opponent-avatar-wrapper">
+                                    <div class="slot-placeholder mini">?</div>
+                                </div>
+                                <input type="text" id="detail-opponent-name" placeholder="対戦相手のプレイヤー名を入力...">
+                            </div>
+                        </div>
+
+                        <!-- Defense Team -->
+                        <div class="team-review-section">
+                            <h3 class="team-title defense"><i class="fa-solid fa-shield-halved"></i> 防衛編成 (敵6人) <span class="tip">※アイコンタップで生徒変更</span></h3>
+                            <div class="formation-grid" id="detail-defense-team">
+                                <!-- Dynamic slots -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Date, Utility, Notes -->
+                    <div class="review-right">
+                        <!-- Date selector -->
+                        <div class="form-group">
+                            <label class="form-label"><i class="fa-solid fa-calendar"></i> 対戦日 (Date)</label>
+                            <input type="date" id="detail-date-input" class="form-input">
+                        </div>
+
+                        <!-- Utility Level -->
+                        <div class="form-group">
+                            <label class="form-label"><i class="fa-solid fa-star"></i> 実用度 (Utility)</label>
+                            <div class="utility-select-group">
+                                <label class="utility-label-btn low">
+                                    <input type="radio" name="detail-utility" value="低"> 低
+                                </label>
+                                <label class="utility-label-btn mid">
+                                    <input type="radio" name="detail-utility" value="中"> 中
+                                </label>
+                                <label class="utility-label-btn high">
+                                    <input type="radio" name="detail-utility" value="高"> 高
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label class="form-label"><i class="fa-solid fa-comment-dots"></i> メモ (Notes)</label>
+                            <textarea id="detail-notes" class="form-textarea" placeholder="Add tactical notes here..."></textarea>
+                        </div>
+                        
+                        <!-- Custom Tag Boxes -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label"><i class="fa-solid fa-tags"></i> カスタム枠 (Custom Tags)</label>
+                            <div style="display: flex; gap: 10px;">
+                                <div class="custom-tag-box" id="detail-box1" data-box-index="1" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
+                                <div class="custom-tag-box" id="detail-box2" data-box-index="2" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0. TUTORIAL & ONBOARDING MODAL -->
+    <div class="modal-overlay" id="tutorial-modal" style="z-index: 3000;">
+        <div class="modal-card" style="width: 440px; max-width: 92vw; padding: 18px 20px; box-sizing: border-box; text-align: center; border: 1px solid rgba(0, 163, 255, 0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.8); background: #0e1b2c;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                <div id="tutorial-icon-box" style="width: 44px; height: 44px; border-radius: 50%; background: rgba(0, 163, 255, 0.15); display: flex; align-items: center; justify-content: center; color: var(--color-blue); font-size: 20px; box-shadow: 0 0 14px rgba(0, 163, 255, 0.3);">
+                    <i class="fa-solid fa-cloud-arrow-up" id="tutorial-icon"></i>
+                </div>
+                <h3 id="tutorial-title" style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary);">初回セットアップ</h3>
+                <p id="tutorial-msg" style="margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary);">
+                    戦術対抗戦の戦闘履歴のスクリーンショット（初回は攻撃のリザルト）を貼り付けてください。
+                </p>
+                <button class="btn-primary" id="btn-tutorial-ok" style="margin-top: 6px; height: 34px; padding: 0 28px; font-size: 13px; font-weight: 700; border-radius: 6px;">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. RENAME DICTIONARY MODAL -->
+    <div class="modal-overlay" id="rename-modal">
+        <div class="modal-card" style="width: 480px; max-width: 95%; padding: 12px 16px; box-sizing: border-box;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                <h2 style="font-size: 14px; margin: 0; color: var(--text-primary); font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-book"></i> 対戦相手名　修正辞書</h2>
+                <button class="modal-close-btn" id="btn-rename-close" style="background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Add new translation rule form -->
+                <div style="display: flex; gap: 8px; align-items: center; background: rgba(0, 163, 255, 0.05); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(0, 163, 255, 0.15); box-sizing: border-box; width: 100%;">
+                    <input type="text" id="add-rename-ocr" placeholder="OCR誤読 (例: 誤読文字)" style="flex: 1; min-width: 0; height: 30px; font-size: 11px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); outline: none; box-sizing: border-box;">
+                    <input type="text" id="add-rename-corrected" placeholder="変換後 (例: 正しい名前)" style="flex: 1; min-width: 0; height: 30px; font-size: 11px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); outline: none; box-sizing: border-box;">
+                    <button class="btn-primary" id="btn-add-rename-rule" style="flex-shrink: 0; white-space: nowrap; height: 30px; font-size: 11px; padding: 0 12px; border-radius: 5px; border: none; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 700; color: white; cursor: pointer;"><i class="fa-solid fa-plus"></i> 追加</button>
+                </div>
+                
+                <!-- Rules list table wrapper -->
+                <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(14, 30, 48, 0.2);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="background: rgba(0, 163, 255, 0.08); border-bottom: 1px solid var(--border-color); height: 24px; color: var(--text-secondary); text-align: left;">
+                                <th style="padding: 4px 8px; font-weight: 600;">OCR読込（誤）</th>
+                                <th style="padding: 4px 8px; font-weight: 600;">自動修正（正）</th>
+                                <th style="padding: 4px 8px; font-weight: 600; text-align: center; width: 60px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rename-rules-list">
+                            <!-- Dynamically loaded rules -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. BACKUP SELECTION MODAL -->
+    <div class="modal-overlay" id="backup-modal">
+        <div class="modal-card" style="width: 460px; max-width: 95%; padding: 10px 14px; box-sizing: border-box;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                <h2 style="font-size: 13px; margin: 0; color: var(--text-primary); font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-database" style="color: #00e676;"></i> バックアップ</h2>
+                <button class="modal-close-btn" id="btn-backup-close" style="background: none; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-secondary btn-sm" id="btn-backup-select-all" style="height: 24px; padding: 0 8px; font-size: 10.5px;">全選択</button>
+                    <button class="btn-secondary btn-sm" id="btn-backup-deselect-all" style="height: 24px; padding: 0 8px; font-size: 10.5px;">全解除</button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 6px; background: rgba(14, 30, 48, 0.4); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="backup-chk-history" checked style="accent-color: var(--color-blue); width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">戦闘履歴 <span id="backup-count-history" style="color: var(--color-blue); font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="backup-chk-roster" checked style="accent-color: var(--color-blue); width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">生徒図鑑 <span id="backup-count-roster" style="color: var(--color-blue); font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="backup-chk-calibration" checked style="accent-color: var(--color-blue); width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">トリミング領域設定 <span id="backup-count-calibration" style="color: var(--color-blue); font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="backup-chk-opponents" checked style="accent-color: var(--color-blue); width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">対戦相手名　修正辞書 <span id="backup-count-opponents" style="color: var(--color-blue); font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+                </div>
+
+                <div style="background: rgba(0, 163, 255, 0.08); padding: 4px 8px; border-radius: 5px; border: 1px solid rgba(0, 163, 255, 0.2); font-size: 10.5px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-file-code" style="color: var(--color-blue);"></i>
+                    <span style="color: var(--text-secondary); white-space: nowrap;">出力ファイル名:</span>
+                    <span id="backup-preview-filename" style="color: var(--text-primary); font-weight: 700; word-break: break-all;">TacticalArchive_Full_...json</span>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px;">
+                    <button class="btn-secondary" id="btn-backup-cancel" style="height: 30px; padding: 0 12px; font-size: 11px;">キャンセル</button>
+                    <button class="btn-primary" id="btn-backup-execute" style="height: 30px; padding: 0 14px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-download"></i> バックアップ出力</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. RESTORE CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="restore-modal">
+        <div class="modal-card" style="width: 460px; max-width: 95%; padding: 10px 14px; box-sizing: border-box;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                <h2 style="font-size: 13px; margin: 0; color: var(--text-primary); font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-cloud-arrow-up" style="color: #ff3366;"></i> リストア</h2>
+                <button class="modal-close-btn" id="btn-restore-close" style="background: none; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px;">
+                <div id="restore-detected-list" style="display: flex; flex-direction: column; gap: 6px; background: rgba(14, 30, 48, 0.4); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <!-- Dynamic check items -->
+                </div>
+
+                <div style="background: rgba(255, 23, 68, 0.08); padding: 6px 8px; border-radius: 5px; border: 1px solid rgba(255, 23, 68, 0.2); font-size: 10.5px;">
+                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 3px;">復元モード:</div>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 3px; color: var(--text-primary);">
+                        <input type="radio" name="restore-mode" value="merge" checked style="accent-color: var(--color-blue);">
+                        <span><b>追加・統合 (推奨)</b> - 既存データを維持し、新しい項目を追加・更新</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #ff5252;">
+                        <input type="radio" name="restore-mode" value="overwrite" style="accent-color: #ff5252;">
+                        <span><b>完全上書き</b> - 選択した項目の既存データを一度消去して置換</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px;">
+                    <button class="btn-secondary" id="btn-restore-cancel" style="height: 30px; padding: 0 12px; font-size: 11px;">キャンセル</button>
+                    <button class="btn-primary" id="btn-restore-execute" style="height: 30px; padding: 0 14px; font-size: 11px; font-weight: 700; background: #ff3366; border: none; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-rotate-right"></i> 復元を実行</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. DATA DELETION / CLEAR MODAL -->
+    <div class="modal-overlay" id="delete-modal">
+        <div class="modal-card" style="width: 460px; max-width: 95%; padding: 10px 14px; box-sizing: border-box;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                <h2 style="font-size: 13px; margin: 0; color: #ff3366; font-weight: 700; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-trash-can" style="color: #ff3366;"></i> データ削除 / 初期化</h2>
+                <button class="modal-close-btn" id="btn-delete-close" style="background: none; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="background: rgba(255, 23, 68, 0.1); border: 1px solid rgba(255, 23, 68, 0.3); border-radius: 5px; padding: 5px 8px; font-size: 10.5px; color: #ff5252; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 12px; flex-shrink: 0;"></i>
+                    <span><b>警告:</b> 削除したデータは元に戻せません。</span>
+                </div>
+                
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-secondary btn-sm" id="btn-delete-select-all" style="height: 24px; padding: 0 8px; font-size: 10.5px;">全選択</button>
+                    <button class="btn-secondary btn-sm" id="btn-delete-deselect-all" style="height: 24px; padding: 0 8px; font-size: 10.5px;">全解除</button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 6px; background: rgba(14, 30, 48, 0.4); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="delete-chk-history" style="accent-color: #ff3366; width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">戦闘履歴 <span id="delete-count-history" style="color: #ff3366; font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="delete-chk-roster" style="accent-color: #ff3366; width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">生徒図鑑 <span id="delete-count-roster" style="color: #ff3366; font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="delete-chk-calibration" style="accent-color: #ff3366; width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">トリミング領域設定 <span id="delete-count-calibration" style="color: #ff3366; font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-primary);">
+                        <input type="checkbox" id="delete-chk-opponents" style="accent-color: #ff3366; width: 15px; height: 15px; margin: 0;">
+                        <span style="font-weight: 700;">対戦相手名　修正辞書 <span id="delete-count-opponents" style="color: #ff3366; font-size: 11px; font-weight: normal;">(0件)</span></span>
+                    </label>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px;">
+                    <button class="btn-secondary" id="btn-delete-cancel" style="height: 30px; padding: 0 12px; font-size: 11px;">キャンセル</button>
+                    <button class="btn-danger" id="btn-delete-execute" style="height: 30px; padding: 0 14px; font-size: 11px; font-weight: 700; background: #ff3366; color: #fff; border: none; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-trash-can"></i> 選択したデータを削除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 8. BULK ROSTER STEP-BY-STEP OVERWRITE / REGISTRATION MODAL -->
+    <div class="modal-overlay" id="bulk-roster-modal" style="z-index: 2500; align-items: flex-start; padding-top: 4px;">
+        <div class="modal-card" style="width: 780px; max-width: 98vw; max-height: 98vh; display: flex; flex-direction: column; padding: 6px 12px; box-sizing: border-box;">
+            <!-- Header -->
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 13px; font-weight: 700; color: #047857; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-folder-plus"></i> 生徒図鑑(Roster)　一括登録
+                    </span>
+                    <span id="bulk-roster-step-badge" style="font-size: 11px; font-weight: bold; background: rgba(0, 163, 255, 0.12); color: #0077ff; padding: 2px 8px; border-radius: 4px;">
+                        [1枚目 - A1]
+                    </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span id="bulk-roster-remaining-badge" style="font-size: 11px; color: var(--text-muted);">残り: 0件</span>
+                    <button class="btn-secondary btn-sm" id="btn-bulk-roster-close" style="height: 26px; padding: 0 10px; font-size: 11px;">終了</button>
+                </div>
+            </div>
+
+            <!-- Interactive Step Card Body -->
+            <div class="modal-body" id="bulk-roster-step-body" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto;">
+                <!-- Injected dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. CROP INSPECTOR & CALIBRATION MODAL (トリミング調整ウィザード) -->
+    <div class="modal-overlay" id="crop-inspector-modal" style="z-index: 2000;">
+        <div class="modal-card" style="width: 98%; max-width: 1200px; height: 98%; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; background: #0b1522;">
+            <!-- Ultra-Minimal Header -->
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 4px; border-bottom: 1px solid rgba(0, 163, 255, 0.2); background: transparent; min-height: 32px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="wizard-step-badge" style="font-size: 11px; font-weight: bold; color: #000; background: #00e676; padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-crosshairs"></i> <span id="wizard-step-title">A1 (攻撃1) 調整中</span>
+                    </span>
+                    <span id="wizard-step-desc" style="font-size: 10px; color: var(--text-secondary); display: none;"></span>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button class="btn-secondary btn-sm" id="btn-slot-reset" style="height: 26px; padding: 0 8px; font-size: 11px;" title="現在の枠位置を初期値に戻す"><i class="fa-solid fa-rotate-left"></i> 位置リセット</button>
+                    <button class="btn-primary btn-sm" id="btn-inspector-apply" style="height: 26px; padding: 0 12px; font-size: 11px; background: #00e676; border-color: #00e676; color: #000; font-weight: bold;"><i class="fa-solid fa-check"></i> 完了して反映</button>
+                    <button class="modal-close-btn" id="btn-inspector-close" style="background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; line-height: 1; margin-left: 4px;">&times;</button>
+                </div>
+            </div>
+            
+            <!-- Interactive Viewport Body -->
+            <div class="modal-body" style="flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background: #050b12; border-radius: 6px; border: 1px solid var(--border-color); position: relative; user-select: none;">
+                <canvas id="crop-inspector-canvas" style="width: 100%; height: 100%; cursor: grab; touch-action: none; display: block;"></canvas>
+
+                <!-- Floating Zoom & View Toolbar (Top Left) -->
+                <div style="position: absolute; top: 8px; left: 8px; display: flex; gap: 3px; background: rgba(11, 21, 34, 0.88); padding: 3px 5px; border-radius: 6px; border: 1px solid rgba(0, 163, 255, 0.3); backdrop-filter: blur(4px); z-index: 10;">
+                    <button id="btn-zoom-in" class="nudge-btn" title="ズームイン" style="width: 26px; height: 26px; font-size: 11px;"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <button id="btn-zoom-out" class="nudge-btn" title="ズームアウト" style="width: 26px; height: 26px; font-size: 11px;"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                    <button id="btn-zoom-focus" class="nudge-btn" title="調整中の枠へフォーカス" style="height: 26px; padding: 0 6px; font-size: 10px;"><i class="fa-solid fa-bullseye"></i> 枠に注目</button>
+                    <button id="btn-zoom-reset" class="nudge-btn" title="全体表示に戻す" style="height: 26px; padding: 0 6px; font-size: 10px;"><i class="fa-solid fa-expand"></i> 全体</button>
+                    <span id="zoom-level-text" style="font-size: 10px; color: #8be2f8; align-self: center; margin-left: 2px; font-weight: bold;">100%</span>
+                </div>
+
+                <!-- Floating Control Panel (Bottom Right) -->
+                <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(11, 21, 34, 0.92); padding: 6px; border-radius: 8px; border: 1px solid rgba(0, 163, 255, 0.35); backdrop-filter: blur(4px); display: flex; flex-direction: column; gap: 5px; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.6); max-width: 240px;">
+                    
+                    <!-- 3-Row Slot Selector -->
+                    <div style="display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">
+                        <!-- Row 1: Attack A1-A6 -->
+                        <div style="display: flex; align-items: center; gap: 2px;">
+                            <span style="font-size: 9px; color: #00e676; font-weight: bold; width: 22px; text-align: center;">攻</span>
+                            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; flex: 1;">
+                                <button class="wizard-tab-btn active" data-step="0">A1</button>
+                                <button class="wizard-tab-btn" data-step="1">A2</button>
+                                <button class="wizard-tab-btn" data-step="2">A3</button>
+                                <button class="wizard-tab-btn" data-step="3">A4</button>
+                                <button class="wizard-tab-btn" data-step="4">A5</button>
+                                <button class="wizard-tab-btn" data-step="5">A6</button>
+                            </div>
+                        </div>
+                        <!-- Row 2: Defense D1-D6 -->
+                        <div style="display: flex; align-items: center; gap: 2px;">
+                            <span style="font-size: 9px; color: #ff3366; font-weight: bold; width: 22px; text-align: center;">防</span>
+                            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; flex: 1;">
+                                <button class="wizard-tab-btn" data-step="6">D1</button>
+                                <button class="wizard-tab-btn" data-step="7">D2</button>
+                                <button class="wizard-tab-btn" data-step="8">D3</button>
+                                <button class="wizard-tab-btn" data-step="9">D4</button>
+                                <button class="wizard-tab-btn" data-step="10">D5</button>
+                                <button class="wizard-tab-btn" data-step="11">D6</button>
+                            </div>
+                        </div>
+                        <!-- Row 3: Others (Opponent Avatar / Name) -->
+                        <div style="display: flex; align-items: center; gap: 2px;">
+                            <span style="font-size: 9px; color: #ffe135; font-weight: bold; width: 22px; text-align: center;">他</span>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; flex: 1;">
+                                <button class="wizard-tab-btn" data-step="12" style="font-size: 10px; padding: 2px 4px;">相手アイコン</button>
+                                <button class="wizard-tab-btn" data-step="13" style="font-size: 10px; padding: 2px 4px;">相手名前</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nudge Header -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 2px;">
+                        <span style="font-size: 10px; color: #8be2f8; font-weight: bold;"><i class="fa-solid fa-arrows-up-down-left-right"></i> 位置微調整</span>
+                        <span id="nudge-y-lock-badge" style="font-size: 9px; color: #aaa; background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 3px;">XY自由移動</span>
+                    </div>
+                    
+                    <!-- Direction Buttons (D-Pad) & Prev/Next Container -->
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                        <!-- Direction Buttons (D-Pad) -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 30px); grid-gap: 3px; justify-content: center;">
+                            <div></div>
+                            <button id="btn-nudge-up" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-up"></i></button>
+                            <div></div>
+                            <button id="btn-nudge-left" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-left"></i></button>
+                            <button id="btn-nudge-center" class="nudge-btn" title="移動単位" style="height: 26px; font-size: 9px; font-weight: bold;">1px</button>
+                            <button id="btn-nudge-right" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-right"></i></button>
+                            <div></div>
+                            <button id="btn-nudge-down" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-down"></i></button>
+                            <div></div>
+                        </div>
+
+                        <!-- Prev / Next Vertical Buttons -->
+                        <div style="display: flex; flex-direction: column; gap: 4px; width: 48px;">
+                            <button id="btn-step-prev" class="nudge-btn" style="height: 38px; font-size: 10px; font-weight: bold; background: rgba(0, 163, 255, 0.15); border-color: rgba(0, 163, 255, 0.4);"><i class="fa-solid fa-chevron-left"></i> 戻る</button>
+                            <button id="btn-step-next" class="nudge-btn" style="height: 38px; font-size: 10px; font-weight: bold; background: #00a3ff; border-color: #00a3ff; color: #fff;"><i class="fa-solid fa-chevron-right"></i> 次へ</button>
+                        </div>
+                    </div>
+
+                    <!-- Size +/- Controls -->
+                    <div id="size-adjust-container" style="display: flex; gap: 3px; justify-content: space-between;">
+                        <button id="btn-size-minus" class="nudge-btn" style="flex: 1; height: 24px; font-size: 9px;"><i class="fa-solid fa-compress"></i> 縮小</button>
+                        <button id="btn-size-plus" class="nudge-btn" style="flex: 1; height: 24px; font-size: 9px;"><i class="fa-solid fa-expand"></i> 拡大</button>
+                    </div>
+                </div>
+
+                <!-- Toast notification -->
+                <div id="inspector-toast" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00d2ff; font-size: 11px; padding: 4px 12px; border-radius: 16px; border: 1px solid rgba(0, 210, 255, 0.4); pointer-events: none; opacity: 0; transition: opacity 0.25s; font-weight: 600; z-index: 20;">枠を調整しました</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Tag Selector Popup -->
+    <div id="custom-tag-popup" class="custom-tag-popup" style="display: none; position: absolute; z-index: 10000; background: #162435; border: 1px solid rgba(0, 163, 255, 0.4); border-radius: 8px; padding: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); width: 220px; box-sizing: border-box; font-family: var(--font-outfit), sans-serif;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Yellow Row (1-5) -->
+            <div style="display: flex; gap: 4px; justify-content: space-between; align-items: center;">
+                <span style="font-size: 10px; color: #ffe135; font-weight: bold; width: 14px; text-align: center;">黄</span>
+                <div style="display: flex; gap: 4px; flex-grow: 1; justify-content: flex-end;">
+                    <button class="tag-opt-btn" data-color="yellow" data-val="" style="width: 24px; height: 24px; background: #ffe135; border: none; border-radius: 4px; cursor: pointer;"></button>
+                    <button class="tag-opt-btn" data-color="yellow" data-val="1" style="width: 24px; height: 24px; background: #ffe135; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">1</button>
+                    <button class="tag-opt-btn" data-color="yellow" data-val="2" style="width: 24px; height: 24px; background: #ffe135; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">2</button>
+                    <button class="tag-opt-btn" data-color="yellow" data-val="3" style="width: 24px; height: 24px; background: #ffe135; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">3</button>
+                    <button class="tag-opt-btn" data-color="yellow" data-val="4" style="width: 24px; height: 24px; background: #ffe135; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">4</button>
+                    <button class="tag-opt-btn" data-color="yellow" data-val="5" style="width: 24px; height: 24px; background: #ffe135; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">5</button>
+                </div>
+            </div>
+            <!-- Blue Row (1-5) -->
+            <div style="display: flex; gap: 4px; justify-content: space-between; align-items: center;">
+                <span style="font-size: 10px; color: #8be2f8; font-weight: bold; width: 14px; text-align: center;">青</span>
+                <div style="display: flex; gap: 4px; flex-grow: 1; justify-content: flex-end;">
+                    <button class="tag-opt-btn" data-color="blue" data-val="" style="width: 24px; height: 24px; background: #8be2f8; border: none; border-radius: 4px; cursor: pointer;"></button>
+                    <button class="tag-opt-btn" data-color="blue" data-val="1" style="width: 24px; height: 24px; background: #8be2f8; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">1</button>
+                    <button class="tag-opt-btn" data-color="blue" data-val="2" style="width: 24px; height: 24px; background: #8be2f8; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">2</button>
+                    <button class="tag-opt-btn" data-color="blue" data-val="3" style="width: 24px; height: 24px; background: #8be2f8; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">3</button>
+                    <button class="tag-opt-btn" data-color="blue" data-val="4" style="width: 24px; height: 24px; background: #8be2f8; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">4</button>
+                    <button class="tag-opt-btn" data-color="blue" data-val="5" style="width: 24px; height: 24px; background: #8be2f8; color: #162435; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">5</button>
+                </div>
+            </div>
+            <!-- Clear Button -->
+            <button id="btn-clear-tag" style="width: 100%; height: 26px; font-size: 11px; color: var(--text-muted); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-weight: 500; transition: background 0.2s;">選択解除 (Clear)</button>
+        </div>
+    </div>
+
+    <!-- Master Student Dictionary -->
+    <script src="students_data.js"></script>
+
+    <!-- App Script -->
+    <script src="app.js" type="module"></script>
+</body>
+</html>
