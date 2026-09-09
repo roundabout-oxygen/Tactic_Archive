@@ -2,7 +2,8 @@
 
 『ブルーアーカイブ（Blue Archive）』戦術対抗戦の対戦履歴をスクリーンショットから自動認識・記録・分析するローカルファーストの戦績管理ツールです。
 
-[![Version](https://img.shields.io/badge/Version-v1.1.12-blue.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.1.13-blue.svg)](#)
+[![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web-blue.svg)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-purple.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -112,7 +113,14 @@
 ### 方式A. Android アプリを直接インストールして使う (推奨)
 本リポジトリ内のビルド済み APK ファイルをダウンロードし、Android 端末にインストールしてください。
 
-- **APK ファイルパス**: [`release/TacticalArchive.apk`](release/TacticalArchive.apk)
+<p align="left">
+  <a href="https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk">
+    <img src="https://img.shields.io/badge/⬇️_APKを直接ダウンロード-TacticalArchive.apk-00A3FF?style=for-the-badge&logo=android&logoColor=white" alt="APK直接ダウンロード" height="38">
+  </a>
+</p>
+
+- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.13) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
+  *(※上記ボタンまたはリンクをタップすると、プレビュー画面を挟まずに即座に APK ファイルのダウンロードが開始されます)*
 - **対応OS**: Android 7.0 (API レベル 24) 以上
 
 ### 方式B. ソースコードからビルドする (Android Studio)
