@@ -617,8 +617,12 @@ const STUDENT_MASTER_LIST = [
     "name": "ホシノ（水着）"
   },
   {
-    "reading": "ほしの（りんせん）",
-    "name": "ホシノ（臨戦）"
+    "reading": "ほしの（りんせん）こう",
+    "name": "ホシノ（臨戦）攻"
+  },
+  {
+    "reading": "ほしの（りんせん）ぼう",
+    "name": "ホシノ（臨戦）防"
   },
   {
     "reading": "まき",

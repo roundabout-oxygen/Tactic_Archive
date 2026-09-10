@@ -33,7 +33,7 @@
                     <div class="logo" style="gap: 7px; display: flex; align-items: center;">
                         <img src="icon.png" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(0, 163, 255, 0.4);">
                         <span style="font-size: 13px; font-weight: 800;">Tactical Archive</span>
-                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.1.16</span>
+                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.1.17</span>
                     </div>
                     <nav class="nav-tabs" style="gap: 8px; margin-left: auto;">
                         <button class="tab-btn active" data-tab="attack" style="padding: 6px 12px; font-size: 12px;">
@@ -154,7 +154,7 @@
                                 <div class="settings-title-group">
                                     <i class="fa-solid fa-sliders" style="color: var(--color-blue); font-size: 15px;"></i>
                                     <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">システム設定 ＆ 辞書管理</h3>
-                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.1.16</span>
+                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.1.17</span>
                                 </div>
                                 <div class="roster-summary" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary);">
                                     <i class="fa-solid fa-users" style="color: var(--color-blue);"></i>
@@ -824,32 +824,32 @@
                         <span id="nudge-y-lock-badge" style="font-size: 9px; color: #aaa; background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 3px;">XY自由移動</span>
                     </div>
                     
-                    <!-- Direction Buttons (D-Pad) & Prev/Next Container -->
-                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center;">
+                    <!-- Controls Container (D-Pad | Size Adjust (Up=拡大, Down=縮小) | Prev/Next Navigation) -->
+                    <div style="display: flex; gap: 6px; align-items: center; justify-content: center;">
                         <!-- Direction Buttons (D-Pad) -->
                         <div style="display: grid; grid-template-columns: repeat(3, 30px); grid-gap: 3px; justify-content: center;">
                             <div></div>
-                            <button id="btn-nudge-up" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-up"></i></button>
+                            <button id="btn-nudge-up" class="nudge-btn" style="height: 26px;" title="上へ移動"><i class="fa-solid fa-arrow-up"></i></button>
                             <div></div>
-                            <button id="btn-nudge-left" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-left"></i></button>
-                            <button id="btn-nudge-center" class="nudge-btn" title="移動単位" style="height: 26px; font-size: 9px; font-weight: bold;">1px</button>
-                            <button id="btn-nudge-right" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-right"></i></button>
+                            <button id="btn-nudge-left" class="nudge-btn" style="height: 26px;" title="左へ移動"><i class="fa-solid fa-arrow-left"></i></button>
+                            <button id="btn-nudge-center" class="nudge-btn" title="移動単位 (タップで1px/5px切替)" style="height: 26px; font-size: 9px; font-weight: bold; color: #8be2f8;">1px</button>
+                            <button id="btn-nudge-right" class="nudge-btn" style="height: 26px;" title="右へ移動"><i class="fa-solid fa-arrow-right"></i></button>
                             <div></div>
-                            <button id="btn-nudge-down" class="nudge-btn" style="height: 26px;"><i class="fa-solid fa-arrow-down"></i></button>
+                            <button id="btn-nudge-down" class="nudge-btn" style="height: 26px;" title="下へ移動"><i class="fa-solid fa-arrow-down"></i></button>
                             <div></div>
                         </div>
 
-                        <!-- Prev / Next Vertical Buttons -->
-                        <div style="display: flex; flex-direction: column; gap: 4px; width: 48px;">
-                            <button id="btn-step-prev" class="nudge-btn" style="height: 38px; font-size: 10px; font-weight: bold; background: rgba(0, 163, 255, 0.15); border-color: rgba(0, 163, 255, 0.4);"><i class="fa-solid fa-chevron-left"></i> 戻る</button>
-                            <button id="btn-step-next" class="nudge-btn" style="height: 38px; font-size: 10px; font-weight: bold; background: #00a3ff; border-color: #00a3ff; color: #fff;"><i class="fa-solid fa-chevron-right"></i> 次へ</button>
+                        <!-- Size +/- Vertical Buttons (左側に縦配置: 上が拡大、下が縮小) -->
+                        <div id="size-adjust-container" style="display: flex; flex-direction: column; gap: 4px; width: 48px;">
+                            <button id="btn-size-plus" class="nudge-btn" style="height: 38px; font-size: 10px;" title="枠を拡大"><i class="fa-solid fa-expand"></i> 拡大</button>
+                            <button id="btn-size-minus" class="nudge-btn" style="height: 38px; font-size: 10px;" title="枠を縮小"><i class="fa-solid fa-compress"></i> 縮小</button>
                         </div>
-                    </div>
 
-                    <!-- Size +/- Controls -->
-                    <div id="size-adjust-container" style="display: flex; gap: 3px; justify-content: space-between;">
-                        <button id="btn-size-minus" class="nudge-btn" style="flex: 1; height: 24px; font-size: 9px;"><i class="fa-solid fa-compress"></i> 縮小</button>
-                        <button id="btn-size-plus" class="nudge-btn" style="flex: 1; height: 24px; font-size: 9px;"><i class="fa-solid fa-expand"></i> 拡大</button>
+                        <!-- Prev / Next Vertical Navigation Buttons (十字キーや拡大縮小と混同しにくい専用配色) -->
+                        <div style="display: flex; flex-direction: column; gap: 4px; width: 52px;">
+                            <button id="btn-step-prev" class="wizard-nav-btn wizard-nav-prev" style="height: 38px; font-size: 10px;" title="前の枠へ"><i class="fa-solid fa-chevron-left"></i> 戻る</button>
+                            <button id="btn-step-next" class="wizard-nav-btn wizard-nav-next" style="height: 38px; font-size: 10px;" title="次の枠へ"><i class="fa-solid fa-chevron-right"></i> 次へ</button>
+                        </div>
                     </div>
                 </div>
 

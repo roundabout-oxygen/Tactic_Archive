@@ -2125,3 +2125,43 @@ html, body {
     gap: 6px;
     box-sizing: border-box;
 }
+
+/* Calibration Wizard Navigation Buttons */
+.wizard-nav-btn {
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+.wizard-nav-prev {
+    background: #334155;
+    border: 1px solid #64748b;
+    color: #e2e8f0;
+}
+.wizard-nav-prev:hover {
+    background: #475569;
+    border-color: #94a3b8;
+    color: #fff;
+}
+.wizard-nav-prev:active {
+    transform: scale(0.94);
+}
+.wizard-nav-next {
+    background: #059669;
+    border: 1px solid #34d399;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4);
+}
+.wizard-nav-next:hover {
+    background: #10b981;
+    border-color: #6ee7b7;
+}
+.wizard-nav-next:active {
+    transform: scale(0.94);
+}

@@ -2,7 +2,7 @@
 
 『ブルーアーカイブ（Blue Archive）』戦術対抗戦の対戦履歴をスクリーンショットから自動認識・記録・分析する完全ローカル・オフライン動作の Android アプリです。
 
-[![Version](https://img.shields.io/badge/Version-v1.1.16-blue.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.1.17-blue.svg)](#)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-purple.svg)](#)
@@ -119,7 +119,7 @@
   </a>
 </p>
 
-- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.16) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
+- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.17) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
   *(※上記ボタンまたはリンクをタップすると、プレビュー画面を挟まずに即座に APK ファイルのダウンロードが開始されます)*
 - **対応OS**: Android 7.0 (API レベル 24) 以上
 

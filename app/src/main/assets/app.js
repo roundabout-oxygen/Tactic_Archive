@@ -1,3 +1,46 @@
+
+// Built-in verified calibration profiles
+const BUILTIN_CALIBRATION_PROFILES = {
+    "2.166": {
+        "aspectRatio": "2.166",
+        "relModal": {
+            "rx": 0.07251082251082251,
+            "ry": 0.1,
+            "rw": 0.854978354978355,
+            "rh": 0.7984375
+        },
+        "modalBox": { "x": 201, "y": 128, "w": 2370, "h": 1022 },
+        "normalizedWidth": 2400,
+        "normalizedHeight": 1040,
+        "winLose": { "sx": 110, "sy": 100, "sw": 280, "sh": 160, "dw": 280, "dh": 160 },
+        "oppAvatar": { "sx": 1715, "sy": 165, "sw": 120, "sh": 120, "dw": 100, "dh": 100 },
+        "oppName": { "sx": 1995, "sy": 144, "sw": 370, "sh": 55, "dw": 1100, "dh": 200 },
+        "atkCenters": [206, 352, 499, 646, 793, 940],
+        "defCenters": [1449, 1596, 1743, 1890, 2036, 2184],
+        "cardTop": 859,
+        "cardSize": 88
+    },
+    "2.223": {
+        "aspectRatio": "2.223",
+        "relModal": {
+            "rx": 0.05641592920353982,
+            "ry": 0.07540983606557378,
+            "rw": 0.8864306784660767,
+            "rh": 0.85
+        },
+        "modalBox": { "x": 153, "y": 92, "w": 2404, "h": 1037 },
+        "normalizedWidth": 2400,
+        "normalizedHeight": 1040,
+        "winLose": { "sx": 110, "sy": 100, "sw": 280, "sh": 160, "dw": 280, "dh": 160 },
+        "oppAvatar": { "sx": 1720, "sy": 160, "sw": 120, "sh": 120, "dw": 100, "dh": 100 },
+        "oppName": { "sx": 1995, "sy": 141, "sw": 380, "sh": 60, "dw": 1100, "dh": 200 },
+        "atkCenters": [206, 353, 500, 646, 795, 941],
+        "defCenters": [1451, 1597, 1744, 1891, 2037, 2185],
+        "cardTop": 857,
+        "cardSize": 88
+    }
+};
+
 // IndexedDB Database management
 const DB_NAME = 'TacticalArchiveDB';
 const DB_VERSION = 4;
@@ -740,7 +783,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnStepPrev) btnStepPrev.addEventListener('click', () => setWizardStep(wizardCurrentStep - 1));
 
     const btnStepNext = document.getElementById('btn-step-next');
-    if (btnStepNext) btnStepNext.addEventListener('click', () => setWizardStep(wizardCurrentStep + 1));
+    if (btnStepNext) btnStepNext.addEventListener('click', () => {
+        if (wizardCurrentStep === WIZARD_STEPS.length - 1) {
+            applyCropInspector();
+        } else {
+            setWizardStep(wizardCurrentStep + 1);
+        }
+    });
 
     const btnInspectorApply = document.getElementById('btn-inspector-apply');
     if (btnInspectorApply) btnInspectorApply.addEventListener('click', applyCropInspector);
@@ -1715,24 +1764,62 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
     const normalizedWidth = 2400;
     const normalizedHeight = 1040;
 
-    const winLose = { sx: 110, sy: 100, sw: 280, sh: 160, dw: 280, dh: 160 };
-    const oppAvatar = { sx: 1670, sy: 100, sw: 140, sh: 140, dw: 100, dh: 100 };
-    const oppName = { sx: 1840, sy: 110, sw: 420, sh: 80, dw: 1100, dh: 200 };
+    // Check if matching builtin calibration profile exists for this aspect ratio (e.g. 2.166 or 2.223)
+    const rawAspectVal = parseFloat(aspectKey);
+    let builtinMatch = BUILTIN_CALIBRATION_PROFILES[aspectKey];
+    if (!builtinMatch) {
+        for (const [k, p] of Object.entries(BUILTIN_CALIBRATION_PROFILES)) {
+            if (Math.abs(parseFloat(k) - rawAspectVal) < 0.035) {
+                builtinMatch = p;
+                break;
+            }
+        }
+    }
 
-    const atkCenters = [215, 360, 505, 650, 795, 940];
-    const defCenters = [1460, 1605, 1750, 1895, 2040, 2185];
+    let winLose, oppAvatar, oppName, atkCenters, defCenters, cardTop, cardSize;
+    let finalRelModal = relModal;
+    let finalModalBox = { x: modalX, y: modalY, w: modalW, h: modalH };
+
+    if (builtinMatch) {
+        winLose = JSON.parse(JSON.stringify(builtinMatch.winLose));
+        oppAvatar = JSON.parse(JSON.stringify(builtinMatch.oppAvatar));
+        oppName = JSON.parse(JSON.stringify(builtinMatch.oppName));
+        atkCenters = [...builtinMatch.atkCenters];
+        defCenters = [...builtinMatch.defCenters];
+        cardTop = builtinMatch.cardTop;
+        cardSize = builtinMatch.cardSize;
+        if (builtinMatch.relModal) {
+            finalRelModal = JSON.parse(JSON.stringify(builtinMatch.relModal));
+            finalModalBox = {
+                x: Math.round(finalRelModal.rx * origW),
+                y: Math.round(finalRelModal.ry * origH),
+                w: Math.round(finalRelModal.rw * origW),
+                h: Math.round(finalRelModal.rh * origH)
+            };
+        }
+    } else {
+        winLose = { sx: 110, sy: 100, sw: 280, sh: 160, dw: 280, dh: 160 };
+        oppAvatar = { sx: 1718, sy: 162, sw: 120, sh: 120, dw: 100, dh: 100 };
+        oppName = { sx: 1995, sy: 142, sw: 375, sh: 58, dw: 1100, dh: 200 };
+        atkCenters = [206, 353, 500, 646, 794, 941];
+        defCenters = [1450, 1596, 1744, 1890, 2036, 2185];
+        cardTop = 858;
+        cardSize = 88;
+    }
 
     const profile = {
         aspectRatio: aspectKey,
-        relModal,
-        modalBox: { x: modalX, y: modalY, w: modalW, h: modalH },
+        relModal: finalRelModal,
+        modalBox: finalModalBox,
         normalizedWidth,
         normalizedHeight,
         winLose,
         oppAvatar,
         oppName,
         atkCenters,
-        defCenters
+        defCenters,
+        cardTop,
+        cardSize
     };
 
     // Save to persistent cache
@@ -1951,8 +2038,8 @@ async function runRecognitionPipeline(img, profile, file, extractedDate) {
         defense: []
     };
     
-    const cardTop = profile.cardTop || 852;
-    const cardHeight = profile.cardSize || 96;
+    const cardTop = profile.cardTop || 858;
+    const cardHeight = profile.cardSize || 88;
     const cardWidth = Math.round(cardHeight * 1.11);
     const faceSize = Math.round(cardHeight * 0.84);
     const faceOffset = Math.round((cardHeight - faceSize) / 2);
@@ -2197,8 +2284,8 @@ function openCropInspector() {
         return;
     }
     // Ensure default cardTop and sizes
-    if (!currentActiveProfile.cardTop) currentActiveProfile.cardTop = 852;
-    if (!currentActiveProfile.cardSize) currentActiveProfile.cardSize = 96;
+    if (!currentActiveProfile.cardTop) currentActiveProfile.cardTop = 858;
+    if (!currentActiveProfile.cardSize) currentActiveProfile.cardSize = 88;
 
     wizardCurrentStep = 0; // A1 first!
     wizardZoom = 2.4;
@@ -2239,6 +2326,11 @@ function updateWizardUI() {
     const badgeEl = document.getElementById('wizard-step-badge');
     const lockBadge = document.getElementById('nudge-y-lock-badge');
     const sizeAdjustContainer = document.getElementById('size-adjust-container');
+    const btnNudgeUp = document.getElementById('btn-nudge-up');
+    const btnNudgeDown = document.getElementById('btn-nudge-down');
+    const btnNudgeCenter = document.getElementById('btn-nudge-center');
+    const btnStepPrev = document.getElementById('btn-step-prev');
+    const btnStepNext = document.getElementById('btn-step-next');
 
     if (titleEl) titleEl.innerText = step.title;
     if (badgeEl) {
@@ -2259,11 +2351,50 @@ function updateWizardUI() {
         }
     }
 
+    // A2〜A6, D1〜D6: Hide Up/Down buttons completely
+    const canMoveY = (step.id === 'a1' || step.isOppAvatar || step.isOppName);
+    if (btnNudgeUp) {
+        btnNudgeUp.style.visibility = canMoveY ? 'visible' : 'hidden';
+        btnNudgeUp.style.pointerEvents = canMoveY ? 'auto' : 'none';
+    }
+    if (btnNudgeDown) {
+        btnNudgeDown.style.visibility = canMoveY ? 'visible' : 'hidden';
+        btnNudgeDown.style.pointerEvents = canMoveY ? 'auto' : 'none';
+    }
+
+    // Automatic move step: 5px for avatar & name, 1px for students
+    if (step.isOppAvatar || step.isOppName) {
+        wizardNudgeStep = 5;
+    } else {
+        wizardNudgeStep = 1;
+    }
+    if (btnNudgeCenter) {
+        btnNudgeCenter.innerText = `${wizardNudgeStep}px`;
+    }
+
+    // Size adjust container: visible for A1, oppAvatar, oppName; hidden for others (maintaining layout width)
     if (sizeAdjustContainer) {
-        if (step.id === 'a1' || step.isOppAvatar || step.isOppName) {
-            sizeAdjustContainer.style.display = 'flex';
+        const canResize = (step.id === 'a1' || step.isOppAvatar || step.isOppName);
+        sizeAdjustContainer.style.visibility = canResize ? 'visible' : 'hidden';
+        sizeAdjustContainer.style.pointerEvents = canResize ? 'auto' : 'none';
+    }
+
+    // Prev / Next button states & color styling
+    if (btnStepPrev) {
+        btnStepPrev.style.opacity = wizardCurrentStep === 0 ? '0.45' : '1';
+        btnStepPrev.style.pointerEvents = wizardCurrentStep === 0 ? 'none' : 'auto';
+    }
+    if (btnStepNext) {
+        if (wizardCurrentStep === WIZARD_STEPS.length - 1) {
+            btnStepNext.innerHTML = '<i class="fa-solid fa-check"></i> 完了';
+            btnStepNext.style.background = '#2563eb';
+            btnStepNext.style.borderColor = '#3b82f6';
+            btnStepNext.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.4)';
         } else {
-            sizeAdjustContainer.style.display = 'none';
+            btnStepNext.innerHTML = '<i class="fa-solid fa-chevron-right"></i> 次へ';
+            btnStepNext.style.background = '#059669';
+            btnStepNext.style.borderColor = '#34d399';
+            btnStepNext.style.boxShadow = '0 2px 8px rgba(5, 150, 105, 0.4)';
         }
     }
 
@@ -2289,10 +2420,10 @@ function focusOnActiveSlot() {
     const step = WIZARD_STEPS[wizardCurrentStep];
 
     let targetNormX = 1200;
-    let targetNormY = 852;
+    let targetNormY = 858;
 
-    const cardSizeNorm = currentActiveProfile.cardSize || 96;
-    const cardTopNorm = currentActiveProfile.cardTop || 852;
+    const cardSizeNorm = currentActiveProfile.cardSize || 88;
+    const cardTopNorm = currentActiveProfile.cardTop || 858;
     const cardCenterYNorm = cardTopNorm + cardSizeNorm / 2;
 
     if (step.team === 'defense') {
@@ -2340,25 +2471,41 @@ function focusOnActiveSlot() {
 function resetActiveSlot() {
     if (!currentActiveProfile) return;
     const step = WIZARD_STEPS[wizardCurrentStep];
-    const defDefaultCenters = [1460, 1605, 1750, 1895, 2040, 2185];
-    const atkDefaultCenters = [215, 360, 505, 650, 795, 940];
+    const aspectKey = currentActiveProfile.aspectRatio;
+    const rawAspectVal = parseFloat(aspectKey);
+    let builtinMatch = BUILTIN_CALIBRATION_PROFILES[aspectKey];
+    if (!builtinMatch) {
+        for (const [k, p] of Object.entries(BUILTIN_CALIBRATION_PROFILES)) {
+            if (Math.abs(parseFloat(k) - rawAspectVal) < 0.035) {
+                builtinMatch = p;
+                break;
+            }
+        }
+    }
+
+    const defDefaultCenters = builtinMatch ? [...builtinMatch.defCenters] : [1450, 1596, 1744, 1890, 2036, 2185];
+    const atkDefaultCenters = builtinMatch ? [...builtinMatch.atkCenters] : [206, 353, 500, 646, 794, 941];
+    const defaultCardTop = builtinMatch ? builtinMatch.cardTop : 858;
+    const defaultCardSize = builtinMatch ? builtinMatch.cardSize : 88;
+    const defaultOppAvatar = builtinMatch ? JSON.parse(JSON.stringify(builtinMatch.oppAvatar)) : { sx: 1718, sy: 162, sw: 120, sh: 120, dw: 100, dh: 100 };
+    const defaultOppName = builtinMatch ? JSON.parse(JSON.stringify(builtinMatch.oppName)) : { sx: 1995, sy: 142, sw: 375, sh: 58, dw: 1100, dh: 200 };
 
     if (step.team === 'attack') {
         currentActiveProfile.atkCenters[step.index] = atkDefaultCenters[step.index];
         if (step.isBase) {
-            currentActiveProfile.cardTop = 852;
-            currentActiveProfile.cardSize = 96;
+            currentActiveProfile.cardTop = defaultCardTop;
+            currentActiveProfile.cardSize = defaultCardSize;
         }
     } else if (step.team === 'defense') {
         currentActiveProfile.defCenters[step.index] = defDefaultCenters[step.index];
         if (step.isBase) {
-            currentActiveProfile.cardTop = 852;
-            currentActiveProfile.cardSize = 96;
+            currentActiveProfile.cardTop = defaultCardTop;
+            currentActiveProfile.cardSize = defaultCardSize;
         }
     } else if (step.isOppAvatar) {
-        currentActiveProfile.oppAvatar = { sx: 1670, sy: 100, sw: 140, sh: 140, dw: 100, dh: 100 };
+        currentActiveProfile.oppAvatar = defaultOppAvatar;
     } else if (step.isOppName) {
-        currentActiveProfile.oppName = { sx: 1840, sy: 110, sw: 420, sh: 80, dw: 1100, dh: 200 };
+        currentActiveProfile.oppName = defaultOppName;
     }
 
     renderCropInspectorCanvas();
@@ -2426,8 +2573,8 @@ function renderCropInspectorCanvas() {
     ctx.strokeRect(modalScreenX, modalScreenY, modalScreenW, modalScreenH);
 
     const step = WIZARD_STEPS[wizardCurrentStep];
-    const cardSizeNorm = currentActiveProfile.cardSize || 96;
-    const cardTopNorm = currentActiveProfile.cardTop || 852;
+    const cardSizeNorm = currentActiveProfile.cardSize || 88;
+    const cardTopNorm = currentActiveProfile.cardTop || 858;
     const cardHeightNorm = cardSizeNorm;
     const cardWidthNorm = Math.round(cardHeightNorm * 1.11); // True student card aspect ratio (W = 1.11 * H)
     const cardCenterYNorm = cardTopNorm + cardHeightNorm / 2;
@@ -2564,7 +2711,7 @@ function nudgeActiveSlot(dx, dy) {
 
     if (step.id === 'a1') {
         currentActiveProfile.atkCenters[0] += actualDx;
-        currentActiveProfile.cardTop = (currentActiveProfile.cardTop || 852) + actualDy;
+        currentActiveProfile.cardTop = (currentActiveProfile.cardTop || 858) + actualDy;
     } else if (step.team === 'attack') {
         currentActiveProfile.atkCenters[step.index] += actualDx;
     } else if (step.team === 'defense') {
@@ -2586,7 +2733,7 @@ function adjustActiveSlotSize(delta) {
     const amount = delta * wizardNudgeStep;
 
     if (step.id === 'a1') {
-        currentActiveProfile.cardSize = Math.max(40, (currentActiveProfile.cardSize || 96) + amount);
+        currentActiveProfile.cardSize = Math.max(40, (currentActiveProfile.cardSize || 88) + amount);
     } else if (step.isOppAvatar) {
         currentActiveProfile.oppAvatar.sw = Math.max(40, currentActiveProfile.oppAvatar.sw + amount);
         currentActiveProfile.oppAvatar.sh = Math.max(40, currentActiveProfile.oppAvatar.sh + amount);
@@ -2737,8 +2884,8 @@ async function applyCropInspector() {
 
     // Re-crop all 12 slots from normalized canvas and update review modal
     const procCanvas = document.getElementById('proc-canvas');
-    const cardTop = currentActiveProfile.cardTop || 852;
-    const cardHeight = currentActiveProfile.cardSize || 96;
+    const cardTop = currentActiveProfile.cardTop || 858;
+    const cardHeight = currentActiveProfile.cardSize || 88;
     const cardWidth = Math.round(cardHeight * 1.11);
     const faceSize = Math.round(cardHeight * 0.84);
     const faceOffset = Math.round((cardHeight - faceSize) / 2);
@@ -4258,10 +4405,18 @@ function setupStudentAutocomplete() {
         const matches = STUDENT_MASTER_LIST.filter(item => {
             const itemHira = toHiragana(item.reading.toLowerCase());
             const itemKata = toKatakana(item.name);
-            return itemHira.startsWith(queryHira) || 
-                   itemKata.startsWith(queryKata) || 
-                   item.name.startsWith(query) ||
-                   item.reading.startsWith(query);
+            return itemHira.includes(queryHira) || 
+                   itemKata.includes(queryKata) || 
+                   item.name.includes(query) ||
+                   item.reading.includes(query);
+        }).sort((a, b) => {
+            const aHira = toHiragana(a.reading.toLowerCase());
+            const bHira = toHiragana(b.reading.toLowerCase());
+            const aStarts = aHira.startsWith(queryHira) || a.name.startsWith(query);
+            const bStarts = bHira.startsWith(queryHira) || b.name.startsWith(query);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return 0;
         });
 
         listEl.innerHTML = '';
@@ -4376,8 +4531,8 @@ function initBulkFeatures() {
                         0, 0, normW, normH
                     );
 
-                    const cardTop = profile.cardTop || 852;
-                    const cardHeight = profile.cardSize || 96;
+                    const cardTop = profile.cardTop || 858;
+                    const cardHeight = profile.cardSize || 88;
                     const faceSize = Math.round(cardHeight * 0.84);
                     const faceOffset = Math.round((cardHeight - faceSize) / 2);
 
@@ -4721,10 +4876,18 @@ function initBulkFeatures() {
                 const matches = STUDENT_MASTER_LIST.filter(item => {
                     const itemHira = toHiragana(item.reading.toLowerCase());
                     const itemKata = toKatakana(item.name);
-                    return itemHira.startsWith(queryHira) || 
-                           itemKata.startsWith(queryKata) || 
-                           item.name.startsWith(query) ||
-                           item.reading.startsWith(query);
+                    return itemHira.includes(queryHira) || 
+                           itemKata.includes(queryKata) || 
+                           item.name.includes(query) ||
+                           item.reading.includes(query);
+                }).sort((a, b) => {
+                    const aHira = toHiragana(a.reading.toLowerCase());
+                    const bHira = toHiragana(b.reading.toLowerCase());
+                    const aStarts = aHira.startsWith(queryHira) || a.name.startsWith(query);
+                    const bStarts = bHira.startsWith(queryHira) || b.name.startsWith(query);
+                    if (aStarts && !bStarts) return -1;
+                    if (!aStarts && bStarts) return 1;
+                    return 0;
                 });
 
                 if (matches.length === 0) {
