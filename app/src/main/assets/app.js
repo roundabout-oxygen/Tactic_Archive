@@ -1569,7 +1569,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initOCRWorker() {
     console.log("Setting up Tesseract worker...");
     try {
-        tesseractWorker = await Tesseract.createWorker('jpn');
+        const isExtension = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL);
+        const options = isExtension ? {
+            workerPath: chrome.runtime.getURL('lib/tesseract/worker.min.js'),
+            corePath: chrome.runtime.getURL('lib/tesseract/tesseract-core-simd.wasm.js')
+        } : {};
+        tesseractWorker = await Tesseract.createWorker('jpn', 1, options);
         await tesseractWorker.setParameters({
             tessedit_pageseg_mode: '7', // Treat the image as a single text line
         });

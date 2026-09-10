@@ -2,10 +2,11 @@
 
 『ブルーアーカイブ（Blue Archive）』戦術対抗戦の対戦履歴をスクリーンショットから自動認識・記録・分析するローカルファーストの戦績管理ツールです。
 
-[![Version](https://img.shields.io/badge/Version-v1.1.14-blue.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.1.15-blue.svg)](#)
 [![Web App](https://img.shields.io/badge/Web_App-Launch-success?logo=safari&logoColor=white)](https://roundabout-oxygen.github.io/Tactic_Archive/)
+[![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Download-E37400?logo=googlechrome&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive_ChromeExtension.zip)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20Web-blue.svg)](#)
+[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20PC-blue.svg)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-purple.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20On--Device-success.svg)](#)
@@ -120,7 +121,7 @@
   </a>
 </p>
 
-- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.14) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
+- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.15) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
   *(※上記ボタンまたはリンクをタップすると、プレビュー画面を挟まずに即座に APK ファイルのダウンロードが開始されます)*
 - **対応OS**: Android 7.0 (API レベル 24) 以上
 
@@ -141,7 +142,25 @@ Android 端末をお持ちでない方や、iPhone・iPad・PC のブラウザ�
   4. ホーム画面に専用アイコンが配置され、タップするとブラウザのアドレスバーが表示されない**全画面ネイティブアプリ感覚**で起動できます。
   *(※データはすべて端末内の IndexedDB に保存され、外部サーバーへの通信は一切ありません)*
 
-### 方式C. ソースコードからビルドする (Android Studio)
+### 方式C. PC（Windows / Mac）で完全ローカル利用する (Google Chrome 拡張機能版)
+Python などの環境構築やローカルサーバーの起動が一切不要で、Chrome ツールバーから 1 クリックで起動できる完全オフライン対応の拡張機能版です。
+
+<p align="left">
+  <a href="https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive_ChromeExtension.zip">
+    <img src="https://img.shields.io/badge/📦_拡張機能ZIPをダウンロード-TacticalArchive__ChromeExtension.zip-E37400?style=for-the-badge&logo=googlechrome&logoColor=white" alt="拡張機能ZIPダウンロード" height="38">
+  </a>
+</p>
+
+- **直接ダウンロードリンク**: [**`TacticalArchive_ChromeExtension.zip` (v1.1.15) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive_ChromeExtension.zip)
+- **⚡ 1分でできる導入手順**:
+  1. 上記リンクから `TacticalArchive_ChromeExtension.zip` をダウンロードし、任意のフォルダに解凍（展開）します。
+  2. Google Chrome（または Brave, Edge 等の Chromium ブラウザ）を開き、アドレスバーに `chrome://extensions` と入力して Enter を押します。
+  3. 画面右上の **「デベロッパーモード」** スイッチを **ON** にします。
+  4. 画面左上に表示される **「パッケージ化されていない拡張機能を読み込む」** ボタンをクリックし、解凍したフォルダ（`manifest.json` が入っているフォルダ）を選択します。
+  5. Chrome ツールバー（パズルピースアイコン 🧩）から **「Tactical Archive」** をクリックすると、専用の全画面タブで即座にアプリが起動します！
+  *(※OCR エンジンやフォント等すべてのリソースを拡張機能内に同梱しているため、完全オフラインで動作し、ブラウザを閉じても IndexedDB に戦績データが永続保持されます)*
+
+### 方式D. ソースコードからビルドする (Android Studio)
 1. 本リポジトリをクローンまたはダウンロードします。
    ```bash
    git clone https://github.com/roundabout-oxygen/Tactic_Archive.git
@@ -153,7 +172,7 @@ Android 端末をお持ちでない方や、iPhone・iPad・PC のブラウザ�
    ```
    ビルドされた APK は `app/build/outputs/apk/debug/app-debug.apk` に生成されます。
 
-### 方式D. ローカル PC で単体実行する (ローカル Web 版)
+### 方式E. ローカル PC で単体実行する (ローカル Web 版 run.bat)
 Android 端末がなくても、PC のモダンブラウザ（Chrome, Edge, Firefox 等）で利用可能です。
 
 1. `web/run.bat` をダブルクリックして実行します（Python がインストールされている場合）。
