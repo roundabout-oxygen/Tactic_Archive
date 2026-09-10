@@ -2,9 +2,10 @@
 
 『ブルーアーカイブ（Blue Archive）』戦術対抗戦の対戦履歴をスクリーンショットから自動認識・記録・分析するローカルファーストの戦績管理ツールです。
 
-[![Version](https://img.shields.io/badge/Version-v1.1.13-blue.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.1.14-blue.svg)](#)
+[![Web App](https://img.shields.io/badge/Web_App-Launch-success?logo=safari&logoColor=white)](https://roundabout-oxygen.github.io/Tactic_Archive/)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web-blue.svg)](#)
+[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20Web-blue.svg)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-purple.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20On--Device-success.svg)](#)
@@ -119,11 +120,28 @@
   </a>
 </p>
 
-- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.13) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
+- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.14) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
   *(※上記ボタンまたはリンクをタップすると、プレビュー画面を挟まずに即座に APK ファイルのダウンロードが開始されます)*
 - **対応OS**: Android 7.0 (API レベル 24) 以上
 
-### 方式B. ソースコードからビルドする (Android Studio)
+### 方式B. iPhone / iPad / PC ブラウザで利用する (Web 版 / PWA)
+Android 端末をお持ちでない方や、iPhone・iPad・PC のブラウザからインストール不要で直接利用したい方向けの方式です。
+
+<p align="left">
+  <a href="https://roundabout-oxygen.github.io/Tactic_Archive/">
+    <img src="https://img.shields.io/badge/🌐_Web版を開く-Launch_Web_App-success?style=for-the-badge&logo=safari&logoColor=white" alt="Web版を開く" height="38">
+  </a>
+</p>
+
+- **Web 版 URL**: [**https://roundabout-oxygen.github.io/Tactic_Archive/**](https://roundabout-oxygen.github.io/Tactic_Archive/)
+- **📱 iPhone でアプリのように使う手順 (PWA / ホーム画面に追加)**:
+  1. iPhone の **Safari** で上記 URL にアクセスします。
+  2. 画面下部の **共有ボタン**（四角から上矢印が出ているアイコン）をタップします。
+  3. メニュー一覧から **「ホーム画面に追加」** を選択します。
+  4. ホーム画面に専用アイコンが配置され、タップするとブラウザのアドレスバーが表示されない**全画面ネイティブアプリ感覚**で起動できます。
+  *(※データはすべて端末内の IndexedDB に保存され、外部サーバーへの通信は一切ありません)*
+
+### 方式C. ソースコードからビルドする (Android Studio)
 1. 本リポジトリをクローンまたはダウンロードします。
    ```bash
    git clone https://github.com/roundabout-oxygen/Tactic_Archive.git
@@ -135,7 +153,7 @@
    ```
    ビルドされた APK は `app/build/outputs/apk/debug/app-debug.apk` に生成されます。
 
-### 方式C. PC ブラウザで単体実行する (Web 版)
+### 方式D. ローカル PC で単体実行する (ローカル Web 版)
 Android 端末がなくても、PC のモダンブラウザ（Chrome, Edge, Firefox 等）で利用可能です。
 
 1. `web/run.bat` をダブルクリックして実行します（Python がインストールされている場合）。
