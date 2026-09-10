@@ -1,12 +1,10 @@
 # Tactical Archive (タクティカル・アーカイブ)
 
-『ブルーアーカイブ（Blue Archive）』戦術対抗戦の対戦履歴をスクリーンショットから自動認識・記録・分析するローカルファーストの戦績管理ツールです。
+『ブルーアーカイブ（Blue Archive）』戦術対抗戦の対戦履歴をスクリーンショットから自動認識・記録・分析する完全ローカル・オフライン動作の Android アプリです。
 
-[![Version](https://img.shields.io/badge/Version-v1.1.15-blue.svg)](#)
-[![Web App](https://img.shields.io/badge/Web_App-Launch-success?logo=safari&logoColor=white)](https://roundabout-oxygen.github.io/Tactic_Archive/)
-[![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Download-E37400?logo=googlechrome&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive_ChromeExtension.zip)
+[![Version](https://img.shields.io/badge/Version-v1.1.16-blue.svg)](#)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20PC-blue.svg)](#)
+[![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-purple.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20On--Device-success.svg)](#)
@@ -28,85 +26,79 @@
 - **撮影・アップロード時のポイント**:
   - 端末で撮影した**全画面スクリーンショット（トリミングや縮小・加工をしていない元の画像）**をそのままアップロードしてください。
   - 「Upload」タブへのドラッグ＆ドロップ、またはファイル選択ボタンから**複数枚まとめての一括アップロード**が可能です。
-  - *※対戦中のバトル画面や、ロビー画面、戦績履歴リスト画面などは対象外です。必ず対戦直後のリザルト画面を撮影してください。*
 
 ---
 
-### 1. 初回起動時のトリミング位置指定（キャリブレーション）
+### 1. 初回起動時のトリミング位置指定（完全ローカル動作のための初期設定）
+外部サーバーに一切通信せず端末内（オンデバイス）だけで超高精度な画像認識を行うため、**初回のみトリミング枠の手動キャリブレーション（位置合わせ）**を行います。
 
-> **💡 完全ローカル環境で動作させるための初回手動設定**  
-> 本ツールはプライバシー保護と完全オフライン動作のため、画像を外部サーバーに送信せず、すべての画像解析・OCR・アイコン照合を端末内のローカルエンジンで処理します。  
-> そのため、初回起動時のみお使いの端末解像度・アスペクト比（16:9 / 18:9 / 19.5:9 / 20:9 等）に合わせたトリミング枠の位置指定（ウィザード形式）が必要です。
+| 1. 相手名トリミング指定 | 2. 攻撃側生徒トリミング指定 | 3. 防衛側生徒トリミング指定 |
+| :---: | :---: | :---: |
+| <img src="docs/images/guide_calibration_name.png" width="260" alt="相手名トリミング指定"> | <img src="docs/images/guide_calibration_attacker.png" width="260" alt="攻撃側生徒トリミング指定"> | <img src="docs/images/guide_calibration_defender.png" width="260" alt="防衛側生徒トリミング指定"> |
+| 対戦相手の指揮官名枠を指定 | 攻撃側生徒（味方6名）枠を指定 | 防衛側生徒（相手6名）枠を指定 |
 
-| 調整ステップ | 画面イメージ | 説明 |
-|---|---|---|
-| **① 編成生徒枠の指定** | <img src="docs/images/setup_calibration_students.png" width="480" alt="編成生徒のトリミング位置調整"> | 攻撃・防衛の生徒アイコン（A1〜A6, D1〜D6）の顔枠をガイドに合わせて調整します。 |
-| **② 相手アイコン枠の指定** | <img src="docs/images/setup_calibration_opponent_icon.png" width="480" alt="対戦相手アイコンのトリミング位置調整"> | リザルト画面右上に表示される対戦相手の指揮官アイコン位置を合わせます。 |
-| **③ 相手名前(OCR)枠の指定** | <img src="docs/images/setup_calibration_opponent_name.png" width="480" alt="相手名前OCRのトリミング位置調整"> | 相手指揮官名の表示領域を矩形枠で囲みます。枠を正確に合わせることで文字認識精度が向上します。 |
-
-*※設定した位置情報は端末内（IndexedDB）にプロファイルとして保存されるため、2回目以降の入力は不要です。*
+> **💡 キャリブレーションのポイント**
+> - 初回アップロード時、画面の案内に沿って「相手指揮官名」「攻撃編成生徒アイコン」「防衛編成生徒アイコン」の枠をドラッグして合わせます。
+> - 一度設定した座標比率は端末の解像度・アスペクト比ごとに自動保存されるため、**2回目以降のアップロードではこの作業は不要**です。
 
 ---
 
-### 2. 対戦リザルトの取り込み・確認画面（ヒューマン・イン・ザ・ループ）
-
-リザルト画像をアップロードすると自動解析され、確認ダイアログが表示されます。
+### 2. リザルト登録画面（未登録生徒のワンタップ登録 ＆ 相手名の学習辞書）
+アップロードされたスクリーンショットは自動で即座に解析されます。
 
 <p align="center">
-  <img src="docs/images/result_review_registration.png" width="700" alt="対戦履歴の取り込み確認画面">
+  <img src="docs/images/guide_register_screen.png" width="620" alt="リザルト登録画面">
 </p>
 
-- **未登録生徒の赤枠表示とワンタップ登録**:  
-  名簿に未登録の生徒や新衣装の生徒が含まれている場合は**赤枠（！マーク付き）**で強調表示されます。スロットをタップして生徒名を指定するだけで即座に図鑑登録され、次回以降は自動で一致認識されます。
-- **対戦相手名のOCR確認と自動リネーム辞書**:  
-  対戦相手の名前はフォントや背景によりOCRの認識精度にブレが生じる場合があります。最初のうちは右側に並んで表示されるトリミング元画像を確認しながら正しい名前に修正してください。  
-  **一度手動で修正して取り込みを完了すると自動的に「修正辞書」へ登録**され、次回以降は同じ相手の名前が自動で正しい表記に変換されます。
+- **未登録生徒は赤枠で強調表示**:
+  - まだ名簿に登録されていない生徒や新生徒は**赤枠**で表示されます。アイコンをタップして生徒名を選択するだけで即座に登録が完了します。
+- **相手指揮官名の照合プレビュー ＆ 自動辞書学習**:
+  - 対戦相手の名前はフォントや文字装飾によって OCR 認識精度に差が出ることがあります。
+  - そのため、最初のうちは**右側に表示されるトリミング元画像プレビューを確認しながら修正**を行ってください。
+  - 一度修正して登録すると**「リネーム辞書」へ自動的に学習・登録**され、次回以降同じ相手と対戦した際は自動で正しい名前に置換・修正されます。
 
 ---
 
-### 3. 戦績履歴画面とスマート絞り込み
-
-対戦履歴の一覧表示、検索、および詳細な編成分析が可能です。
+### 3. 戦績履歴一覧 ＆ 高度なスマート絞り込み（匿名対策・固有武器記録）
+登録された対戦履歴は、高速かつ多角的なフィルターで瞬時に絞り込み・勝率分析が可能です。
 
 <p align="center">
-  <img src="docs/images/history_search_anonymous.png" width="700" alt="戦績履歴・匿名絞り込み画面">
+  <img src="docs/images/guide_history_screen.png" width="620" alt="履歴一覧と匿名絞り込み">
 </p>
 
-- **「匿名」相手の絞り込み**:  
-  上位の戦術対抗戦などで多用される「匿名」プレイヤーの履歴も、検索バーに「匿名」（またはひらがな「とくめい」）と入力することで瞬時に絞り込み表示できます。
-- **カスタム枠による固有武器ランク記録（青/黄）**:  
-  匿名プレイヤーは名前による判別が難しいため、相手の防衛D5/D6（Special生徒等）の固有武器ランク（固有2・固有3など）で絞り込み・識別を行うのが効果的です。  
-  戦績詳細画面の「カスタム枠」を使って右端に**青や黄色の数字（例: `2` `2`、`2` `3`）**を記録しておくと、テーブル一覧の右端にバッジ表示され、同一相手の特定や対策の検討に非常に便利です。
+- **「匿名」相手の絞り込み活用法**:
+  - 上位グループなどで相手の名前が「匿名」になっている場合、検索窓で「匿名」と絞り込みを行います。
+  - 相手の防衛編成（特に D5 / D6 の特殊生徒やアタッカー）の**固有武器レベル（固有3・固有2など）を右端のメモ欄に青（攻撃）/ 黄（防衛）の数字で記録**しておくと、匿名相手でも編成と武器状況から対戦相手を正確に特定・メタ編成を組み立てることができ非常に便利です。
 
 ---
 
-## 📌 主な機能
+## 🌟 主な機能
 
-### 1. スクリーンショット一括自動認識 (Batch OCR & Image Matching)
-- 戦術対抗戦のリザルト画面（勝利/敗北）のスクリーンショットをドラッグ＆ドロップまたはファイル選択するだけで、自動で対戦情報を解析します。
+### 1. 完全端末内・高速画像解析 (On-Device OCR & Image Match)
+- 戦術対抗戦のリザルト画面（勝利/敗北）のスクリーンショットを選択するだけで、自動で対戦情報を解析します。
 - **対戦相手名認識**: Tesseract OCR による相手指揮官名の高精度自動読み取り。
 - **編成生徒の画像認識**: テンプレートマッチング（ZNCC）および画像特徴量比較により、生徒アイコンから自動で編成生徒を特定。
-- **画面解像度・アスペクト比 自動キャリブレーション**: 端末の画面比率（16:9 / 18:9 / 19.5:9 / 20:9 など）を自動検出してトリミング枠を最適化。
+- **画面解像度・アスペクト比自動キャリブレーション**: 端末の画面比率（16:9 / 18:9 / 19.5:9 / 20:9 など）を自動検出してトリミング枠を最適化。
 - **対戦相手名プレビュー照合**: OCR結果の確認用にトリミング元画像を並べて表示し、登録確認が容易。
 
 ### 2. 戦績ダッシュボード＆スマート絞り込み (Analytics & Fast Filter)
 - **統計ダッシュボード**: 総対戦数、勝率、勝敗比（Win/Lose）をリアルタイム自動集計。
-- **高速ページング＆無限スクロール**: 大量の対戦履歴（数十〜数千件）でも初期描画0ms、スクロールに合わせて30件ずつスムーズに追加描画。
+- **高速ページング（無限スクロール）**: 大量の対戦履歴（数百〜数千件）でも初期描画0ms、スクロールに合わせて30件ずつスムーズに追加描画。
 - **多角的フィルタリング**:
   - **ひらがな・カタカナ相互あいまい検索**: 相手指揮官名がカタカナ（例: アザミ）でもひらがな（例: あざみ）で検索可能。生徒名も同様に双方向一致。
   - 相手指揮官名、編成生徒名でのフリーワード検索。
-  - アイコンタップによる特定生徒・配置位置（D1〜D4, Sp5/6）でのワンタップ絞り込み。
+  - アイコンタップによる特定生徒の配置位置（A1〜A4, Sp5/6）でのワンタップ絞り込み。
   - 統計ダッシュボードタップでフィルター即時解除。
 
 ### 3. 生徒名簿管理＆学習機能 (Roster & Learning)
-- **生徒名簿辞書**: ふりがな・略称・別衣装生徒に対応したマスター辞書を内蔵。
+- **生徒名簿辞書**: ふりがな・略称・別衣装生徒に対応したロスター辞書を内蔵。
 - **学習機能（ヒューマン・イン・ザ・ループ）**: 認識されなかった生徒や誤認識を手動修正すると、その生徒の新しい顔特徴データを自動蓄積し、次回以降の認識精度が向上。
 - **相手名リネーム辞書**: OCRの誤読しやすい文字や愛称を自動変換するリネーム辞書機能。
 
 ### 4. 完全ローカル・オフライン対応 (Privacy-First Architecture)
-- **外部通信なし**: 解析・画像処理・データベース保存はすべて端末内（IndexedDB / Canvas API / ローカルTesseract）で完結します。
+- **外部通信なし**: 解析・画像処理・データベース保存のすべて端末内（IndexedDB / Canvas API / ローカルTesseract）で完結します。
 - **個人情報ゼロ**: APIキー、ユーザー登録、ID、パスワード等の機密情報は一切不要かつ保持しません。
-- **データバックアップ＆復元**: JSON形式でいつでも戦績・名簿・設定をエクスポート／インポート可能。Android端末の「ダウンロード」フォルダへ直接保存できます。
+- **データバックアップ・復元**: JSON形式でいつでも戦績・名簿・設定をエクスポート／インポート可能。Android端末の「ダウンロード」フォルダへ直接保存できます。
 
 ---
 
@@ -121,46 +113,11 @@
   </a>
 </p>
 
-- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.15) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
+- **直接ダウンロードリンク**: [**`TacticalArchive.apk` (v1.1.16) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)  
   *(※上記ボタンまたはリンクをタップすると、プレビュー画面を挟まずに即座に APK ファイルのダウンロードが開始されます)*
 - **対応OS**: Android 7.0 (API レベル 24) 以上
 
-### 方式B. iPhone / iPad / PC ブラウザで利用する (Web 版 / PWA)
-Android 端末をお持ちでない方や、iPhone・iPad・PC のブラウザからインストール不要で直接利用したい方向けの方式です。
-
-<p align="left">
-  <a href="https://roundabout-oxygen.github.io/Tactic_Archive/">
-    <img src="https://img.shields.io/badge/🌐_Web版を開く-Launch_Web_App-success?style=for-the-badge&logo=safari&logoColor=white" alt="Web版を開く" height="38">
-  </a>
-</p>
-
-- **Web 版 URL**: [**https://roundabout-oxygen.github.io/Tactic_Archive/**](https://roundabout-oxygen.github.io/Tactic_Archive/)
-- **📱 iPhone でアプリのように使う手順 (PWA / ホーム画面に追加)**:
-  1. iPhone の **Safari** で上記 URL にアクセスします。
-  2. 画面下部の **共有ボタン**（四角から上矢印が出ているアイコン）をタップします。
-  3. メニュー一覧から **「ホーム画面に追加」** を選択します。
-  4. ホーム画面に専用アイコンが配置され、タップするとブラウザのアドレスバーが表示されない**全画面ネイティブアプリ感覚**で起動できます。
-  *(※データはすべて端末内の IndexedDB に保存され、外部サーバーへの通信は一切ありません)*
-
-### 方式C. PC（Windows / Mac）で完全ローカル利用する (Google Chrome 拡張機能版)
-Python などの環境構築やローカルサーバーの起動が一切不要で、Chrome ツールバーから 1 クリックで起動できる完全オフライン対応の拡張機能版です。
-
-<p align="left">
-  <a href="https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive_ChromeExtension.zip">
-    <img src="https://img.shields.io/badge/📦_拡張機能ZIPをダウンロード-TacticalArchive__ChromeExtension.zip-E37400?style=for-the-badge&logo=googlechrome&logoColor=white" alt="拡張機能ZIPダウンロード" height="38">
-  </a>
-</p>
-
-- **直接ダウンロードリンク**: [**`TacticalArchive_ChromeExtension.zip` (v1.1.15) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive_ChromeExtension.zip)
-- **⚡ 1分でできる導入手順**:
-  1. 上記リンクから `TacticalArchive_ChromeExtension.zip` をダウンロードし、任意のフォルダに解凍（展開）します。
-  2. Google Chrome（または Brave, Edge 等の Chromium ブラウザ）を開き、アドレスバーに `chrome://extensions` と入力して Enter を押します。
-  3. 画面右上の **「デベロッパーモード」** スイッチを **ON** にします。
-  4. 画面左上に表示される **「パッケージ化されていない拡張機能を読み込む」** ボタンをクリックし、解凍したフォルダ（`manifest.json` が入っているフォルダ）を選択します。
-  5. Chrome ツールバー（パズルピースアイコン 🧩）から **「Tactical Archive」** をクリックすると、専用の全画面タブで即座にアプリが起動します！
-  *(※OCR エンジンやフォント等すべてのリソースを拡張機能内に同梱しているため、完全オフラインで動作し、ブラウザを閉じても IndexedDB に戦績データが永続保持されます)*
-
-### 方式D. ソースコードからビルドする (Android Studio)
+### 方式B. ソースコードからビルドする (Android Studio)
 1. 本リポジトリをクローンまたはダウンロードします。
    ```bash
    git clone https://github.com/roundabout-oxygen/Tactic_Archive.git
@@ -172,32 +129,21 @@ Python などの環境構築やローカルサーバーの起動が一切不要�
    ```
    ビルドされた APK は `app/build/outputs/apk/debug/app-debug.apk` に生成されます。
 
-### 方式E. ローカル PC で単体実行する (ローカル Web 版 run.bat)
-Android 端末がなくても、PC のモダンブラウザ（Chrome, Edge, Firefox 等）で利用可能です。
-
-1. `web/run.bat` をダブルクリックして実行します（Python がインストールされている場合）。
-2. または、ターミナルで `web` ディレクトリを開き以下を実行します：
-   ```bash
-   cd web
-   python -m http.server 8000
-   ```
-3. ブラウザで `http://localhost:8000` にアクセスします。
-
 ---
 
 ## 🛠 技術スタック
 
 - **Android Platform**: Kotlin, Jetpack Compose, Android WebView (JavaScript Interface), MediaStore API
-- **Web Frontend**: HTML5, Modern CSS, Vanilla JavaScript (ES6+)
+- **UI & Processing**: HTML5 Canvas 2D, Modern CSS, Vanilla JavaScript (ES6+)
 - **Storage**: IndexedDB (完全ローカルクライアントストレージ)
-- **Image Processing**: HTML5 Canvas 2D, ZNCC (Zero-mean Normalized Cross-Correlation)
-- **OCR Engine**: Tesseract.js (WebAssembly / On-device OCR)
+- **Image Processing**: Zero-mean Normalized Cross-Correlation (ZNCC)
+- **OCR Engine**: Tesseract.js (On-device OCR)
 
 ---
 
 ## 🔒 セキュリティおよびプライバシーポリシー
 
-- 本リポジトリのソースコードには、外部通信用 API キー、認証トークン、アカウント ID、パスワード、個人を特定できる情報（個人名・秘密情報）は一切含まれていません。
+- 本リポジトリのソースコードには、外部通信用 API キー、認証トークン、アカウントID、パスワード、個人を特定できる情報（個人名・機密情報）は一切含まれていません。
 - アプリケーション動作中も外部サーバーへのアクセスやトラッキング、テレメトリ収集は一切行われません。
 
 ---
