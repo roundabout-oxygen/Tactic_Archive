@@ -215,7 +215,7 @@ html, body {
     display: flex;
 }
 
-#tab-attack.active {
+#tab-attack.active, #tab-defense.active {
     display: flex;
     flex-direction: row;
     align-items: stretch;
@@ -1313,6 +1313,16 @@ html, body {
     color: white;
 }
 
+.result-toggle-btn.type-attack.active {
+    background-color: var(--color-blue);
+    color: white;
+}
+
+.result-toggle-btn.type-defense.active {
+    background-color: #00e676;
+    color: white;
+}
+
 /* Team Review section */
 .team-review-section {
     background: #ffffff;
@@ -2028,7 +2038,7 @@ html, body {
     .team-title {
         display: none !important;
     }
-    #tab-attack.active {
+    #tab-attack.active, #tab-defense.active {
         padding: 4px 0 !important;
     }
 }

@@ -33,11 +33,14 @@
                     <div class="logo" style="gap: 7px; display: flex; align-items: center;">
                         <img src="icon.png" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(0, 163, 255, 0.4);">
                         <span style="font-size: 13px; font-weight: 800;">Tactical Archive</span>
-                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.1.17</span>
+                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.2.0</span>
                     </div>
                     <nav class="nav-tabs" style="gap: 8px; margin-left: auto;">
                         <button class="tab-btn active" data-tab="attack" style="padding: 6px 12px; font-size: 12px;">
                             <i class="fa-solid fa-bolt"></i> Attack
+                        </button>
+                        <button class="tab-btn" data-tab="defense" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fa-solid fa-shield-halved"></i> Defense
                         </button>
                         <button class="tab-btn" data-tab="upload" style="padding: 6px 12px; font-size: 12px;">
                             <i class="fa-solid fa-circle-plus"></i> Upload
@@ -99,6 +102,51 @@
                         </div>
                     </section>
 
+                    <!-- 1b. DEFENSE TAB -->
+                    <section id="tab-defense" class="tab-pane" style="height: 100%; width: 100%; overflow: hidden; box-sizing: border-box;">
+                        <!-- History List (Left side, takes remaining space) -->
+                        <div class="history-list-wrapper" style="flex: 1; min-width: 0; height: 100%; overflow-y: auto; margin-bottom: 0; box-shadow: none; border: 1px solid var(--border-color); border-radius: 10px; box-sizing: border-box;">
+                            <table class="history-table" style="width: 100%; table-layout: fixed;">
+                                <tbody id="defense-history-items">
+                                   <!-- Dynamic content loaded here -->
+                                   <tr>
+                                       <td colspan="6" class="empty-state">
+                                           <i class="fa-solid fa-box-open"></i>
+                                           <p>防衛の対戦履歴が見つかりません。スクショをアップロードしてください。</p>
+                                       </td>
+                                   </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Sidebar controls (Right side) -->
+                        <div class="history-sidebar" style="width: 100px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: flex-start; box-sizing: border-box;">
+                            <div class="search-box" style="width: 100%; margin-bottom: 0; flex-grow: 0 !important; height: 32px; position: relative;">
+                                <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; margin: 0; color: var(--text-muted);"></i>
+                                <input type="text" id="search-commander-defense" placeholder="検索..." style="height: 32px; padding: 0 8px 0 22px; font-size: 11px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none; margin: 0;">
+                                <button id="btn-clear-search-defense" class="clear-search-btn" style="display:none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">&times;</button>
+                            </div>
+                            
+                            <!-- Stats Dashboard (Inline version next to search) -->
+                            <div class="stats-dashboard inline-stats" style="display: flex; flex-direction: column; gap: 6px; background: rgba(255, 51, 102, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; cursor: pointer; width: 100%; box-sizing: border-box; flex-grow: 0 !important;">
+                                <div class="stat-item" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; color: var(--text-primary);">
+                                    <span class="stat-lbl" style="color: var(--text-secondary); font-weight: 500;">戦数:</span>
+                                    <span class="stat-num" id="stat-total-battles-defense" style="font-size: 11px;">0</span>
+                                </div>
+                                <div style="height: 1px; background: rgba(255, 51, 102, 0.15);"></div>
+                                <div class="stat-item highlight" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; color: #ff3366;">
+                                    <span class="stat-lbl" style="color: var(--text-secondary); font-weight: 500;">防衛率:</span>
+                                    <span class="stat-num" id="stat-win-rate-defense" style="font-size: 11px;">0%</span>
+                                </div>
+                                <div style="height: 1px; background: rgba(255, 51, 102, 0.15);"></div>
+                                <div class="stat-item" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; color: var(--text-primary);">
+                                    <span class="stat-lbl" style="color: var(--text-secondary); font-weight: 500;">勝敗:</span>
+                                    <span class="stat-num" id="stat-win-lose-ratio-defense" style="font-size: 11px;">0/0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- 2. UPLOAD TAB -->
                     <section id="tab-upload" class="tab-pane">
                         <div class="upload-container" id="drop-zone">
@@ -154,7 +202,7 @@
                                 <div class="settings-title-group">
                                     <i class="fa-solid fa-sliders" style="color: var(--color-blue); font-size: 15px;"></i>
                                     <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">システム設定 ＆ 辞書管理</h3>
-                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.1.17</span>
+                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.2.0</span>
                                 </div>
                                 <div class="roster-summary" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary);">
                                     <i class="fa-solid fa-users" style="color: var(--color-blue);"></i>
@@ -185,6 +233,15 @@
                                 </div>
 
                                 <!-- Tile 3: Data Backup -->
+                                <div class="settings-tile" id="btn-csv-export" style="border-color: rgba(0, 230, 118, 0.3);">
+                                    <div class="tile-icon success" style="background: rgba(0, 230, 118, 0.12); color: #00e676;"><i class="fa-solid fa-file-csv"></i></div>
+                                    <div class="tile-content">
+                                        <div class="tile-title" style="color: #00e676;">戦績データ CSV出力</div>
+                                        <div class="tile-desc">勝敗・実用度・日付・生徒編成・相手SP固有・メモをCSV形式で保存します。</div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                                </div>
+
                                 <div class="settings-tile" id="btn-db-backup">
                                     <div class="tile-icon success"><i class="fa-solid fa-database"></i></div>
                                     <div class="tile-content">
@@ -244,10 +301,24 @@
                 <div class="review-layout">
                     <!-- Left: Teams & Match Info -->
                     <div class="review-left">
-                        <!-- Win/Lose Toggle -->
-                        <div class="result-toggle-group" style="display: flex; gap: 8px; margin-bottom: 8px;">
-                            <button class="result-toggle-btn win active" id="review-win-btn" style="flex: 1; margin: 0;">WIN</button>
-                            <button class="result-toggle-btn lose" id="review-lose-btn" style="flex: 1; margin: 0;">LOSE</button>
+                        <!-- Win/Lose & Battle Type Combined Row (Fits vertically) -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 5px;">
+                            <!-- Win/Lose Toggle -->
+                            <div class="result-toggle-group" style="flex: 1; display: flex; gap: 4px; margin-bottom: 0; padding: 2px;">
+                                <button class="result-toggle-btn win active" id="review-win-btn" style="flex: 1; padding: 4px 0; margin: 0; font-size: 13px; height: 30px; display: flex; align-items: center; justify-content: center;">WIN</button>
+                                <button class="result-toggle-btn lose" id="review-lose-btn" style="flex: 1; padding: 4px 0; margin: 0; font-size: 13px; height: 30px; display: flex; align-items: center; justify-content: center;">LOSE</button>
+                            </div>
+                            <!-- Battle Type Toggle (Attack / Defense) -->
+                            <div class="result-toggle-group" style="flex: 1; display: flex; gap: 4px; margin-bottom: 0; padding: 2px;">
+                                <button type="button" class="result-toggle-btn type-attack active" id="review-type-attack-btn" style="flex: 1; padding: 4px 0; margin: 0; font-size: 13px; height: 30px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <i class="fa-solid fa-bolt" style="font-size: 13px;"></i>
+                                    <span>攻撃</span>
+                                </button>
+                                <button type="button" class="result-toggle-btn type-defense" id="review-type-defense-btn" style="flex: 1; padding: 4px 0; margin: 0; font-size: 13px; height: 30px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <i class="fa-solid fa-shield-halved" style="font-size: 13px;"></i>
+                                    <span>防衛</span>
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Attack Team -->
@@ -362,7 +433,7 @@
                         
                         <!-- Custom Tag Boxes -->
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label"><i class="fa-solid fa-tags"></i> カスタム枠 (Custom Tags)</label>
+                            <label class="form-label"><i class="fa-solid fa-tags"></i> 相手SP固有</label>
                             <div style="display: flex; gap: 10px;">
                                 <div class="custom-tag-box" id="review-box1" data-box-index="1" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
                                 <div class="custom-tag-box" id="review-box2" data-box-index="2" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
@@ -529,7 +600,7 @@
                         
                         <!-- Custom Tag Boxes -->
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label"><i class="fa-solid fa-tags"></i> カスタム枠 (Custom Tags)</label>
+                            <label class="form-label"><i class="fa-solid fa-tags"></i> 相手SP固有</label>
                             <div style="display: flex; gap: 10px;">
                                 <div class="custom-tag-box" id="detail-box1" data-box-index="1" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
                                 <div class="custom-tag-box" id="detail-box2" data-box-index="2" style="width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; background: transparent; color: var(--text-primary); transition: all 0.2s; box-sizing: border-box;"></div>
@@ -812,8 +883,9 @@
                         <div style="display: flex; align-items: center; gap: 2px;">
                             <span style="font-size: 9px; color: #ffe135; font-weight: bold; width: 22px; text-align: center;">他</span>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; flex: 1;">
-                                <button class="wizard-tab-btn" data-step="12" style="font-size: 10px; padding: 2px 4px;">相手アイコン</button>
-                                <button class="wizard-tab-btn" data-step="13" style="font-size: 10px; padding: 2px 4px;">相手名前</button>
+                                <button class="wizard-tab-btn" data-step="12" style="font-size: 9px; padding: 2px 2px;">攻防枠</button>
+                                <button class="wizard-tab-btn" data-step="13" style="font-size: 9px; padding: 2px 2px;">相手Icon</button>
+                                <button class="wizard-tab-btn" data-step="14" style="font-size: 9px; padding: 2px 2px;">相手名前</button>
                             </div>
                         </div>
                     </div>
@@ -896,5 +968,52 @@
 
     <!-- App Script -->
     <script src="app.js" type="module"></script>
+
+    <!-- MODAL: CSV EXPORT -->
+    <div class="modal-overlay" id="csv-export-modal" style="z-index: 2500;">
+        <div class="modal-card" style="max-width: 420px; width: 92%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 35px rgba(0,0,0,0.5);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--text-primary);"><i class="fa-solid fa-file-csv" style="color: #00e676;"></i> 戦績データ CSV出力</h3>
+                <button class="modal-close-btn" id="btn-csv-modal-close" style="background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; padding: 18px 16px; box-sizing: border-box;">
+                <!-- 1. Type Selection -->
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; display: block;">対戦種別</label>
+                    <div style="display: flex; gap: 10px;">
+                        <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; background: rgba(0, 163, 255, 0.08); border: 1.5px solid #00a3ff; border-radius: 8px; cursor: pointer;">
+                            <input type="radio" name="csv-export-type" value="attack" checked style="width: 16px; height: 16px; accent-color: #00a3ff;">
+                            <i class="fa-solid fa-swords" style="color: #00a3ff; font-size: 14px;"></i>
+                            <span style="font-size: 14px; font-weight: 700; color: var(--text-primary);">攻撃</span>
+                        </label>
+                        <label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; background: rgba(255, 51, 102, 0.08); border: 1.5px solid #ff3366; border-radius: 8px; cursor: pointer;">
+                            <input type="radio" name="csv-export-type" value="defense" style="width: 16px; height: 16px; accent-color: #ff3366;">
+                            <i class="fa-solid fa-shield-halved" style="color: #ff3366; font-size: 14px;"></i>
+                            <span style="font-size: 14px; font-weight: 700; color: var(--text-primary);">防衛</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 2. Options -->
+                <div>
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 8px 4px; font-size: 13px; font-weight: 700; color: var(--text-primary); cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="chk-csv-omit-opponent-name" style="width: 18px; height: 18px; accent-color: #00a3ff; cursor: pointer;">
+                        <span>対戦相手の名前を出力しない</span>
+                    </label>
+                </div>
+
+                <!-- 3. Preview Count -->
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; background: rgba(0, 163, 255, 0.06); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <span style="color: var(--text-secondary);">出力対象:</span>
+                    <span id="csv-export-count-preview" style="color: var(--color-blue); font-size: 15px; font-weight: 800;">0 件</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border-color);">
+                <button class="btn-secondary btn-sm" id="btn-csv-modal-cancel" style="height: 34px; padding: 0 14px; font-size: 13px;">キャンセル</button>
+                <button class="btn-primary btn-sm" id="btn-csv-execute" style="height: 34px; padding: 0 16px; background: #00e676; border-color: #00e676; color: #000; font-weight: 700; font-size: 13px;"><i class="fa-solid fa-download"></i> CSVファイルを出力</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

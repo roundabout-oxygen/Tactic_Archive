@@ -1,4 +1,347 @@
 
+// CSV EXPORT CONTROLLER
+// ==========================================
+function getStudentNameForExport(item, team, index) {
+    const savedName = (team === 'attack') ? (item.attack_names && item.attack_names[index]) : (item.defense_names && item.defense_names[index]);
+    if (savedName && savedName !== '生徒' && savedName !== '未登録' && savedName !== '?' && savedName !== 'Unknown') {
+        return savedName;
+    }
+    const studentId = (team === 'attack') ? (item.attack_team && item.attack_team[index]) : (item.defense_team && item.defense_team[index]);
+    if (studentId) {
+        const student = currentRoster.find(s => s.id === studentId);
+        if (student && student.name && student.name !== '生徒' && student.name !== '未登録' && student.name !== '?' && student.name !== 'Unknown') {
+            return student.name;
+        }
+    }
+    return '';
+}
+
+function isRecordCompleteForExport(item) {
+    for (let i = 0; i < 6; i++) {
+        if (!getStudentNameForExport(item, 'attack', i)) return false;
+        if (!getStudentNameForExport(item, 'defense', i)) return false;
+    }
+    return true;
+}
+
+function formatCustomTagForExport(color, val) {
+    if (!val) return '';
+    if (color === 'yellow') return `☆${val}`;
+    if (color === 'blue') return `固有${val}`;
+    return `${val}`;
+}
+
+function openCsvExportModal() {
+    const modal = document.getElementById('csv-export-modal');
+    if (!modal) return;
+    updateCsvExportPreview();
+    modal.classList.add('active');
+}
+
+function closeCsvExportModal() {
+    const modal = document.getElementById('csv-export-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function getFilteredRecordsForExport() {
+    const selectedTypeEl = document.querySelector('input[name="csv-export-type"]:checked');
+    const selectedType = selectedTypeEl ? selectedTypeEl.value : 'attack';
+
+    return currentHistory.filter(item => {
+        // Battle type filter
+        const isDef = (item.battle_type === 'defense');
+        if (selectedType === 'defense' && !isDef) return false;
+        if (selectedType === 'attack' && isDef) return false;
+
+        // Exclude battles with unknown students
+        return isRecordCompleteForExport(item);
+    });
+}
+
+function updateCsvExportPreview() {
+    const previewEl = document.getElementById('csv-export-count-preview');
+    if (!previewEl) return;
+    const records = getFilteredRecordsForExport();
+    previewEl.innerText = `${records.length} 件`;
+}
+
+function executeCsvExport() {
+    const selectedTypeEl = document.querySelector('input[name="csv-export-type"]:checked');
+    const selectedType = selectedTypeEl ? selectedTypeEl.value : 'attack';
+    const omitOpponentName = document.getElementById('chk-csv-omit-opponent-name')?.checked || false;
+
+    const records = getFilteredRecordsForExport();
+    if (records.length === 0) {
+        alert('出力対象となる戦績データがありません。\n（※不明・未登録の生徒が含まれる編成は除外されます）');
+        return;
+    }
+
+    const headers = [
+        '勝敗', '実用度', '日付', '対戦相手の名前', '攻撃/防衛',
+        '自1', '自2', '自3', '自4', '自5', '自6',
+        '敵1', '敵2', '敵3', '敵4', '敵5', '敵6',
+        '相手SP固有', 'メモ'
+    ];
+
+    const escapeCsv = (str) => {
+        const s = (str ?? '').toString();
+        return '"' + s.replace(/"/g, '""') + '"';
+    };
+
+    const rows = [headers.map(escapeCsv).join(',')];
+
+    records.forEach(item => {
+        // 1. Result
+        const res = item.result || '';
+        // 2. Utility
+        const util = item.utility_level || '高';
+        // 3. Date
+        let dateStr = '';
+        if (item.created_at) {
+            const d = new Date(item.created_at);
+            if (!isNaN(d.getTime())) {
+                dateStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            }
+        }
+        // 4. Opponent Name
+        const opponent = omitOpponentName ? '' : (item.commander_name || '');
+        // 5. Attack / Defense
+        const battleTypeStr = (item.battle_type === 'defense') ? '防衛' : '攻撃';
+
+        // 6..11. 自1..自6
+        const aNames = [];
+        for (let i = 0; i < 6; i++) {
+            aNames.push(getStudentNameForExport(item, 'attack', i));
+        }
+
+        // 12..17. 敵1..敵6
+        const dNames = [];
+        for (let i = 0; i < 6; i++) {
+            dNames.push(getStudentNameForExport(item, 'defense', i));
+        }
+
+        // 18. Custom Tag
+        const tag1 = formatCustomTagForExport(item.box1_color, item.box1_value);
+        const tag2 = formatCustomTagForExport(item.box2_color, item.box2_value);
+        const customTag = [tag1, tag2].filter(Boolean).join(' ');
+
+        // 19. Notes
+        const notes = item.notes || '';
+
+        const row = [
+            escapeCsv(res),
+            escapeCsv(util),
+            escapeCsv(dateStr),
+            escapeCsv(opponent),
+            escapeCsv(battleTypeStr),
+            ...aNames.map(escapeCsv),
+            ...dNames.map(escapeCsv),
+            escapeCsv(customTag),
+            escapeCsv(notes)
+        ];
+        rows.push(row.join(','));
+    });
+
+    // UTF-8 BOM + CSV content
+    const csvContent = '\uFEFF' + rows.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const now = new Date();
+    const dateTag = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const typeLabel = selectedType === 'defense' ? '防衛' : '攻撃';
+    const filename = `TacticalArchive_戦績_${typeLabel}_${dateTag}.csv`;
+
+    if (window.AndroidApp && typeof window.AndroidApp.saveTextFile === 'function') {
+        const res = window.AndroidApp.saveTextFile(csvContent, filename);
+        closeCsvExportModal();
+        if (res === "SUCCESS") {
+            alert(`${records.length} 件の戦績データを「${filename}」として端末の【ダウンロード (Download)】フォルダに出力しました！`);
+        } else {
+            alert(`CSV保存に失敗しました: ${res}`);
+        }
+    } else if (window.AndroidApp && typeof window.AndroidApp.saveFile === 'function') {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const base64Data = reader.result.split(',')[1];
+            const res = window.AndroidApp.saveFile(base64Data, filename);
+            closeCsvExportModal();
+            if (res === "SUCCESS" || res === undefined || res === true) {
+                alert(`${records.length} 件の戦績データを「${filename}」として端末の【ダウンロード (Download)】フォルダに出力しました！`);
+            } else {
+                alert(`CSV保存に失敗しました: ${res}`);
+            }
+        };
+        reader.readAsDataURL(blob);
+    } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        closeCsvExportModal();
+        alert(`${records.length} 件の戦績データを「${filename}」として出力しました！`);
+    }
+}
+
+function initCsvExportListeners() {
+    const btnOpen = document.getElementById('btn-csv-export');
+    const btnClose = document.getElementById('btn-csv-modal-close');
+    const btnCancel = document.getElementById('btn-csv-modal-cancel');
+    const btnExec = document.getElementById('btn-csv-execute');
+
+    if (btnOpen) btnOpen.addEventListener('click', openCsvExportModal);
+    if (btnClose) btnClose.addEventListener('click', closeCsvExportModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeCsvExportModal);
+    if (btnExec) btnExec.addEventListener('click', executeCsvExport);
+
+    document.querySelectorAll('input[name="csv-export-type"]').forEach(r => {
+        r.addEventListener('change', updateCsvExportPreview);
+    });
+}
+
+
+// Built-in Sword Template (Attack)
+const BUILTIN_ATTACK_SWORD_BASE64 = "data:image/png;base64,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";
+
+// Built-in Shield Template (Defense)
+const BUILTIN_DEFENSE_SHIELD_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAABXxSURBVGhDjZl5lNXVtedZvXq9P17302T1e0YRjQFFRYwa0+l0eq3uXv3W67w4JFGj0SAgSETFLE3ayKAQFFBiZEZBQGSSgoICCoqpZihqoAYZCgooarpD3apbd/rd33h+46fX+d3CR1zPwF13r3N+55zf+Z3v2WfvffbeI5pvu5/z//wIJx//OnWPPP41euyresMjPy/Qo8P1r8ph+nrflfaw7xfDfbK8evzXyq/qhXFNj/2C+kcf48Rjj9Lw+CO0PfYIp376Uw6Oe4B1/2UUra+9xQj916/A7v2Imhr08gqM8nKMoxVFkvWvtenl5ehfleWFsrzi328Ly6vH/3WbnPuv+q68e+XbFUfQjh5EO3IA61Ap/uFDsGsvsem/Z+/oh2h7dXYjfLcWQaQfHAGqAvlsoVTzoKqgqZBXIZcHZbiuyHGyPwf53L89y35Fg5wcL8fKNgWySqlFUsl+bXynML+tyHknhGuQ78jkLmqQMZJOF93tjZD9YzuH7fkzby28xwp39LiQSBPggNDDzIAwCYeJLsi18IfBMgW+5BJZDYBgElk7g6PhCxVc1AiEILBcsH5wAOR2+rNtgWmDoBJpSmN818GwdR2h4rsCZDxOQK/DyCYeJcKLAswkK1wK4bJICoHg0kZtHhC+XbAQggS946uAZO+4M4Y4O28+pQo5i43oR3C4QWDoBYnCYF1pYw5wAg9KAEWw2I4L/ACQeB5QAg1wAAcO4J3Cpwg5n0N7vC9G77mE84wAg9yB2x3C9M53DNg8/mO+7fK+uH9zO44yO7r4eI2P7j1cE2Z1ZzO0u7Z+d6cI42D2D79mN/9Tff44kHX89w5/4q2r/+N07886N8+Huf15g9+P8pYj79c37uWbbf++8p5j4tD/87fI8x9i5/u5//YI79O7b89B7/z+YpL/71M3yT872Zp6x23n38XvufxL+k833+1P/768+9/lD+y4c/0u39H5tZt7r+mdf/P31O7/e98r/l7/8w08uv2049H6w5v/83z037vH//9X3/7L/2P+n/9q+7f8+xYv7/924+e/X/y9e/9f/Z9mP///+kAAAAASUVORK5CYII=";
+
+// Fast ZNCC comparison helper: Matches cropped image against the template saved during calibration
+async function detectBattleTypeFromImage(procCanvas, profile) {
+    try {
+        const bt = (profile && profile.battleTypeIcon) ? profile.battleTypeIcon : { sx: 58, sy: 172, sw: 110, sh: 110 };
+        // procCanvas is normalized 2400 x 1040 (identically aligned with calibration canvas)
+        const testCanvas = cropImage(procCanvas, bt.sx, bt.sy, bt.sw, bt.sh, 48, 48);
+        const testCtx = testCanvas.getContext('2d');
+        const testData = testCtx.getImageData(0, 0, 48, 48).data;
+
+        // Convert test image to normalized grayscale float array
+        const testNorm = new Float32Array(48 * 48);
+        let testSum = 0;
+        for (let i = 0; i < 48 * 48; i++) {
+            const val = 0.299 * testData[i * 4] + 0.587 * testData[i * 4 + 1] + 0.114 * testData[i * 4 + 2];
+            testNorm[i] = val;
+            testSum += val;
+        }
+        const testMean = testSum / (48 * 48);
+        let testVar = 0;
+        for (let i = 0; i < 48 * 48; i++) {
+            testNorm[i] -= testMean;
+            testVar += testNorm[i] * testNorm[i];
+        }
+        const testStd = Math.sqrt(testVar);
+        if (testStd < 1e-4) return 'attack';
+
+        // Retrieve or generate template grayscale array from user's calibration profile
+        let templGrayscale = profile && profile.battleTypeGrayscale ? new Float32Array(profile.battleTypeGrayscale) : null;
+        let templSource = profile ? profile.battleTypeTemplate : null;
+        if (!templGrayscale && templSource) {
+            const tImg = new Image();
+            tImg.src = templSource;
+            if (!tImg.complete) {
+                await new Promise(resolve => {
+                    tImg.onload = resolve;
+                    tImg.onerror = resolve;
+                });
+            }
+            if (tImg.naturalWidth > 0) {
+                const templCanvas = document.createElement('canvas');
+                templCanvas.width = 48;
+                templCanvas.height = 48;
+                const templCtx = templCanvas.getContext('2d');
+                templCtx.drawImage(tImg, 0, 0, 48, 48);
+                const templData = templCtx.getImageData(0, 0, 48, 48).data;
+
+                templGrayscale = new Float32Array(48 * 48);
+                for (let i = 0; i < 48 * 48; i++) {
+                    templGrayscale[i] = 0.299 * templData[i * 4] + 0.587 * templData[i * 4 + 1] + 0.114 * templData[i * 4 + 2];
+                }
+                if (profile) profile.battleTypeGrayscale = Array.from(templGrayscale);
+            }
+        }
+
+        // If no template is found in active profile, fallback to builtin default template
+        if (!templGrayscale) {
+            const defaultTemplate = (BUILTIN_CALIBRATION_PROFILES["2.166"] && BUILTIN_CALIBRATION_PROFILES["2.166"].battleTypeTemplate);
+            if (defaultTemplate) {
+                const tImg = new Image();
+                tImg.src = defaultTemplate;
+                if (!tImg.complete) {
+                    await new Promise(resolve => {
+                        tImg.onload = resolve;
+                        tImg.onerror = resolve;
+                    });
+                }
+                if (tImg.naturalWidth > 0) {
+                    const templCanvas = document.createElement('canvas');
+                    templCanvas.width = 48;
+                    templCanvas.height = 48;
+                    const templCtx = templCanvas.getContext('2d');
+                    templCtx.drawImage(tImg, 0, 0, 48, 48);
+                    const templData = templCtx.getImageData(0, 0, 48, 48).data;
+
+                    templGrayscale = new Float32Array(48 * 48);
+                    for (let i = 0; i < 48 * 48; i++) {
+                        templGrayscale[i] = 0.299 * templData[i * 4] + 0.587 * templData[i * 4 + 1] + 0.114 * templData[i * 4 + 2];
+                    }
+                }
+            }
+        }
+
+        if (!templGrayscale) return 'attack';
+
+        let templSum = 0;
+        for (let i = 0; i < 48 * 48; i++) {
+            templSum += templGrayscale[i];
+        }
+        const templMean = templSum / (48 * 48);
+        const normTempl = new Float32Array(48 * 48);
+        let templVar = 0;
+        for (let i = 0; i < 48 * 48; i++) {
+            normTempl[i] = templGrayscale[i] - templMean;
+            templVar += normTempl[i] * normTempl[i];
+        }
+        const templStd = Math.sqrt(templVar);
+        if (templStd < 1e-4) return 'attack';
+
+        // Multi-shift ZNCC to handle minor pixel shifts (±4px)
+        let maxCorrelation = -1.0;
+        for (let dy = -4; dy <= 4; dy += 2) {
+            for (let dx = -4; dx <= 4; dx += 2) {
+                let dot = 0;
+                let count = 0;
+                for (let y = 0; y < 48; y++) {
+                    const ty = y + dy;
+                    if (ty < 0 || ty >= 48) continue;
+                    for (let x = 0; x < 48; x++) {
+                        const tx = x + dx;
+                        if (tx < 0 || tx >= 48) continue;
+                        dot += testNorm[y * 48 + x] * normTempl[ty * 48 + tx];
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    const corr = dot / (testStd * templStd + 1e-5);
+                    if (corr > maxCorrelation) maxCorrelation = corr;
+                }
+            }
+        }
+
+        console.log(`[BattleType] Correlation with User-Calibrated Template: ${maxCorrelation.toFixed(3)}`);
+        // Threshold: 0.65 (Same-device Attack match is typically > 0.85, Defense vs Attack is < 0.50)
+        // 一致する場合は「攻撃」、一致しない場合は「防衛」
+        const decision = (maxCorrelation >= 0.65) ? 'attack' : 'defense';
+        console.log(`[BattleType] Recognition Decision: ${decision.toUpperCase()}`);
+        return decision;
+    } catch (e) {
+        console.warn('[BattleType] Failed to recognize battle type, defaulting to attack:', e);
+        return 'attack';
+    }
+}
+
+
 // Built-in verified calibration profiles
 const BUILTIN_CALIBRATION_PROFILES = {
     "2.166": {
@@ -13,6 +356,8 @@ const BUILTIN_CALIBRATION_PROFILES = {
         "normalizedWidth": 2400,
         "normalizedHeight": 1040,
         "winLose": { "sx": 110, "sy": 100, "sw": 280, "sh": 160, "dw": 280, "dh": 160 },
+        "battleTypeIcon": { "sx": 58, "sy": 172, "sw": 110, "sh": 110 },
+        "battleTypeTemplate": "data:image/png;base64,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",
         "oppAvatar": { "sx": 1715, "sy": 165, "sw": 120, "sh": 120, "dw": 100, "dh": 100 },
         "oppName": { "sx": 1995, "sy": 144, "sw": 370, "sh": 55, "dw": 1100, "dh": 200 },
         "atkCenters": [206, 352, 499, 646, 793, 940],
@@ -32,6 +377,8 @@ const BUILTIN_CALIBRATION_PROFILES = {
         "normalizedWidth": 2400,
         "normalizedHeight": 1040,
         "winLose": { "sx": 110, "sy": 100, "sw": 280, "sh": 160, "dw": 280, "dh": 160 },
+        "battleTypeIcon": { "sx": 58, "sy": 172, "sw": 110, "sh": 110 },
+        "battleTypeTemplate": "data:image/png;base64,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",
         "oppAvatar": { "sx": 1720, "sy": 160, "sw": 120, "sh": 120, "dw": 100, "dh": 100 },
         "oppName": { "sx": 1995, "sy": 141, "sw": 380, "sh": 60, "dw": 1100, "dh": 200 },
         "atkCenters": [206, 353, 500, 646, 795, 941],
@@ -87,24 +434,73 @@ async function getOpponents() {
     });
 }
 
-async function saveOpponent(name, avatar) {
-    if (!name) return false;
+async function saveOpponent(name, avatar, overwrite = false) {
+    if (!name || !avatar) return false;
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction('opponent_directory', 'readwrite');
         const store = transaction.objectStore('opponent_directory');
         const getReq = store.get(name);
         getReq.onsuccess = () => {
-            if (!getReq.result) {
-                const addReq = store.add({ name, avatar, created_at: new Date().getTime() });
-                addReq.onsuccess = () => resolve(true);
-                addReq.onerror = () => reject(addReq.error);
+            if (!getReq.result || overwrite) {
+                const putReq = store.put({ name, avatar, updated_at: new Date().getTime() });
+                putReq.onsuccess = () => resolve(true);
+                putReq.onerror = () => reject(putReq.error);
             } else {
                 resolve(false);
             }
         };
         getReq.onerror = () => reject(getReq.error);
     });
+}
+
+// Automatic DB Migration: Extract bloated opponent_avatar base64 strings from battle_history
+// into opponent_directory, and set record.opponent_avatar = null.
+// Dramatically reduces DB size from megabytes to kilobytes and makes list loading instantaneous!
+async function migrateOpponentAvatars() {
+    try {
+        const db = await openDB();
+        const allHistory = await getHistory();
+        const allRenames = await getRenames();
+        
+        let needMigrationCount = 0;
+        for (const item of allHistory) {
+            if (item.opponent_avatar) {
+                needMigrationCount++;
+            }
+        }
+        if (needMigrationCount === 0) return;
+
+        console.log(`[DB Optimization] Found ${needMigrationCount} records with bloated avatar base64. Starting cleanup migration...`);
+        
+        const transaction = db.transaction(['battle_history', 'opponent_directory'], 'readwrite');
+        const histStore = transaction.objectStore('battle_history');
+        const oppStore = transaction.objectStore('opponent_directory');
+
+        for (const item of allHistory) {
+            if (item.opponent_avatar) {
+                let cName = item.commander_name;
+                const rRule = allRenames.find(r => r.ocr_name === cName);
+                if (rRule) cName = rRule.corrected_name;
+
+                if (cName) {
+                    oppStore.put({ name: cName, avatar: item.opponent_avatar, updated_at: Date.now() });
+                }
+                item.opponent_avatar = null;
+                histStore.put(item);
+            }
+        }
+
+        await new Promise(resolve => {
+            transaction.oncomplete = resolve;
+            transaction.onerror = resolve;
+        });
+
+        opponentDirectory = await getOpponents();
+        console.log(`[DB Optimization] Successfully migrated ${needMigrationCount} avatars to opponent_directory and sanitized battle_history!`);
+    } catch (err) {
+        console.warn('migrateOpponentAvatars failed:', err);
+    }
 }
 
 // Rename Dictionary Operations
@@ -123,10 +519,21 @@ async function saveRename(ocrName, correctedName) {
     if (!ocrName || !correctedName) return false;
     const db = await openDB();
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction('opponent_renames', 'readwrite');
+        const transaction = db.transaction(['opponent_renames', 'opponent_directory'], 'readwrite');
         const store = transaction.objectStore('opponent_renames');
+        const oppStore = transaction.objectStore('opponent_directory');
+        
         const request = store.put({ ocr_name: ocrName, corrected_name: correctedName, created_at: new Date().getTime() });
-        request.onsuccess = () => resolve(true);
+        request.onsuccess = () => {
+            // Also link avatar under correctedName if available
+            const getOldAv = oppStore.get(ocrName);
+            getOldAv.onsuccess = () => {
+                if (getOldAv.result && getOldAv.result.avatar) {
+                    oppStore.put({ name: correctedName, avatar: getOldAv.result.avatar, updated_at: Date.now() });
+                }
+            };
+            resolve(true);
+        };
         request.onerror = () => reject(request.error);
     });
 }
@@ -216,9 +623,7 @@ async function getHistory() {
         const store = transaction.objectStore('battle_history');
         const request = store.getAll();
         request.onsuccess = () => {
-            const all = request.result || [];
-            // Guarantee no defense records are ever returned
-            resolve(all.filter(item => item.battle_type !== 'defense'));
+            resolve(request.result || []);
         };
         request.onerror = () => reject(request.error);
     });
@@ -247,37 +652,8 @@ async function deleteHistory(id) {
 }
 
 // Remove any existing Defense battle records from IndexedDB
+// Defense feature is now fully supported
 async function cleanupDefenseRecords() {
-    try {
-        const db = await openDB();
-        const allRecords = await new Promise((resolve, reject) => {
-            const transaction = db.transaction('battle_history', 'readonly');
-            const store = transaction.objectStore('battle_history');
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = (e) => reject(e.target.error);
-        });
-
-        const defenseIds = allRecords
-            .filter(item => item.battle_type === 'defense')
-            .map(item => item.id)
-            .filter(id => id !== undefined && id !== null);
-
-        if (defenseIds.length > 0) {
-            console.log(`[Cleanup] Deleting ${defenseIds.length} Defense battle records from IndexedDB...`);
-            await new Promise((resolve, reject) => {
-                const transaction = db.transaction('battle_history', 'readwrite');
-                const store = transaction.objectStore('battle_history');
-                defenseIds.forEach(id => store.delete(id));
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = (e) => reject(e.target.error);
-            });
-            console.log(`[Cleanup] Successfully deleted ${defenseIds.length} Defense battle records.`);
-            return true;
-        }
-    } catch (e) {
-        console.warn("[Cleanup] Error cleaning up Defense records:", e);
-    }
     return false;
 }
 
@@ -526,8 +902,18 @@ let detailEditedData = null; // Temporary edits during Detail Modal editing
 let opponentDirectory = {}; // Cache of { name: avatar_data_url }
 let opponentRenames = []; // Cache of name translation rules: [ { ocr_name, corrected_name } ]
 let currentAddStudentFeatures = null; // Extracted face features to save for newly registered student
-let activePositionFilter = null; // Filter for specific position: { team: 'attack'|'defense', index: 0-5, studentName: string }
 let uploadQueue = []; // Queue of File objects to review sequentially
+let activePositionFilter = null; // Filter for specific position: { sourceTab: 'attack'|'defense', team: 'attack'|'defense', index: 0-5, studentName: string }
+
+function getEffectivePositionFilter(currentType) {
+    if (!activePositionFilter) return null;
+    const { sourceTab, team, index, studentName } = activePositionFilter;
+    // 攻撃タブと防衛タブでAとDを逆に絞り込み（攻撃タブのD1は防衛タブのA1に対応）
+    const effectiveTeam = (currentType === sourceTab)
+        ? team
+        : (team === 'attack' ? 'defense' : 'attack');
+    return { team: effectiveTeam, index, studentName };
+}
 let lastUploadedImage = null; // Raw Image object of current uploaded screenshot
 let currentActiveProfile = null; // Calibration layout profile for active screenshot
 let currentUploadFile = null; // Currently processing File object
@@ -570,7 +956,7 @@ function showTutorialPopup(message, iconHtml = '<i class="fa-solid fa-cloud-arro
     const btnOk = document.getElementById('btn-tutorial-ok');
 
     if (titleEl) titleEl.innerText = title;
-    if (msgEl) msgEl.innerText = message;
+    if (msgEl) msgEl.innerHTML = message;
     if (iconEl && iconHtml) {
         iconEl.outerHTML = iconHtml.includes('id=') ? iconHtml : iconHtml.replace('<i ', '<i id="tutorial-icon" ');
     }
@@ -591,11 +977,11 @@ function showTutorialPopup(message, iconHtml = '<i class="fa-solid fa-cloud-arro
 document.addEventListener('DOMContentLoaded', async () => {
     // Open DB and Load Data
     try {
-        await cleanupDefenseRecords();
         currentRoster = await getStudents();
         currentHistory = await getHistory();
         opponentDirectory = await getOpponents();
         opponentRenames = await getRenames();
+        await migrateOpponentAvatars();
         
         // Render UI INSTANTLY (0ms) so battle history list is shown immediately on startup
         updateRosterView();
@@ -615,6 +1001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Setup Bulk Roster & Bulk Rename features
     initBulkFeatures();
+    initCsvExportListeners();
 
     // Setup History Infinite Scroll Listeners (30 items batch)
     setupHistoryScrollListeners();
@@ -642,6 +1029,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tabEl) tabEl.classList.add('active');
         if (paneEl) paneEl.classList.add('active');
         activeTab = tabName;
+        if (tabName === 'attack' || tabName === 'defense') {
+            filterHistory(tabName);
+        }
+
+        // Check if defense feature popup should be shown on upload tab
+        if (tabName === 'upload') {
+            const defenseNotified = localStorage.getItem('tactical_archive_defense_feature_notified') === 'true';
+            if (!defenseNotified) {
+                localStorage.setItem('tactical_archive_defense_feature_notified', 'true');
+                setTimeout(() => {
+                    showTutorialPopup(
+                        '防衛編成の読み込み機能も追加しました。攻撃・防衛の判定のためにアイコン位置のトリミング範囲を新たに設定してください。<br><br><b style="color: #ff3366; font-size: 13px;">初回は必ず攻撃編成の画像で設定してください</b>',
+                        '<i class="fa-solid fa-shield-halved" style="color: #ff3366;"></i>',
+                        '防衛機能追加のお知らせ'
+                    );
+                }, 200);
+            }
+        }
     };
 
     tabs.forEach(tab => {
@@ -665,19 +1070,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 150);
     }
 
-    // Attack Search Input
+    // Synchronized Search Inputs (Shared across Attack and Defense tabs)
     const searchAtk = document.getElementById('search-commander-attack');
     const btnClearAtk = document.getElementById('btn-clear-search-attack');
-    if (searchAtk && btnClearAtk) {
+    const searchDef = document.getElementById('search-commander-defense');
+    const btnClearDef = document.getElementById('btn-clear-search-defense');
+
+    if (searchAtk) {
         searchAtk.addEventListener('input', () => {
-            btnClearAtk.style.display = searchAtk.value.trim() !== '' ? 'block' : 'none';
-            filterHistory('attack');
+            syncSearchInput(searchAtk.value, false);
         });
+    }
+    if (btnClearAtk) {
         btnClearAtk.addEventListener('click', () => {
-            searchAtk.value = '';
-            btnClearAtk.style.display = 'none';
-            activePositionFilter = null;
-            filterHistory('attack');
+            syncSearchInput('', true);
+        });
+    }
+
+    if (searchDef) {
+        searchDef.addEventListener('input', () => {
+            syncSearchInput(searchDef.value, false);
+        });
+    }
+    if (btnClearDef) {
+        btnClearDef.addEventListener('click', () => {
+            syncSearchInput('', true);
         });
     }
 
@@ -700,12 +1117,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     dropZone.addEventListener('click', () => {
+        fileInput.value = '';
         fileInput.click();
     });
 
     fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-            processMultipleScreenshotUploads(fileInput.files);
+        try {
+            if (fileInput.files && fileInput.files.length > 0) {
+                processMultipleScreenshotUploads(fileInput.files);
+            }
+        } catch (err) {
+            console.error("fileInput change error:", err);
+            alert("画像読み込み中にエラーが発生しました: " + (err.message || err));
         }
     });
 
@@ -995,24 +1418,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         reviewTypeAtkBtn.addEventListener('click', () => {
             if (currentUploadData) currentUploadData.battleType = 'attack';
             reviewTypeAtkBtn.classList.add('active');
-            reviewTypeAtkBtn.style.border = '1.5px solid #00a3ff';
-            reviewTypeAtkBtn.style.background = 'rgba(0, 163, 255, 0.15)';
-            reviewTypeAtkBtn.style.color = '#00a3ff';
             reviewTypeDefBtn.classList.remove('active');
-            reviewTypeDefBtn.style.border = '1.5px solid var(--border-color)';
-            reviewTypeDefBtn.style.background = 'transparent';
-            reviewTypeDefBtn.style.color = 'var(--text-muted)';
         });
         reviewTypeDefBtn.addEventListener('click', () => {
             if (currentUploadData) currentUploadData.battleType = 'defense';
             reviewTypeDefBtn.classList.add('active');
-            reviewTypeDefBtn.style.border = '1.5px solid #00e676';
-            reviewTypeDefBtn.style.background = 'rgba(0, 230, 118, 0.15)';
-            reviewTypeDefBtn.style.color = '#00e676';
             reviewTypeAtkBtn.classList.remove('active');
-            reviewTypeAtkBtn.style.border = '1.5px solid var(--border-color)';
-            reviewTypeAtkBtn.style.background = 'transparent';
-            reviewTypeAtkBtn.style.color = 'var(--text-muted)';
         });
     }
 
@@ -1079,7 +1490,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateInput = document.getElementById('review-date-input').value;
         const notes = document.getElementById('review-notes').value.trim();
         const result = reviewWinBtn.classList.contains('active') ? 'WIN' : 'LOSE';
-        const battleType = 'attack';
+        const reviewTypeDefBtn = document.getElementById('review-type-defense-btn');
+        const battleType = (reviewTypeDefBtn && reviewTypeDefBtn.classList.contains('active')) ? 'defense' : 'attack';
         
         let utility = '高';
         const checkedUtility = document.querySelector('input[name="review-utility"]:checked');
@@ -1121,7 +1533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             defense_icons: defenseIcons,
             attack_names: attackNames,
             defense_names: defenseNames,
-            opponent_avatar: currentUploadData.opponentAvatar || null,
+            opponent_avatar: null, // Stored cleanly in opponent_directory DB keyed by commander_name
             notes: notes,
             filename: currentUploadData.filename || '', // Save filename to prevent duplicate uploads
             created_at: new Date(dateInput).getTime() || new Date().getTime(),
@@ -1284,7 +1696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateInput = document.getElementById('detail-date-input').value;
         const notes = document.getElementById('detail-notes').value.trim();
         const result = detailWinBtn.classList.contains('active') ? 'WIN' : 'LOSE';
-        const battleType = 'attack';
+        const battleType = editingRecord.battle_type || 'attack';
 
         let utility = '高';
         const checkedUtility = document.querySelector('input[name="detail-utility"]:checked');
@@ -1315,6 +1727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Save Opponent Profile Avatar to Opponent Directory if first time
         if (opponentName && editingRecord.opponent_avatar) {
             await saveOpponent(opponentName, editingRecord.opponent_avatar);
+            editingRecord.opponent_avatar = null; // Clean up record
             opponentDirectory = await getOpponents(); // Refresh cache
         }
 
@@ -1397,15 +1810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Reset search on clicking Stats Dashboard row
     document.querySelectorAll('.stats-dashboard').forEach(dash => {
         dash.addEventListener('click', () => {
-            activePositionFilter = null; // Clear position filter!
-            
-            const sAtk = document.getElementById('search-commander-attack');
-            const bClearAtk = document.getElementById('btn-clear-search-attack');
-            
-            if (sAtk) sAtk.value = '';
-            if (bClearAtk) bClearAtk.style.display = 'none';
-            
-            filterHistory();
+            syncSearchInput('', true);
         });
     });
 
@@ -1651,6 +2056,35 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
         console.log(`[Calibration] Using cached modal profile for aspect ratio ${aspectKey}`);
         if (scanStatusText) scanStatusText.innerText = `Analyzing screenshot (${aspectKey} cached)...`;
         const p = cachedProfiles[aspectKey];
+        
+        let pUpdated = false;
+        if (!p.battleTypeIcon) {
+            p.battleTypeIcon = { sx: 58, sy: 172, sw: 110, sh: 110 };
+            pUpdated = true;
+        }
+        if (!p.battleTypeTemplate) {
+            const rawAspectVal = parseFloat(aspectKey);
+            let builtinMatch = BUILTIN_CALIBRATION_PROFILES[aspectKey];
+            if (!builtinMatch) {
+                for (const [k, prof] of Object.entries(BUILTIN_CALIBRATION_PROFILES)) {
+                    if (Math.abs(parseFloat(k) - rawAspectVal) < 0.035) {
+                        builtinMatch = prof;
+                        break;
+                    }
+                }
+            }
+            if (builtinMatch && builtinMatch.battleTypeTemplate) {
+                p.battleTypeTemplate = builtinMatch.battleTypeTemplate;
+                pUpdated = true;
+            }
+        }
+        if (pUpdated) {
+            try {
+                cachedProfiles[aspectKey] = p;
+                localStorage.setItem('tactical_archive_calibration_profiles', JSON.stringify(cachedProfiles));
+            } catch (e) {}
+        }
+
         const modalBox = {
             x: Math.round(p.relModal.rx * img.width),
             y: Math.round(p.relModal.ry * img.height),
@@ -1776,12 +2210,14 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
         }
     }
 
-    let winLose, oppAvatar, oppName, atkCenters, defCenters, cardTop, cardSize;
+    let winLose, battleTypeIcon, battleTypeTemplate, oppAvatar, oppName, atkCenters, defCenters, cardTop, cardSize;
     let finalRelModal = relModal;
     let finalModalBox = { x: modalX, y: modalY, w: modalW, h: modalH };
 
     if (builtinMatch) {
         winLose = JSON.parse(JSON.stringify(builtinMatch.winLose));
+        battleTypeIcon = builtinMatch.battleTypeIcon ? JSON.parse(JSON.stringify(builtinMatch.battleTypeIcon)) : { sx: 58, sy: 172, sw: 110, sh: 110 };
+        battleTypeTemplate = builtinMatch.battleTypeTemplate || "data:image/png;base64,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";
         oppAvatar = JSON.parse(JSON.stringify(builtinMatch.oppAvatar));
         oppName = JSON.parse(JSON.stringify(builtinMatch.oppName));
         atkCenters = [...builtinMatch.atkCenters];
@@ -1814,6 +2250,8 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
         normalizedWidth,
         normalizedHeight,
         winLose,
+        battleTypeIcon,
+        battleTypeTemplate,
         oppAvatar,
         oppName,
         atkCenters,
@@ -1834,10 +2272,58 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
     return { profile, isCached: false };
 }
 
+// Extract date from File object (using filename patterns or lastModified timestamp, with local timezone fallback)
+function extractDateFromFile(file) {
+    // 1. Try extracting date from filename first (immune to file copy/transfer timestamp changes)
+    if (file && file.name) {
+        // Pattern A: YYYY-MM-DD, YYYY_MM_DD, YYYY.MM.DD
+        const matchDelimited = file.name.match(/(?:^|[^0-9])(20\d{2})[-_. /](0[1-9]|1[0-2])[-_. /](0[1-9]|[12]\d|3[01])(?:[^0-9]|$)/);
+        if (matchDelimited) {
+            const dateStr = `${matchDelimited[1]}-${matchDelimited[2]}-${matchDelimited[3]}`;
+            console.log(`Extracted date from filename (delimited): ${dateStr}`);
+            return dateStr;
+        }
+
+        // Pattern B: YYYYMMDD (8 consecutive digits, e.g. Screenshot_20260919_185700)
+        const matchConsecutive = file.name.match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[^0-9]|$)/);
+        if (matchConsecutive) {
+            const dateStr = `${matchConsecutive[1]}-${matchConsecutive[2]}-${matchConsecutive[3]}`;
+            console.log(`Extracted date from filename (consecutive YYYYMMDD): ${dateStr}`);
+            return dateStr;
+        }
+    }
+
+    // 2. Try file.lastModified (device file modification/creation timestamp)
+    if (file && file.lastModified) {
+        const d = new Date(file.lastModified);
+        if (!isNaN(d.getTime())) {
+            const now = new Date();
+            const maxFuture = now.getTime() + 24 * 60 * 60 * 1000;
+            if (d.getFullYear() >= 2020 && d.getTime() <= maxFuture) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+                console.log(`Extracted date from file.lastModified: ${dateStr}`);
+                return dateStr;
+            }
+        }
+    }
+
+    // 3. Fallback: device local current date (JST / device timezone)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    console.log(`Fallback date (device local today): ${todayStr}`);
+    return todayStr;
+}
+
 // SCREENSHOT RECOGNITION PIPELINE
 async function handleScreenshotUpload(file) {
     isScanCancelled = false;
-    // Check for duplicate upload
+    // Check for duplicate upload (preserves duplicate check by filename)
     const isDuplicate = currentHistory.some(item => item.filename === file.name);
     if (isDuplicate) {
         alert(`このスクリーンショット「${file.name}」は既にアップロードされています。`);
@@ -1857,13 +2343,8 @@ async function handleScreenshotUpload(file) {
     };
     reader.readAsDataURL(file);
     
-    // Extract Date from file name
-    let extractedDate = new Date().toISOString().split('T')[0]; // Default: today
-    const dateMatch = file.name.match(/(\d{4}-\d{2}-\d{2})/);
-    if (dateMatch) {
-        extractedDate = dateMatch[1];
-        console.log(`Extracted date from file name: ${extractedDate}`);
-    }
+    // Extract Date from file (filename pattern or device lastModified timestamp)
+    const extractedDate = extractDateFromFile(file);
 
     try {
         const img = new Image();
@@ -2025,9 +2506,17 @@ async function runRecognitionPipeline(img, profile, file, extractedDate) {
         correctedOpponentName = renameRule.corrected_name;
     }
     
+    // Detect Battle Type (Attack vs Defense) via Sword Icon Matching
+    let detectedBattleType = 'attack';
+    try {
+        detectedBattleType = await detectBattleTypeFromImage(procCanvas, profile);
+    } catch (e) {
+        console.warn('Battle type detection error:', e);
+    }
+
     const reviewData = {
         result: battleResult,
-        battleType: 'attack',
+        battleType: detectedBattleType,
         date: extractedDate,
         opponentName: correctedOpponentName,
         rawOcrOpponentName: opponentName,
@@ -2120,6 +2609,19 @@ function populateReviewModal(data) {
     } else {
         loseBtn.classList.add('active');
         winBtn.classList.remove('active');
+    }
+
+    // Battle Type toggle state (Attack / Defense)
+    const reviewTypeAtkBtn = document.getElementById('review-type-attack-btn');
+    const reviewTypeDefBtn = document.getElementById('review-type-defense-btn');
+    if (reviewTypeAtkBtn && reviewTypeDefBtn) {
+        if (data.battleType === 'defense') {
+            reviewTypeDefBtn.classList.add('active');
+            reviewTypeAtkBtn.classList.remove('active');
+        } else {
+            reviewTypeAtkBtn.classList.add('active');
+            reviewTypeDefBtn.classList.remove('active');
+        }
     }
 
     // Opponent name & Date
@@ -2252,6 +2754,7 @@ const WIZARD_STEPS = [
     { id: 'd4', title: 'D4 (防衛4) 調整中', desc: 'D4カードの位置へ左右に枠を移動します。', isBase: false, team: 'defense', index: 3 },
     { id: 'd5', title: 'D5 (防衛5・Sp1) 調整中', desc: 'D5(Special 1)カードの位置へ左右に枠を移動します。', isBase: false, team: 'defense', index: 4 },
     { id: 'd6', title: 'D6 (防衛6・Sp2) 調整中', desc: 'D6(Special 2)カードの位置へ左右に枠を移動します。', isBase: false, team: 'defense', index: 5 },
+    { id: 'battle_type_icon', title: '攻防アイコン 調整中', desc: '左上の剣マーク枠を合わせます（必ず攻撃編成の画像を使用）。', isBattleType: true },
     { id: 'opp_avatar', title: '相手アイコン 調整中', desc: '対戦相手アイコンの枠位置とサイズを合わせます。', isOppAvatar: true },
     { id: 'opp_name', title: '相手名前(OCR) 調整中', desc: '対戦相手プレイヤー名の文字認識枠(横長)を合わせます。', isOppName: true }
 ];
@@ -2286,6 +2789,12 @@ function openCropInspector() {
     // Ensure default cardTop and sizes
     if (!currentActiveProfile.cardTop) currentActiveProfile.cardTop = 858;
     if (!currentActiveProfile.cardSize) currentActiveProfile.cardSize = 88;
+    if (!currentActiveProfile.battleTypeIcon) {
+        currentActiveProfile.battleTypeIcon = { sx: 58, sy: 172, sw: 110, sh: 110 };
+    }
+    if (!currentActiveProfile.battleTypeTemplate) {
+        currentActiveProfile.battleTypeTemplate = "data:image/png;base64,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";
+    }
 
     wizardCurrentStep = 0; // A1 first!
     wizardZoom = 2.4;
@@ -2334,15 +2843,15 @@ function updateWizardUI() {
 
     if (titleEl) titleEl.innerText = step.title;
     if (badgeEl) {
-        badgeEl.style.background = step.team === 'attack' ? '#00e676' : (step.team === 'defense' ? '#ff3366' : '#00a3ff');
-        badgeEl.style.color = step.team === 'attack' ? '#000' : '#fff';
+        badgeEl.style.background = step.isBattleType ? '#ffe135' : (step.team === 'attack' ? '#00e676' : (step.team === 'defense' ? '#ff3366' : '#00a3ff'));
+        badgeEl.style.color = (step.team === 'attack' || step.isBattleType) ? '#000' : '#fff';
     }
 
     if (lockBadge) {
         if (step.id === 'a1') {
             lockBadge.innerText = '基準設定 (XY・サイズ可変)';
             lockBadge.style.color = '#00e676';
-        } else if (step.isOppAvatar || step.isOppName) {
+        } else if (step.isBattleType || step.isOppAvatar || step.isOppName) {
             lockBadge.innerText = 'XY・サイズ可変';
             lockBadge.style.color = '#ffe135';
         } else {
@@ -2352,7 +2861,7 @@ function updateWizardUI() {
     }
 
     // A2〜A6, D1〜D6: Hide Up/Down buttons completely
-    const canMoveY = (step.id === 'a1' || step.isOppAvatar || step.isOppName);
+    const canMoveY = (step.id === 'a1' || step.isBattleType || step.isOppAvatar || step.isOppName);
     if (btnNudgeUp) {
         btnNudgeUp.style.visibility = canMoveY ? 'visible' : 'hidden';
         btnNudgeUp.style.pointerEvents = canMoveY ? 'auto' : 'none';
@@ -2363,7 +2872,7 @@ function updateWizardUI() {
     }
 
     // Automatic move step: 5px for avatar & name, 1px for students
-    if (step.isOppAvatar || step.isOppName) {
+    if (step.isBattleType || step.isOppAvatar || step.isOppName) {
         wizardNudgeStep = 5;
     } else {
         wizardNudgeStep = 1;
@@ -2374,7 +2883,7 @@ function updateWizardUI() {
 
     // Size adjust container: visible for A1, oppAvatar, oppName; hidden for others (maintaining layout width)
     if (sizeAdjustContainer) {
-        const canResize = (step.id === 'a1' || step.isOppAvatar || step.isOppName);
+        const canResize = (step.id === 'a1' || step.isBattleType || step.isOppAvatar || step.isOppName);
         sizeAdjustContainer.style.visibility = canResize ? 'visible' : 'hidden';
         sizeAdjustContainer.style.pointerEvents = canResize ? 'auto' : 'none';
     }
@@ -2432,6 +2941,10 @@ function focusOnActiveSlot() {
     } else if (step.team === 'attack') {
         targetNormX = currentActiveProfile.atkCenters[step.index];
         targetNormY = cardCenterYNorm;
+    } else if (step.isBattleType) {
+        if (!currentActiveProfile.battleTypeIcon) currentActiveProfile.battleTypeIcon = { sx: 58, sy: 172, sw: 110, sh: 110 };
+        targetNormX = currentActiveProfile.battleTypeIcon.sx + currentActiveProfile.battleTypeIcon.sw / 2;
+        targetNormY = currentActiveProfile.battleTypeIcon.sy + currentActiveProfile.battleTypeIcon.sh / 2;
     } else if (step.isOppAvatar) {
         targetNormX = currentActiveProfile.oppAvatar.sx + currentActiveProfile.oppAvatar.sw / 2;
         targetNormY = currentActiveProfile.oppAvatar.sy + currentActiveProfile.oppAvatar.sh / 2;
@@ -2502,6 +3015,8 @@ function resetActiveSlot() {
             currentActiveProfile.cardTop = defaultCardTop;
             currentActiveProfile.cardSize = defaultCardSize;
         }
+    } else if (step.isBattleType) {
+        currentActiveProfile.battleTypeIcon = { sx: 58, sy: 172, sw: 110, sh: 110 };
     } else if (step.isOppAvatar) {
         currentActiveProfile.oppAvatar = defaultOppAvatar;
     } else if (step.isOppName) {
@@ -2601,6 +3116,24 @@ function renderCropInspectorCanvas() {
         const h = cardHeightNorm * scaleY;
 
         drawParallelogramGuide(ctx, cx, cy, w, h, isCurrent, `D${i + 1}`);
+    }
+
+    // Draw Battle Type Icon (Sword/Shield guide)
+    if (currentActiveProfile.battleTypeIcon) {
+        const bt = currentActiveProfile.battleTypeIcon;
+        const bScreenX = modalScreenX + bt.sx * scaleX;
+        const bScreenY = modalScreenY + bt.sy * scaleY;
+        const bScreenW = bt.sw * scaleX;
+        const bScreenH = bt.sh * scaleY;
+        const isCurrent = (step.id === 'battle_type_icon');
+
+        ctx.strokeStyle = isCurrent ? '#ffe135' : 'rgba(255, 225, 53, 0.4)';
+        ctx.lineWidth = isCurrent ? 2.5 : 1.2;
+        ctx.strokeRect(bScreenX, bScreenY, bScreenW, bScreenH);
+
+        ctx.fillStyle = isCurrent ? '#ffe135' : 'rgba(255, 225, 53, 0.7)';
+        ctx.font = `bold ${Math.max(9, Math.round(10 * wizardZoom))}px sans-serif`;
+        ctx.fillText('攻防判定(剣)', bScreenX + 2, bScreenY - 3);
     }
 
     // Draw Opponent Avatar (Thin semi-transparent outline)
@@ -2716,6 +3249,10 @@ function nudgeActiveSlot(dx, dy) {
         currentActiveProfile.atkCenters[step.index] += actualDx;
     } else if (step.team === 'defense') {
         currentActiveProfile.defCenters[step.index] += actualDx;
+    } else if (step.isBattleType) {
+        if (!currentActiveProfile.battleTypeIcon) currentActiveProfile.battleTypeIcon = { sx: 58, sy: 172, sw: 110, sh: 110 };
+        currentActiveProfile.battleTypeIcon.sx += actualDx;
+        currentActiveProfile.battleTypeIcon.sy += actualDy;
     } else if (step.isOppAvatar) {
         currentActiveProfile.oppAvatar.sx += actualDx;
         currentActiveProfile.oppAvatar.sy += actualDy;
@@ -2734,6 +3271,10 @@ function adjustActiveSlotSize(delta) {
 
     if (step.id === 'a1') {
         currentActiveProfile.cardSize = Math.max(40, (currentActiveProfile.cardSize || 88) + amount);
+    } else if (step.isBattleType) {
+        if (!currentActiveProfile.battleTypeIcon) currentActiveProfile.battleTypeIcon = { sx: 58, sy: 172, sw: 110, sh: 110 };
+        currentActiveProfile.battleTypeIcon.sw = Math.max(30, currentActiveProfile.battleTypeIcon.sw + amount);
+        currentActiveProfile.battleTypeIcon.sh = Math.max(30, currentActiveProfile.battleTypeIcon.sh + amount);
     } else if (step.isOppAvatar) {
         currentActiveProfile.oppAvatar.sw = Math.max(40, currentActiveProfile.oppAvatar.sw + amount);
         currentActiveProfile.oppAvatar.sh = Math.max(40, currentActiveProfile.oppAvatar.sh + amount);
@@ -2853,18 +3394,44 @@ function handleInspectorWheel(e) {
 
 // Complete & Apply Calibration
 async function applyCropInspector() {
-    if (!currentActiveProfile || !lastUploadedImage) {
-        if (cropInspectorModal) cropInspectorModal.classList.remove('active');
-        return;
+    if (!currentActiveProfile) return;
+
+    // Save crop template of Attack sword icon from lastUploadedImage
+    if (lastUploadedImage && currentActiveProfile.battleTypeIcon) {
+        try {
+            const m = currentActiveProfile.modalBox;
+            const bt = currentActiveProfile.battleTypeIcon;
+
+            // Exactly match the normalized coordinate space (2400 x 1040) used during recognition
+            const tempProcCanvas = document.createElement('canvas');
+            tempProcCanvas.width = 2400;
+            tempProcCanvas.height = 1040;
+            const tempCtx = tempProcCanvas.getContext('2d');
+            tempCtx.drawImage(
+                lastUploadedImage,
+                m.x, m.y, m.w, m.h,
+                0, 0, 2400, 1040
+            );
+
+            const templateCanvas = cropImage(tempProcCanvas, bt.sx, bt.sy, bt.sw, bt.sh, 48, 48);
+            currentActiveProfile.battleTypeTemplate = templateCanvas.toDataURL('image/png');
+            const tData = templateCanvas.getContext('2d').getImageData(0, 0, 48, 48).data;
+            const tGray = [];
+            for (let i = 0; i < 48 * 48; i++) {
+                tGray.push(Math.round(0.299 * tData[i * 4] + 0.587 * tData[i * 4 + 1] + 0.114 * tData[i * 4 + 2]));
+            }
+            currentActiveProfile.battleTypeGrayscale = tGray;
+            console.log('[Calibration] Successfully captured new Battle Type (Attack) template & grayscale from user device!');
+        } catch (e) {
+            console.warn('[Calibration] Failed to capture battle type template:', e);
+        }
     }
 
-    localStorage.setItem('tactical_archive_first_launch_done', 'true');
-
-    // Save updated calibration profile to persistent cache
     try {
         const cachedProfiles = JSON.parse(localStorage.getItem('tactical_archive_calibration_profiles') || '{}');
         cachedProfiles[currentActiveProfile.aspectRatio] = currentActiveProfile;
         localStorage.setItem('tactical_archive_calibration_profiles', JSON.stringify(cachedProfiles));
+        localStorage.setItem('tactical_archive_defense_feature_notified', 'true');
         console.log(`Saved updated calibration for aspect ratio ${currentActiveProfile.aspectRatio}`);
     } catch (e) {
         console.warn("Failed to persist calibration:", e);
@@ -3329,16 +3896,23 @@ function createDetailSlotElement(slotData, team, index) {
 }
 
 // Filter and render History items
-function filterHistory() {
-    const searchEl = document.getElementById('search-commander-attack');
+function filterHistory(type = 'attack') {
+    const searchEl = document.getElementById(`search-commander-${type}`);
     const searchVal = (searchEl?.value || '').toLowerCase().trim();
 
-    const baseList = currentHistory;
+    const baseList = currentHistory.filter(item => {
+        if (type === 'defense') {
+            return item.battle_type === 'defense';
+        } else {
+            return item.battle_type !== 'defense';
+        }
+    });
 
     const filtered = baseList.filter(item => {
         // Position Filter (D1 Eimi, D5/D6 Special order-independent, etc.)
-        if (activePositionFilter) {
-            const { team, index, studentName } = activePositionFilter;
+        const effectiveFilter = getEffectivePositionFilter(type);
+        if (effectiveFilter) {
+            const { team, index, studentName } = effectiveFilter;
             const namesArray = (team === 'attack') ? item.attack_names : item.defense_names;
             
             const matchSlot = (i) => {
@@ -3409,19 +3983,43 @@ function filterHistory() {
         return true;
     });
 
-    renderHistoryItems(filtered, 'attack');
+    renderHistoryItems(filtered, type);
 }
 
 // Render History View
 function updateHistoryView() {
-    filterHistory();
+    filterHistory('attack');
+    filterHistory('defense');
 }
+
+// Synchronized Search Input handler (Shared across Attack and Defense tabs, callable from any scope)
+function syncSearchInput(value, clearPositionFilter = false) {
+    if (clearPositionFilter) {
+        activePositionFilter = null;
+    }
+    const searchAtk = document.getElementById('search-commander-attack');
+    const btnClearAtk = document.getElementById('btn-clear-search-attack');
+    const searchDef = document.getElementById('search-commander-defense');
+    const btnClearDef = document.getElementById('btn-clear-search-defense');
+
+    if (searchAtk && searchAtk.value !== value) searchAtk.value = value;
+    if (searchDef && searchDef.value !== value) searchDef.value = value;
+    const hasValue = (value.trim() !== '');
+    if (btnClearAtk) btnClearAtk.style.display = hasValue ? 'block' : 'none';
+    if (btnClearDef) btnClearDef.style.display = hasValue ? 'block' : 'none';
+    updateHistoryView();
+}
+window.syncSearchInput = syncSearchInput;
 
 const HISTORY_PAGE_SIZE = 30;
 
 // Pagination state for incremental rendering
 const historyRenderState = {
     attack: {
+        allFiltered: [],
+        renderedCount: 0
+    },
+    defense: {
         allFiltered: [],
         renderedCount: 0
     }
@@ -3592,11 +4190,18 @@ function createHistoryRowElement(item, type = 'attack') {
     
     commEl.addEventListener('click', (e) => {
         e.stopPropagation();
-        const sInput = document.getElementById(`search-commander-${type}`);
-        const clearBtn = document.getElementById(`btn-clear-search-${type}`);
-        if (sInput) sInput.value = item.commander_name;
-        if (clearBtn) clearBtn.style.display = 'block';
-        filterHistory(type);
+        const opponentName = (item.commander_name || '').trim();
+        if (!opponentName || opponentName === 'Unknown') return;
+
+        const currentInput = document.getElementById(`search-commander-${type}`);
+        const currentSearchVal = (currentInput?.value || '').trim();
+        if (currentSearchVal === opponentName) {
+            // すでに同じ名前で絞り込まれている場合はトグル解除
+            syncSearchInput('', true);
+        } else {
+            // 対戦相手の名前で絞り込み
+            syncSearchInput(opponentName, false);
+        }
     });
     tdComm.appendChild(commEl);
     
@@ -3690,14 +4295,15 @@ function createHistoryRowElement(item, type = 'attack') {
 }
 
 function setupHistoryScrollListeners() {
-    const wrapper = document.querySelector('#tab-attack .history-list-wrapper');
-    if (!wrapper) return;
-    
-    wrapper.addEventListener('scroll', () => {
-        if (wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight < 200) {
-            renderNextHistoryBatch('attack', HISTORY_PAGE_SIZE);
-        }
-    }, { passive: true });
+    ['attack', 'defense'].forEach(type => {
+        const wrapper = document.querySelector(`#tab-${type} .history-list-wrapper`);
+        if (!wrapper) return;
+        wrapper.addEventListener('scroll', () => {
+            if (wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight < 200) {
+                renderNextHistoryBatch(type, HISTORY_PAGE_SIZE);
+            }
+        }, { passive: true });
+    });
 }
 
 function createStudentIconRowElement(studentId, index, team, item, type = 'attack') {
@@ -3736,14 +4342,15 @@ function createStudentIconRowElement(studentId, index, team, item, type = 'attac
     }
     
     // Add highlight class if this icon matches active position filter
-    if (activePositionFilter && activePositionFilter.team === team && activePositionFilter.studentName && activePositionFilter.studentName !== '生徒' && activePositionFilter.studentName !== '未登録') {
-        const isSameStudent = (studentName === activePositionFilter.studentName);
+    const effectiveFilter = getEffectivePositionFilter(type);
+    if (effectiveFilter && effectiveFilter.team === team && effectiveFilter.studentName && effectiveFilter.studentName !== '生徒' && effectiveFilter.studentName !== '未登録') {
+        const isSameStudent = (studentName === effectiveFilter.studentName);
         if (isSameStudent) {
-            if (activePositionFilter.index >= 4) {
+            if (effectiveFilter.index >= 4) {
                 if (index >= 4) {
                     el.classList.add('active-filter-icon');
                 }
-            } else if (activePositionFilter.index === index) {
+            } else if (effectiveFilter.index === index) {
                 el.classList.add('active-filter-icon');
             }
         }
@@ -3766,18 +4373,19 @@ function createStudentIconRowElement(studentId, index, team, item, type = 'attac
         e.stopPropagation();
         if (!studentName || studentName === '生徒' || studentName === '未登録') return;
         
-        const isCurrentlyActive = activePositionFilter && 
-            activePositionFilter.team === team && 
-            activePositionFilter.studentName === studentName && 
-            ((activePositionFilter.index >= 4 && index >= 4) || (activePositionFilter.index === index));
+        const currentEffective = getEffectivePositionFilter(type);
+        const isCurrentlyActive = currentEffective && 
+            currentEffective.team === team && 
+            currentEffective.studentName === studentName && 
+            ((currentEffective.index >= 4 && index >= 4) || (currentEffective.index === index));
             
         if (isCurrentlyActive) {
             // Toggle off
             activePositionFilter = null;
         } else {
-            activePositionFilter = { team, index, studentName };
+            activePositionFilter = { sourceTab: type, team, index, studentName };
         }
-        filterHistory();
+        updateHistoryView();
     });
     
     return el;
@@ -3789,11 +4397,22 @@ async function backfillHistorySnapshots() {
     const db = await openDB();
     const itemsToUpdate = [];
 
+    const isAllMigrated = localStorage.getItem('tactical_archive_migrated_all_to_attack_v1124');
+
     for (const item of currentHistory) {
         let itemUpdated = false;
-        if (!item.battle_type) {
-            item.battle_type = 'attack';
-            itemUpdated = true;
+        
+        // ユーザー指示: 既存の戦績データは全て攻撃編成とする
+        if (!isAllMigrated) {
+            if (item.battle_type !== 'attack') {
+                item.battle_type = 'attack';
+                itemUpdated = true;
+            }
+        } else {
+            if (!item.battle_type) {
+                item.battle_type = 'attack';
+                itemUpdated = true;
+            }
         }
 
         if (!item.attack_names || item.attack_names.length < 6) {
@@ -3863,6 +4482,7 @@ async function backfillHistorySnapshots() {
         currentHistory = await getHistory();
         updateHistoryView();
     }
+    localStorage.setItem('tactical_archive_migrated_all_to_attack_v1124', 'true');
 }
 
 // ==========================================
@@ -3963,6 +4583,10 @@ async function executeBackup() {
     }
 
     const filename = previewBackupFilename.innerText;
+
+    // 1. Ensure opponent avatars are migrated into opponent_directory (1 avatar per opponent)
+    await migrateOpponentAvatars();
+
     const db = await openDB();
     const getStoreData = (storeName) => {
         return new Promise((resolve, reject) => {
@@ -3985,28 +4609,79 @@ async function executeBackup() {
         }
     };
 
-    if (isHistory) {
-        backupData.battle_history = await getStoreData('battle_history');
-    }
     if (isRoster) {
         backupData.roster_students = await getStoreData('roster_students');
     }
+
+    if (isHistory) {
+        const rawHistory = await getStoreData('battle_history');
+        // Build set of registered students from roster to strip redundant base64 snapshot images
+        const roster = currentRoster || (await getStudents());
+        const rosterSet = new Set();
+        roster.forEach(s => {
+            if (s.name) rosterSet.add(s.name);
+            if (s.id) rosterSet.add(s.id);
+        });
+
+        // Optimize history records:
+        // - Strip duplicate opponent_avatar (stored once in opponent_directory)
+        // - Strip duplicate student icon base64 for registered students (huge 95% size reduction)
+        backupData.battle_history = rawHistory.map(item => {
+            const cleaned = { ...item };
+            cleaned.opponent_avatar = null;
+
+            if (Array.isArray(cleaned.attack_icons)) {
+                cleaned.attack_icons = cleaned.attack_icons.map((icon, idx) => {
+                    const sName = cleaned.attack_names && cleaned.attack_names[idx];
+                    const sId = cleaned.attack_team && cleaned.attack_team[idx];
+                    const isRegistered = (sName && rosterSet.has(sName)) || (sId && rosterSet.has(sId));
+                    return isRegistered ? "" : (icon || "");
+                });
+            }
+            if (Array.isArray(cleaned.defense_icons)) {
+                cleaned.defense_icons = cleaned.defense_icons.map((icon, idx) => {
+                    const sName = cleaned.defense_names && cleaned.defense_names[idx];
+                    const sId = cleaned.defense_team && cleaned.defense_team[idx];
+                    const isRegistered = (sName && rosterSet.has(sName)) || (sId && rosterSet.has(sId));
+                    return isRegistered ? "" : (icon || "");
+                });
+            }
+            return cleaned;
+        });
+    }
+
     if (isCalibration) {
         backupData.calibration_profiles = JSON.parse(localStorage.getItem('tactical_archive_calibration_profiles') || '{}');
     }
+
     if (isOpponents) {
         backupData.opponent_directory = await getStoreData('opponent_directory');
         backupData.opponent_renames = await getStoreData('opponent_renames');
     }
 
-    const jsonStr = JSON.stringify(backupData, null, 2);
+    // Compact JSON (no indent whitespace) to prevent OutOfMemory crashes
+    const jsonStr = JSON.stringify(backupData);
     const blob = new Blob([jsonStr], { type: 'application/json' });
 
-    if (window.AndroidApp && window.AndroidApp.saveFile) {
+    if (window.AndroidApp && typeof window.AndroidApp.saveTextFile === 'function') {
+        const res = window.AndroidApp.saveTextFile(jsonStr, filename);
+        if (res === "SUCCESS") {
+            backupModal.classList.remove('active');
+            alert(`バックアップファイル「${filename}」を端末の【ダウンロード (Download)】フォルダに保存しました！`);
+        } else {
+            alert(`バックアップ保存に失敗しました: ${res}`);
+        }
+    } else if (window.AndroidApp && typeof window.AndroidApp.saveFile === 'function') {
         const reader = new FileReader();
         reader.onloadend = function() {
             const base64Data = reader.result.split(',')[1];
-            window.AndroidApp.saveFile(base64Data, filename);
+            const res = window.AndroidApp.saveFile(base64Data, filename);
+            if (res === "SUCCESS" || res === undefined || res === true) {
+                backupModal.classList.remove('active');
+                alert(`バックアップファイル「${filename}」を端末の【ダウンロード (Download)】フォルダに保存しました！`);
+            } else {
+                alert(`バックアップ保存に失敗しました: ${res}`);
+            }
         };
         reader.readAsDataURL(blob);
     } else {
@@ -4018,10 +4693,9 @@ async function executeBackup() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        backupModal.classList.remove('active');
+        alert(`バックアップファイル「${filename}」をダウンロードしました。`);
     }
-
-    backupModal.classList.remove('active');
-    alert(`バックアップファイル「${filename}」を端末の【ダウンロード (Download)】フォルダに保存しました！`);
 }
 
 // Restore Modal Logic
@@ -4174,9 +4848,6 @@ async function executeRestore() {
                 localStorage.setItem('tactical_archive_calibration_profiles', JSON.stringify(cur));
             }
         }
-
-        // Clean up defense records if any existed in restored data
-        await cleanupDefenseRecords();
 
         // Refresh all in-memory caches
         currentRoster = await getStudents();
