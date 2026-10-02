@@ -4,7 +4,7 @@
 
 対戦後のリザルト画面（スクショ）をまとめて放り込むだけで、生徒アイコンや対戦相手名を自動認識して端末内に記録します。
 
-[![Version](https://img.shields.io/badge/Version-v1.2.0-blue.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.2.5-blue.svg)](#)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -62,7 +62,7 @@ Android端末のブラウザから下記リンクをタップして APK をダ�
   </a>
 </p>
 
-- **直接ダウンロード**: [**`TacticalArchive.apk` (v1.2.0) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+- **直接ダウンロード**: [**`TacticalArchive.apk` (v1.2.5) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 - **対応OS**: Android 7.0 以上
 - **通信について**: 
   - アプリサイズを約13MBと軽量に保つため、**初回起動時のみ**文字認識用の日本語データ（約10〜15MB）を自動ダウンロードします。

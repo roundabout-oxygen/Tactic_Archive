@@ -33,7 +33,7 @@
                     <div class="logo" style="gap: 7px; display: flex; align-items: center;">
                         <img src="icon.png" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(0, 163, 255, 0.4);">
                         <span style="font-size: 13px; font-weight: 800;">Tactical Archive</span>
-                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.2.0</span>
+                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.2.5</span>
                     </div>
                     <nav class="nav-tabs" style="gap: 8px; margin-left: auto;">
                         <button class="tab-btn active" data-tab="attack" style="padding: 6px 12px; font-size: 12px;">
@@ -64,12 +64,6 @@
                             <table class="history-table" style="width: 100%; table-layout: fixed;">
                                 <tbody id="attack-history-items">
                                    <!-- Dynamic content loaded here -->
-                                   <tr>
-                                       <td colspan="6" class="empty-state">
-                                           <i class="fa-solid fa-box-open"></i>
-                                           <p>攻撃の対戦履歴が見つかりません。スクショをアップロードしてください。</p>
-                                       </td>
-                                   </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -78,7 +72,7 @@
                         <div class="history-sidebar" style="width: 100px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: flex-start; box-sizing: border-box;">
                             <div class="search-box" style="width: 100%; margin-bottom: 0; flex-grow: 0 !important; height: 32px; position: relative;">
                                 <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; margin: 0; color: var(--text-muted);"></i>
-                                <input type="text" id="search-commander-attack" placeholder="検索..." style="height: 32px; padding: 0 8px 0 22px; font-size: 11px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none; margin: 0;">
+                                <input type="text" id="search-commander-attack" enterkeyhint="search" placeholder="検索..." style="height: 32px; padding: 0 8px 0 22px; font-size: 11px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none; margin: 0;">
                                 <button id="btn-clear-search-attack" class="clear-search-btn" style="display:none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">&times;</button>
                             </div>
                             
@@ -109,12 +103,6 @@
                             <table class="history-table" style="width: 100%; table-layout: fixed;">
                                 <tbody id="defense-history-items">
                                    <!-- Dynamic content loaded here -->
-                                   <tr>
-                                       <td colspan="6" class="empty-state">
-                                           <i class="fa-solid fa-box-open"></i>
-                                           <p>防衛の対戦履歴が見つかりません。スクショをアップロードしてください。</p>
-                                       </td>
-                                   </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -123,7 +111,7 @@
                         <div class="history-sidebar" style="width: 100px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: flex-start; box-sizing: border-box;">
                             <div class="search-box" style="width: 100%; margin-bottom: 0; flex-grow: 0 !important; height: 32px; position: relative;">
                                 <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; margin: 0; color: var(--text-muted);"></i>
-                                <input type="text" id="search-commander-defense" placeholder="検索..." style="height: 32px; padding: 0 8px 0 22px; font-size: 11px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none; margin: 0;">
+                                <input type="text" id="search-commander-defense" enterkeyhint="search" placeholder="検索..." style="height: 32px; padding: 0 8px 0 22px; font-size: 11px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none; margin: 0;">
                                 <button id="btn-clear-search-defense" class="clear-search-btn" style="display:none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">&times;</button>
                             </div>
                             
@@ -202,7 +190,7 @@
                                 <div class="settings-title-group">
                                     <i class="fa-solid fa-sliders" style="color: var(--color-blue); font-size: 15px;"></i>
                                     <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">システム設定 ＆ 辞書管理</h3>
-                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.2.0</span>
+                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.2.5</span>
                                 </div>
                                 <div class="roster-summary" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary);">
                                     <i class="fa-solid fa-users" style="color: var(--color-blue);"></i>
@@ -360,7 +348,7 @@
                                 <div class="slot-icon-wrapper mini" id="review-opponent-avatar-wrapper">
                                     <div class="slot-placeholder mini">?</div>
                                 </div>
-                                <input type="text" id="review-opponent-name" placeholder="対戦相手のプレイヤー名を入力...">
+                                <input type="text" id="review-opponent-name" enterkeyhint="done" placeholder="対戦相手のプレイヤー名を入力...">
                             </div>
                             <!-- OCR Raw Source Crop Image for Visual Verification -->
                             <div class="opp-ocr-preview-box" id="review-opp-ocr-crop-wrapper" style="display: none; align-items: center; justify-content: center; height: 36px; max-width: 220px; flex-shrink: 0; background: #ffffff; border: 1.5px solid var(--border-color); border-radius: 8px; padding: 2px 8px; box-sizing: border-box; overflow: hidden;" title="スクリーンショットの対戦相手名（OCR元）">
@@ -456,7 +444,7 @@
                 <div class="selector-controls" style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
                     <div class="search-box" style="flex-grow: 1; position: relative; height: 34px;">
                         <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; margin: 0; color: var(--text-muted);"></i>
-                        <input type="text" id="search-selector" placeholder="生徒名で検索..." style="height: 34px; padding: 0 10px 0 30px; font-size: 12px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                        <input type="text" id="search-selector" enterkeyhint="search" placeholder="生徒名で検索..." style="height: 34px; padding: 0 10px 0 30px; font-size: 12px; border-radius: 6px; box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
                     </div>
                     <button class="btn-primary" id="btn-selector-add-student" style="flex-shrink: 0; padding: 0 12px; height: 34px; display: flex; align-items: center; gap: 6px; font-size: 12px; border-radius: 6px; box-sizing: border-box; margin: 0;">
                         <i class="fa-solid fa-plus"></i> 新規生徒追加
@@ -490,7 +478,7 @@
                         </div>
                     </div>
                     <div style="flex: 1; min-width: 0;">
-                        <input type="text" id="add-student-name" class="form-input" placeholder="生徒名 (例: アツコ)" style="height: 34px; font-size: 12px; font-weight: 600; padding: 0 8px; border-radius: 6px; width: 100%; box-sizing: border-box; margin: 0;">
+                        <input type="text" id="add-student-name" enterkeyhint="done" class="form-input" placeholder="生徒名 (例: アツコ)" style="height: 34px; font-size: 12px; font-weight: 600; padding: 0 8px; border-radius: 6px; width: 100%; box-sizing: border-box; margin: 0;">
                     </div>
                     <span id="autocomplete-count-hint" style="font-size: 10px; color: var(--color-blue); font-weight: bold; flex-shrink: 0;"></span>
                 </div>
@@ -555,7 +543,7 @@
                                 <div class="slot-icon-wrapper mini" id="detail-opponent-avatar-wrapper">
                                     <div class="slot-placeholder mini">?</div>
                                 </div>
-                                <input type="text" id="detail-opponent-name" placeholder="対戦相手のプレイヤー名を入力...">
+                                <input type="text" id="detail-opponent-name" enterkeyhint="done" placeholder="対戦相手のプレイヤー名を入力...">
                             </div>
                         </div>
 
@@ -641,8 +629,8 @@
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 8px;">
                 <!-- Add new translation rule form -->
                 <div style="display: flex; gap: 8px; align-items: center; background: rgba(0, 163, 255, 0.05); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(0, 163, 255, 0.15); box-sizing: border-box; width: 100%;">
-                    <input type="text" id="add-rename-ocr" placeholder="OCR誤読 (例: 誤読文字)" style="flex: 1; min-width: 0; height: 30px; font-size: 11px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); outline: none; box-sizing: border-box;">
-                    <input type="text" id="add-rename-corrected" placeholder="変換後 (例: 正しい名前)" style="flex: 1; min-width: 0; height: 30px; font-size: 11px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); outline: none; box-sizing: border-box;">
+                    <input type="text" id="add-rename-ocr" enterkeyhint="next" placeholder="OCR誤読 (例: 誤読文字)" style="flex: 1; min-width: 0; height: 30px; font-size: 11px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); outline: none; box-sizing: border-box;">
+                    <input type="text" id="add-rename-corrected" enterkeyhint="done" placeholder="変換後 (例: 正しい名前)" style="flex: 1; min-width: 0; height: 30px; font-size: 11px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); outline: none; box-sizing: border-box;">
                     <button class="btn-primary" id="btn-add-rename-rule" style="flex-shrink: 0; white-space: nowrap; height: 30px; font-size: 11px; padding: 0 12px; border-radius: 5px; border: none; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 700; color: white; cursor: pointer;"><i class="fa-solid fa-plus"></i> 追加</button>
                 </div>
                 

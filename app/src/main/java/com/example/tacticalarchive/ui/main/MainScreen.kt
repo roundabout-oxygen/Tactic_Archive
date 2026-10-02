@@ -29,11 +29,27 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import com.example.tacticalarchive.data.DefaultDataRepository
 
+import android.app.Activity
+import android.view.inputmethod.InputMethodManager
 import android.media.MediaScannerConnection
 import java.io.File
 import java.io.FileOutputStream
 
 class WebAppInterface(private val context: Context) {
+
+  @JavascriptInterface
+  fun hideKeyboard() {
+    Handler(Looper.getMainLooper()).post {
+      try {
+        val activity = context as? Activity ?: return@post
+        val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager ?: return@post
+        val currentFocusView = activity.currentFocus ?: activity.window.decorView
+        imm.hideSoftInputFromWindow(currentFocusView.windowToken, 0)
+      } catch (e: Exception) {
+        e.printStackTrace()
+      }
+    }
+  }
 
   @JavascriptInterface
   fun saveTextFile(textData: String, filename: String): String {

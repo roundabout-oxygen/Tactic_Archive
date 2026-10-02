@@ -267,6 +267,94 @@ html, body {
     font-size: 12px;
 }
 
+/* ==========================================================================
+   GLOBAL INTERACTIVE BUTTON & TAP FEEDBACK ANIMATIONS
+   ========================================================================== */
+/* Base transition and tap highlight for all interactive elements */
+button,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-detail-action,
+.tab-btn,
+.modal-close-btn,
+.clear-search-btn,
+.nudge-btn,
+.wizard-nav-btn,
+.utility-label-btn,
+.autocomplete-chip,
+.student-slot,
+.slot-icon-wrapper,
+.custom-tag-box,
+.settings-tile,
+.tag-opt-btn,
+.icon-upload-area {
+    transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.4, 1),
+                filter 0.08s ease,
+                box-shadow 0.08s ease,
+                background-color 0.08s ease,
+                border-color 0.08s ease;
+    -webkit-tap-highlight-color: rgba(0, 163, 255, 0.25);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* General button tap animation: subtle shrink & press down */
+button:active,
+.btn-secondary:active,
+.modal-close-btn:active,
+.clear-search-btn:active,
+.nudge-btn:active,
+.wizard-nav-btn:active {
+    transform: scale(0.92) translateY(1px) !important;
+    filter: brightness(0.9) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Primary buttons: glowing press effect */
+.btn-primary:active {
+    transform: scale(0.93) translateY(1px) !important;
+    filter: brightness(1.2) contrast(1.05) !important;
+    box-shadow: 0 0 14px rgba(0, 163, 255, 0.6) !important;
+}
+
+/* Detail modal action buttons (delete / cancel / save) */
+.btn-detail-action:active {
+    transform: scale(0.93) translateY(1px) !important;
+    filter: brightness(1.15) !important;
+}
+
+/* Tab buttons press effect */
+.tab-btn:active {
+    transform: scale(0.92) !important;
+    color: var(--color-blue) !important;
+}
+
+/* Student slots & icon wrappers: border glow & punch-in effect */
+.student-slot:active,
+.slot-icon-wrapper:active,
+.icon-upload-area:active {
+    transform: scale(0.90) !important;
+    box-shadow: 0 0 12px var(--color-blue) !important;
+    border-color: var(--color-blue) !important;
+}
+
+/* Autocomplete chips & custom tag boxes */
+.autocomplete-chip:active,
+.custom-tag-box:active,
+.tag-opt-btn:active,
+.utility-label-btn:active {
+    transform: scale(0.90) !important;
+    filter: brightness(1.2) !important;
+    box-shadow: 0 0 8px rgba(0, 163, 255, 0.4) !important;
+}
+
+/* Settings tiles press effect */
+.settings-tile:active {
+    transform: scale(0.97) translateY(1px) !important;
+    background: rgba(0, 163, 255, 0.08) !important;
+}
+
 /* --- TAB 1: HISTORY --- */
 .history-controls {
     display: flex;
