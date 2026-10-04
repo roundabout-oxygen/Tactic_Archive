@@ -1,6 +1,6 @@
 
 // Tactical Archive Web Application Version
-const APP_VERSION = 'v1.0.1';
+const APP_VERSION = 'v1.0.2';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -215,11 +215,79 @@ const BUILTIN_DEFENSE_SHIELD_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUh
 // This same base64 PNG is referenced in BUILTIN_CALIBRATION_PROFILES and openCropInspector()
 const BUILTIN_BATTLE_TYPE_TEMPLATE = "data:image/png;base64,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";
 
-// Fast ZNCC comparison helper: Matches cropped image against the template saved during calibration
+// Pre-cached template grayscales for ultra-fast and accurate battle type matching
+let _cachedAttackTemplateNorm = null;
+let _cachedDefenseTemplateNorm = null;
+
+async function getTemplateGrayscaleNorm(base64) {
+    if (!base64) return null;
+    return new Promise(resolve => {
+        const tImg = new Image();
+        tImg.src = base64;
+        const onDone = () => {
+            if (tImg.naturalWidth <= 0) return resolve(null);
+            const c = document.createElement('canvas');
+            c.width = 48;
+            c.height = 48;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(tImg, 0, 0, 48, 48);
+            const data = ctx.getImageData(0, 0, 48, 48).data;
+            let sum = 0;
+            const gray = new Float32Array(48 * 48);
+            for (let i = 0; i < 48 * 48; i++) {
+                const val = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+                gray[i] = val;
+                sum += val;
+            }
+            const mean = sum / (48 * 48);
+            let variance = 0;
+            for (let i = 0; i < 48 * 48; i++) {
+                gray[i] -= mean;
+                variance += gray[i] * gray[i];
+            }
+            const std = Math.sqrt(variance);
+            resolve({ norm: gray, std: std });
+        };
+        if (tImg.complete) {
+            onDone();
+        } else {
+            tImg.onload = onDone;
+            tImg.onerror = () => resolve(null);
+        }
+    });
+}
+
+function calculateZNCCMultiShift(testNorm, testStd, templNorm, templStd) {
+    if (!templNorm || templStd < 1e-4 || testStd < 1e-4) return -1.0;
+    let maxCorr = -1.0;
+    for (let dy = -4; dy <= 4; dy += 2) {
+        for (let dx = -4; dx <= 4; dx += 2) {
+            let dot = 0;
+            let count = 0;
+            for (let y = 0; y < 48; y++) {
+                const ty = y + dy;
+                if (ty < 0 || ty >= 48) continue;
+                for (let x = 0; x < 48; x++) {
+                    const tx = x + dx;
+                    if (tx < 0 || tx >= 48) continue;
+                    dot += testNorm[y * 48 + x] * templNorm[ty * 48 + tx];
+                    count++;
+                }
+            }
+            if (count > 0) {
+                const corr = dot / (testStd * templStd + 1e-5);
+                if (corr > maxCorr) maxCorr = corr;
+            }
+        }
+    }
+    return maxCorr;
+}
+
+// Fast ZNCC comparison helper: Matches cropped image against both Attack (Sword) and Defense (Shield) templates
 async function detectBattleTypeFromImage(procCanvas, profile) {
     try {
         const bt = (profile && profile.battleTypeIcon) ? profile.battleTypeIcon : { sx: 58, sy: 172, sw: 110, sh: 110 };
-        // procCanvas is normalized 2400 x 1040 (identically aligned with calibration canvas)
+        // procCanvas is normalized 2400 x 1040
         const testCanvas = cropImage(procCanvas, bt.sx, bt.sy, bt.sw, bt.sh, 48, 48);
         const testCtx = testCanvas.getContext('2d');
         const testData = testCtx.getImageData(0, 0, 48, 48).data;
@@ -241,105 +309,54 @@ async function detectBattleTypeFromImage(procCanvas, profile) {
         const testStd = Math.sqrt(testVar);
         if (testStd < 1e-4) return 'attack';
 
-        // Retrieve or generate template grayscale array from user's calibration profile
-        let templGrayscale = profile && profile.battleTypeGrayscale ? new Float32Array(profile.battleTypeGrayscale) : null;
-        let templSource = profile ? profile.battleTypeTemplate : null;
-        if (!templGrayscale && templSource) {
-            const tImg = new Image();
-            tImg.src = templSource;
-            if (!tImg.complete) {
-                await new Promise(resolve => {
-                    tImg.onload = resolve;
-                    tImg.onerror = resolve;
-                });
-            }
-            if (tImg.naturalWidth > 0) {
-                const templCanvas = document.createElement('canvas');
-                templCanvas.width = 48;
-                templCanvas.height = 48;
-                const templCtx = templCanvas.getContext('2d');
-                templCtx.drawImage(tImg, 0, 0, 48, 48);
-                const templData = templCtx.getImageData(0, 0, 48, 48).data;
-
-                templGrayscale = new Float32Array(48 * 48);
-                for (let i = 0; i < 48 * 48; i++) {
-                    templGrayscale[i] = 0.299 * templData[i * 4] + 0.587 * templData[i * 4 + 1] + 0.114 * templData[i * 4 + 2];
-                }
-                if (profile) profile.battleTypeGrayscale = Array.from(templGrayscale);
-            }
+        // Load built-in attack & defense template norms
+        if (!_cachedAttackTemplateNorm) {
+            _cachedAttackTemplateNorm = await getTemplateGrayscaleNorm(BUILTIN_BATTLE_TYPE_TEMPLATE);
+        }
+        if (!_cachedDefenseTemplateNorm) {
+            _cachedDefenseTemplateNorm = await getTemplateGrayscaleNorm(BUILTIN_DEFENSE_SHIELD_BASE64);
         }
 
-        // If no template is found in active profile, fallback to builtin default template
-        if (!templGrayscale) {
-            const defaultTemplate = (BUILTIN_CALIBRATION_PROFILES["2.166"] && BUILTIN_CALIBRATION_PROFILES["2.166"].battleTypeTemplate);
-            if (defaultTemplate) {
-                const tImg = new Image();
-                tImg.src = defaultTemplate;
-                if (!tImg.complete) {
-                    await new Promise(resolve => {
-                        tImg.onload = resolve;
-                        tImg.onerror = resolve;
-                    });
-                }
-                if (tImg.naturalWidth > 0) {
-                    const templCanvas = document.createElement('canvas');
-                    templCanvas.width = 48;
-                    templCanvas.height = 48;
-                    const templCtx = templCanvas.getContext('2d');
-                    templCtx.drawImage(tImg, 0, 0, 48, 48);
-                    const templData = templCtx.getImageData(0, 0, 48, 48).data;
-
-                    templGrayscale = new Float32Array(48 * 48);
-                    for (let i = 0; i < 48 * 48; i++) {
-                        templGrayscale[i] = 0.299 * templData[i * 4] + 0.587 * templData[i * 4 + 1] + 0.114 * templData[i * 4 + 2];
-                    }
-                }
+        // Check user calibration profile custom template if available
+        let userTemplNorm = null;
+        let userTemplStd = 0;
+        if (profile && profile.battleTypeGrayscale) {
+            userTemplNorm = new Float32Array(profile.battleTypeGrayscale);
+            let uSum = 0;
+            for (let i = 0; i < 48 * 48; i++) uSum += userTemplNorm[i];
+            const uMean = uSum / (48 * 48);
+            let uVar = 0;
+            for (let i = 0; i < 48 * 48; i++) {
+                userTemplNorm[i] -= uMean;
+                uVar += userTemplNorm[i] * userTemplNorm[i];
+            }
+            userTemplStd = Math.sqrt(uVar);
+        } else if (profile && profile.battleTypeTemplate) {
+            const parsed = await getTemplateGrayscaleNorm(profile.battleTypeTemplate);
+            if (parsed) {
+                userTemplNorm = parsed.norm;
+                userTemplStd = parsed.std;
             }
         }
 
-        if (!templGrayscale) return 'attack';
+        const corrAttack = calculateZNCCMultiShift(testNorm, testStd, userTemplNorm || (_cachedAttackTemplateNorm ? _cachedAttackTemplateNorm.norm : null), userTemplStd || (_cachedAttackTemplateNorm ? _cachedAttackTemplateNorm.std : 0));
+        const corrDefense = calculateZNCCMultiShift(testNorm, testStd, _cachedDefenseTemplateNorm ? _cachedDefenseTemplateNorm.norm : null, _cachedDefenseTemplateNorm ? _cachedDefenseTemplateNorm.std : 0);
 
-        let templSum = 0;
-        for (let i = 0; i < 48 * 48; i++) {
-            templSum += templGrayscale[i];
-        }
-        const templMean = templSum / (48 * 48);
-        const normTempl = new Float32Array(48 * 48);
-        let templVar = 0;
-        for (let i = 0; i < 48 * 48; i++) {
-            normTempl[i] = templGrayscale[i] - templMean;
-            templVar += normTempl[i] * normTempl[i];
-        }
-        const templStd = Math.sqrt(templVar);
-        if (templStd < 1e-4) return 'attack';
+        console.log(`[BattleType] Correlation -> Attack: ${corrAttack.toFixed(3)}, Defense: ${corrDefense.toFixed(3)}`);
 
-        // Multi-shift ZNCC to handle minor pixel shifts (±4px)
-        let maxCorrelation = -1.0;
-        for (let dy = -4; dy <= 4; dy += 2) {
-            for (let dx = -4; dx <= 4; dx += 2) {
-                let dot = 0;
-                let count = 0;
-                for (let y = 0; y < 48; y++) {
-                    const ty = y + dy;
-                    if (ty < 0 || ty >= 48) continue;
-                    for (let x = 0; x < 48; x++) {
-                        const tx = x + dx;
-                        if (tx < 0 || tx >= 48) continue;
-                        dot += testNorm[y * 48 + x] * normTempl[ty * 48 + tx];
-                        count++;
-                    }
-                }
-                if (count > 0) {
-                    const corr = dot / (testStd * templStd + 1e-5);
-                    if (corr > maxCorrelation) maxCorrelation = corr;
-                }
-            }
+        // If shield match is higher or exceeds reasonable defense threshold
+        let decision = 'attack';
+        if (corrDefense > corrAttack && corrDefense >= 0.40) {
+            decision = 'defense';
+        } else if (corrAttack >= 0.60) {
+            decision = 'attack';
+        } else if (corrDefense >= 0.50) {
+            decision = 'defense';
+        } else {
+            // Relative winner
+            decision = (corrDefense > corrAttack + 0.05) ? 'defense' : 'attack';
         }
 
-        console.log(`[BattleType] Correlation with User-Calibrated Template: ${maxCorrelation.toFixed(3)}`);
-        // Threshold: 0.65 (Same-device Attack match is typically > 0.85, Defense vs Attack is < 0.50)
-        // 一致する場合は「攻撃」、一致しない場合は「防衛」
-        const decision = (maxCorrelation >= 0.65) ? 'attack' : 'defense';
         console.log(`[BattleType] Recognition Decision: ${decision.toUpperCase()}`);
         return decision;
     } catch (e) {
@@ -1197,6 +1214,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup History Infinite Scroll Listeners (30 items batch)
     setupHistoryScrollListeners();
 
+    // Setup Density / Row Height Slider
+    initDensitySlider();
+
     // Prevent viewport displacement / scroll shifting on virtual keyboard events
     window.addEventListener('scroll', () => {
         if (window.scrollX !== 0 || window.scrollY !== 0) {
@@ -1977,6 +1997,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    const detailTypeAtkBtn = document.getElementById('detail-type-attack-btn');
+    const detailTypeDefBtn = document.getElementById('detail-type-defense-btn');
+    if (detailTypeAtkBtn && detailTypeDefBtn) {
+        detailTypeAtkBtn.addEventListener('click', () => {
+            if (detailEditedData) detailEditedData.battleType = 'attack';
+            detailTypeAtkBtn.classList.add('active');
+            detailTypeDefBtn.classList.remove('active');
+        });
+        detailTypeDefBtn.addEventListener('click', () => {
+            if (detailEditedData) detailEditedData.battleType = 'defense';
+            detailTypeDefBtn.classList.add('active');
+            detailTypeAtkBtn.classList.remove('active');
+        });
+    }
+
     btnDetailSave.addEventListener('click', async () => {
         if (!editingRecord || !detailEditedData) return;
 
@@ -1984,7 +2019,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateInput = document.getElementById('detail-date-input').value;
         const notes = document.getElementById('detail-notes').value.trim();
         const result = detailWinBtn.classList.contains('active') ? 'WIN' : 'LOSE';
-        const battleType = editingRecord.battle_type || 'attack';
+        const battleType = (detailTypeDefBtn && detailTypeDefBtn.classList.contains('active')) ? 'defense' : 'attack';
 
         let utility = '高';
         const checkedUtility = document.querySelector('input[name="detail-utility"]:checked');
@@ -4026,7 +4061,20 @@ function openBattleDetailModal(item) {
         winBtn.classList.remove('active');
     }
 
-    detailEditedData.battleType = 'attack';
+    // Populate Battle Type toggle (Attack / Defense)
+    const detailTypeAtkBtn = document.getElementById('detail-type-attack-btn');
+    const detailTypeDefBtn = document.getElementById('detail-type-defense-btn');
+    const currentBattleType = item.battle_type || 'attack';
+    detailEditedData.battleType = currentBattleType;
+    if (detailTypeAtkBtn && detailTypeDefBtn) {
+        if (currentBattleType === 'defense') {
+            detailTypeDefBtn.classList.add('active');
+            detailTypeAtkBtn.classList.remove('active');
+        } else {
+            detailTypeAtkBtn.classList.add('active');
+            detailTypeDefBtn.classList.remove('active');
+        }
+    }
 
     // Populate opponent name & Date
     document.getElementById('detail-opponent-name').value = item.commander_name || '';
@@ -4645,6 +4693,41 @@ function setupHistoryScrollListeners() {
     });
 }
 
+// Density / Row Height Slider setup
+function initDensitySlider() {
+    const slider = document.getElementById('table-density-slider');
+    const label = document.getElementById('density-slider-label');
+    const densityLabels = {
+        '1': 'コンパクト',
+        '2': '標準',
+        '3': 'ゆったり',
+        '4': '特大'
+    };
+
+    function applyDensity(level) {
+        const tables = document.querySelectorAll('.history-table');
+        tables.forEach(tbl => {
+            tbl.classList.remove('density-1', 'density-2', 'density-3', 'density-4');
+            tbl.classList.add(`density-${level}`);
+        });
+        if (label) {
+            label.innerText = densityLabels[String(level)] || '標準';
+        }
+        localStorage.setItem('tactical_archive_density_level', String(level));
+    }
+
+    if (slider) {
+        const isDesktop = window.innerWidth >= 900;
+        const saved = localStorage.getItem('tactical_archive_density_level') || (isDesktop ? '3' : '2');
+        slider.value = saved;
+        applyDensity(saved);
+
+        slider.addEventListener('input', (e) => {
+            applyDensity(e.target.value);
+        });
+    }
+}
+
 function createStudentIconRowElement(studentId, index, team, item, type = 'attack') {
     const savedName = (team === 'attack') ? (item && item.attack_names && item.attack_names[index]) : (item && item.defense_names && item.defense_names[index]);
     
@@ -4736,22 +4819,13 @@ async function backfillHistorySnapshots() {
     const db = await openDB();
     const itemsToUpdate = [];
 
-    const isAllMigrated = localStorage.getItem('tactical_archive_migrated_all_to_attack_v1124');
-
     for (const item of currentHistory) {
         let itemUpdated = false;
         
-        // ユーザー指示: 既存の戦績データは全て攻撃編成とする
-        if (!isAllMigrated) {
-            if (item.battle_type !== 'attack') {
-                item.battle_type = 'attack';
-                itemUpdated = true;
-            }
-        } else {
-            if (!item.battle_type) {
-                item.battle_type = 'attack';
-                itemUpdated = true;
-            }
+        // 未設定の旧データのみデフォルトで攻撃編成とする（防衛編成を上書きしない）
+        if (!item.battle_type) {
+            item.battle_type = 'attack';
+            itemUpdated = true;
         }
 
         if (!item.attack_names || item.attack_names.length < 6) {

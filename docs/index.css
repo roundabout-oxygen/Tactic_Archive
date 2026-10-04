@@ -548,20 +548,109 @@ button:active,
 
 /* History table column sizing and alignment */
 .history-table td:nth-child(1) {
-    width: 42px;
+    width: 38px;
     text-align: center;
     padding: 4px 2px !important;
 }
 .history-table td:nth-child(2) {
-    width: 42px;
+    width: 38px;
     text-align: center;
     padding: 4px 2px !important;
+}
+.history-table td:nth-child(3) {
+    width: 56px;
+    text-align: center;
+    padding: 4px 2px !important;
+}
+.history-table td:nth-child(4) {
+    width: 110px;
+    padding: 4px 6px !important;
 }
 .history-table td:nth-child(5) {
-    width: 26px;
+    /* 攻撃チーム (6アイコン) */
+    width: auto;
+    min-width: 170px;
+    padding: 4px 6px !important;
+}
+.history-table td:nth-child(6) {
+    /* VS区切り (中央固定) */
+    width: 34px;
     text-align: center;
     padding: 4px 2px !important;
 }
+.history-table td:nth-child(7) {
+    /* 防衛チーム (6アイコン) */
+    width: auto;
+    min-width: 170px;
+    padding: 4px 6px !important;
+}
+.history-table td:nth-child(8) {
+    width: 50px;
+    text-align: center;
+    padding: 4px 2px !important;
+}
+
+/* ========================================================
+   DENSITY / ROW HEIGHT MODES (Adjustable via header slider)
+   ======================================================== */
+.density-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 163, 255, 0.08);
+    border: 1px solid rgba(0, 163, 255, 0.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    margin-left: 12px;
+}
+.density-slider-container i {
+    font-size: 11px;
+    color: var(--color-blue);
+}
+.density-slider-container input[type="range"] {
+    width: 80px;
+    height: 4px;
+    accent-color: var(--color-blue);
+    cursor: pointer;
+}
+.density-slider-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    min-width: 44px;
+}
+
+/* Level 1: Compact (コンパクト) */
+.history-table.density-1 tr { height: 40px !important; }
+.history-table.density-1 td { padding: 2px 4px !important; font-size: 11px !important; }
+.history-table.density-1 .mini-icon { width: 24px !important; height: 24px !important; border-radius: 4px !important; }
+.history-table.density-1 .team-icons-row { gap: 2px !important; }
+.history-table.density-1 .result-badge { width: 22px !important; height: 22px !important; font-size: 11px !important; }
+.history-table.density-1 .vs-text { font-size: 10px !important; }
+
+/* Level 2: Standard (標準) */
+.history-table.density-2 tr { height: 56px !important; }
+.history-table.density-2 td { padding: 4px 8px !important; font-size: 12px !important; }
+.history-table.density-2 .mini-icon { width: 32px !important; height: 32px !important; border-radius: 6px !important; }
+.history-table.density-2 .team-icons-row { gap: 4px !important; }
+.history-table.density-2 .result-badge { width: 26px !important; height: 26px !important; font-size: 12px !important; }
+.history-table.density-2 .vs-text { font-size: 11px !important; }
+
+/* Level 3: Spacious (ゆったり / PC推奨) */
+.history-table.density-3 tr { height: 72px !important; }
+.history-table.density-3 td { padding: 6px 12px !important; font-size: 13px !important; }
+.history-table.density-3 .mini-icon { width: 42px !important; height: 42px !important; border-radius: 8px !important; }
+.history-table.density-3 .team-icons-row { gap: 6px !important; }
+.history-table.density-3 .result-badge { width: 32px !important; height: 32px !important; font-size: 14px !important; }
+.history-table.density-3 .vs-text { font-size: 13px !important; }
+
+/* Level 4: Large (特大 / ワイド画面向け) */
+.history-table.density-4 tr { height: 92px !important; }
+.history-table.density-4 td { padding: 8px 16px !important; font-size: 14px !important; }
+.history-table.density-4 .mini-icon { width: 52px !important; height: 52px !important; border-radius: 10px !important; }
+.history-table.density-4 .team-icons-row { gap: 8px !important; }
+.history-table.density-4 .result-badge { width: 38px !important; height: 38px !important; font-size: 16px !important; }
+.history-table.density-4 .vs-text { font-size: 15px !important; }
 
 /* History Result badges */
 .result-badge {
