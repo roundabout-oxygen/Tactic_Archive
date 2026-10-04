@@ -4,11 +4,20 @@
 
 対戦後のリザルト画面（スクショ）をまとめて放り込むだけで、生徒アイコンや対戦相手名を自動認識して端末内に記録します。
 
-[![Version](https://img.shields.io/badge/Version-v1.2.5-blue.svg)](#)
+[![Android Version](https://img.shields.io/badge/Android-v1.2.5-blue.svg)](#)
+[![Web Version](https://img.shields.io/badge/Web-v1.0.1-orange.svg)](#)
+[![Web App](https://img.shields.io/badge/🌐_Web版-ブラウザで使ってみる-ff007f?style=for-the-badge&logo=googlechrome&logoColor=white)](https://roundabout-oxygen.github.io/Tactic_Archive/)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-[![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](#)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%2F%20Web-green.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![note 解説記事](https://img.shields.io/badge/note-使い方・初期設定の解説-2cb69a?logo=note&logoColor=white)](https://note.com/glad_lilac3872/n/nb495e629f395)
+
+> 🌐 **ブラウザですぐに使えるWebアプリ版を公開しました！**  
+> インストール不要で、PCやiPhone、iPad、Androidの各ブラウザからご利用いただけます。  
+> 👉 [**Tactical Archive Web版を開く**](https://roundabout-oxygen.github.io/Tactic_Archive/)
+> 
+> ⚠️ **※※※アップロードするスクショのサイズが変わると読込に失敗するので必ず統一させてください※※※**  
+> （※画像認識のトリミング設定が画像サイズ・解像度に紐づくため、取り込むスクリーンショットのサイズは必ず同一に統一してください）
 
 > 📖 **詳しい使い方や初期設定手順は note でも解説しています**  
 > 導入の流れや日々のルーティン、初期トリミング設定の手順などを分かりやすくまとめています。ぜひ合わせてご覧ください。  
@@ -49,6 +58,10 @@
 
 ※一度設定すれば端末内に保存されるため、2回目以降はこの設定は不要です。  
 ※枠合わせの詳しいコツや生徒の登録手順は [**noteの解説記事**](https://note.com/glad_lilac3872/n/nb495e629f395) に画像付きで分かりやすく掲載しています。
+
+> [!CAUTION]
+> **※※※アップロードするスクショのサイズが変わると読込に失敗するので必ず統一させてください※※※**  
+> 異なる解像度や別端末で撮影したスクリーンショットを混ぜると、切り抜き位置がズレて判定に失敗します。必ず初期設定を行った時と同じ画面サイズ・解像度のリザルト画像をご使用ください。
 
 ---
 
