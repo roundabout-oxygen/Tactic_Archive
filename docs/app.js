@@ -1,6 +1,6 @@
 
 // Tactical Archive Web Application Version
-const APP_VERSION = 'v1.0.2';
+const APP_VERSION = 'v1.0.3';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1214,8 +1214,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup History Infinite Scroll Listeners (30 items batch)
     setupHistoryScrollListeners();
 
-    // Setup Density / Row Height Slider
-    initDensitySlider();
+    // Setup Excel-style Column Width Resizer
+    initColumnResizer();
 
     // Prevent viewport displacement / scroll shifting on virtual keyboard events
     window.addEventListener('scroll', () => {
@@ -4693,39 +4693,130 @@ function setupHistoryScrollListeners() {
     });
 }
 
-// Density / Row Height Slider setup
-function initDensitySlider() {
-    const slider = document.getElementById('table-density-slider');
-    const label = document.getElementById('density-slider-label');
-    const densityLabels = {
-        '1': 'コンパクト',
-        '2': '標準',
-        '3': 'ゆったり',
-        '4': '特大'
-    };
+// ========================================================
+// EXCEL-STYLE COLUMN WIDTH RESIZER CONTROLLER
+// ========================================================
+const DEFAULT_COL_WIDTHS = [42, 42, 60, 120, 200, 36, 200, 56];
 
-    function applyDensity(level) {
-        const tables = document.querySelectorAll('.history-table');
-        tables.forEach(tbl => {
-            tbl.classList.remove('density-1', 'density-2', 'density-3', 'density-4');
-            tbl.classList.add(`density-${level}`);
-        });
-        if (label) {
-            label.innerText = densityLabels[String(level)] || '標準';
+function getStoredColumnWidths() {
+    try {
+        const stored = localStorage.getItem('tactical_archive_col_widths');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length === DEFAULT_COL_WIDTHS.length) {
+                return parsed;
+            }
         }
-        localStorage.setItem('tactical_archive_density_level', String(level));
+    } catch (e) {
+        console.warn('Failed to parse stored column widths:', e);
     }
+    return [...DEFAULT_COL_WIDTHS];
+}
 
-    if (slider) {
-        const isDesktop = window.innerWidth >= 900;
-        const saved = localStorage.getItem('tactical_archive_density_level') || (isDesktop ? '3' : '2');
-        slider.value = saved;
-        applyDensity(saved);
+function applyColumnWidths(widths) {
+    if (!widths || widths.length !== 8) return;
+    const tables = document.querySelectorAll('.history-table');
+    tables.forEach(table => {
+        for (let i = 0; i < 8; i++) {
+            const col = table.querySelector(`col.col-${i}`);
+            if (col) {
+                col.style.width = `${widths[i]}px`;
+            }
+            const th = table.querySelector(`th[data-col="${i}"]`);
+            if (th) {
+                th.style.width = `${widths[i]}px`;
+            }
+        }
+    });
+}
 
-        slider.addEventListener('input', (e) => {
-            applyDensity(e.target.value);
+function initColumnResizer() {
+    const btnToggle = document.getElementById('btn-toggle-col-resize');
+    const btnReset = document.getElementById('btn-reset-col-widths');
+    let currentWidths = getStoredColumnWidths();
+
+    // Apply initial column widths
+    applyColumnWidths(currentWidths);
+
+    // Toggle Resize Mode
+    if (btnToggle) {
+        btnToggle.addEventListener('click', () => {
+            const isActive = document.body.classList.toggle('col-resize-active');
+            btnToggle.classList.toggle('active', isActive);
+            if (btnReset) {
+                btnReset.style.display = isActive ? 'inline-flex' : 'none';
+            }
         });
     }
+
+    // Reset button
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            currentWidths = [...DEFAULT_COL_WIDTHS];
+            localStorage.removeItem('tactical_archive_col_widths');
+            applyColumnWidths(currentWidths);
+        });
+    }
+
+    // Setup Resizer Drag Handlers
+    document.querySelectorAll('.col-resizer').forEach(resizer => {
+        const colIndex = parseInt(resizer.dataset.col, 10);
+        if (isNaN(colIndex)) return;
+
+        const onStart = (clientX) => {
+            const startX = clientX;
+            const startWidth = currentWidths[colIndex] || DEFAULT_COL_WIDTHS[colIndex];
+            resizer.classList.add('is-resizing');
+            document.body.classList.add('is-col-resizing');
+
+            const onMove = (moveX) => {
+                const diff = moveX - startX;
+                const newWidth = Math.max(26, Math.round(startWidth + diff));
+                currentWidths[colIndex] = newWidth;
+                applyColumnWidths(currentWidths);
+            };
+
+            const onEnd = () => {
+                resizer.classList.remove('is-resizing');
+                document.body.classList.remove('is-col-resizing');
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                window.removeEventListener('touchmove', onTouchMove);
+                window.removeEventListener('touchend', onTouchEnd);
+                localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
+            };
+
+            const onMouseMove = (e) => {
+                e.preventDefault();
+                onMove(e.pageX);
+            };
+            const onMouseUp = () => onEnd();
+
+            const onTouchMove = (e) => {
+                if (e.touches && e.touches.length > 0) {
+                    onMove(e.touches[0].pageX);
+                }
+            };
+            const onTouchEnd = () => onEnd();
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('touchmove', onTouchMove, { passive: true });
+            window.addEventListener('touchend', onTouchEnd, { passive: true });
+        };
+
+        resizer.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            onStart(e.pageX);
+        });
+
+        resizer.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            if (e.touches && e.touches.length > 0) {
+                onStart(e.touches[0].pageX);
+            }
+        }, { passive: true });
+    });
 }
 
 function createStudentIconRowElement(studentId, index, team, item, type = 'attack') {
