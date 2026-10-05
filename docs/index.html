@@ -33,13 +33,13 @@
                     <div class="logo" style="gap: 7px; display: flex; align-items: center;">
                         <img src="icon.png" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(0, 163, 255, 0.4);">
                         <span style="font-size: 13px; font-weight: 800;">Tactical Archive</span>
-                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.0.3</span>
+                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.0.4</span>
                     </div>
                     <!-- Web UI Column Width Resize Control -->
                     <div class="header-col-resize-control">
-                        <button type="button" id="btn-toggle-col-resize" class="header-btn-col-resize" title="各列の横幅をドラッグで自由に変更できます">
-                            <i class="fa-solid fa-arrows-left-right-to-line"></i>
-                            <span>幅変更モード</span>
+                        <button type="button" id="btn-open-col-resize" class="header-btn-col-resize" title="各項目の横幅を変更・調整できます">
+                            <i class="fa-solid fa-table-columns"></i>
+                            <span>幅変更</span>
                         </button>
                         <button type="button" id="btn-reset-col-widths" class="header-btn-col-reset" title="横幅を初期設定に戻す">
                             <i class="fa-solid fa-rotate-left"></i>
@@ -1083,6 +1083,39 @@
             <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border-color);">
                 <button class="btn-secondary btn-sm" id="btn-csv-modal-cancel" style="height: 34px; padding: 0 14px; font-size: 13px;">キャンセル</button>
                 <button class="btn-primary btn-sm" id="btn-csv-execute" style="height: 34px; padding: 0 16px; background: #00e676; border-color: #00e676; color: #000; font-weight: 700; font-size: 13px;"><i class="fa-solid fa-download"></i> CSVファイルを出力</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: COLUMN WIDTH ADJUSTMENT -->
+    <div class="modal-overlay" id="col-width-modal" style="z-index: 2500;">
+        <div class="modal-card" style="max-width: 480px; width: 94%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 35px rgba(0,0,0,0.5);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--text-primary);"><i class="fa-solid fa-table-columns" style="color: var(--color-blue);"></i> 各項目の幅変更</h3>
+                <button class="modal-close-btn" id="btn-col-width-modal-close" style="background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 16px; max-height: 70vh; overflow-y: auto; box-sizing: border-box;">
+                <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                    各項目のスライダーを動かして横幅を調整できます。<br>
+                    ※表のヘッダー境界線を直接マウスや指でドラッグして調整することも可能です。
+                </p>
+
+                <!-- Presets -->
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">プリセット:</span>
+                    <button type="button" class="btn-secondary btn-sm preset-col-btn" data-preset="default" style="padding: 4px 10px; font-size: 11px; border-radius: 6px;">標準</button>
+                    <button type="button" class="btn-secondary btn-sm preset-col-btn" data-preset="wide" style="padding: 4px 10px; font-size: 11px; border-radius: 6px;">広め</button>
+                    <button type="button" class="btn-secondary btn-sm preset-col-btn" data-preset="compact" style="padding: 4px 10px; font-size: 11px; border-radius: 6px;">コンパクト</button>
+                </div>
+
+                <!-- Sliders for each column -->
+                <div id="col-width-sliders" style="display: flex; flex-direction: column; gap: 12px; background: rgba(0, 163, 255, 0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <!-- Dynamically populated via JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-secondary btn-sm" id="btn-col-width-modal-reset" style="height: 34px; padding: 0 14px; font-size: 12px;"><i class="fa-solid fa-rotate-left"></i> 初期設定に戻す</button>
+                <button type="button" class="btn-primary btn-sm" id="btn-col-width-modal-done" style="height: 34px; padding: 0 18px; font-size: 13px; font-weight: 700;">完了</button>
             </div>
         </div>
     </div>

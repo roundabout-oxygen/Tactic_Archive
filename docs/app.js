@@ -1,6 +1,6 @@
 
 // Tactical Archive Web Application Version
-const APP_VERSION = 'v1.0.3';
+const APP_VERSION = 'v1.0.4';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -4697,6 +4697,22 @@ function setupHistoryScrollListeners() {
 // EXCEL-STYLE COLUMN WIDTH RESIZER CONTROLLER
 // ========================================================
 const DEFAULT_COL_WIDTHS = [42, 42, 60, 120, 200, 36, 200, 56];
+const COL_CONFIGS = [
+    { label: '勝敗', min: 26, max: 100 },
+    { label: '区分', min: 26, max: 100 },
+    { label: '日付', min: 35, max: 130 },
+    { label: '対戦相手', min: 60, max: 260 },
+    { label: '攻撃編成', min: 100, max: 360 },
+    { label: 'VS', min: 20, max: 80 },
+    { label: '防衛編成', min: 100, max: 360 },
+    { label: 'タグ', min: 30, max: 140 }
+];
+
+const PRESETS_COL_WIDTHS = {
+    default: [42, 42, 60, 120, 200, 36, 200, 56],
+    wide: [50, 50, 80, 160, 240, 42, 240, 70],
+    compact: [32, 32, 45, 95, 160, 26, 160, 45]
+};
 
 function getStoredColumnWidths() {
     try {
@@ -4715,6 +4731,13 @@ function getStoredColumnWidths() {
 
 function applyColumnWidths(widths) {
     if (!widths || widths.length !== 8) return;
+
+    // 1. Update CSS Variables directly on root for instantaneous reactive styling across all cells
+    for (let i = 0; i < 8; i++) {
+        document.documentElement.style.setProperty(`--col-${i}-w`, `${widths[i]}px`);
+    }
+
+    // 2. Also update colgroup col and table header th inline styles for cross-browser fallback
     const tables = document.querySelectorAll('.history-table');
     tables.forEach(table => {
         for (let i = 0; i < 8; i++) {
@@ -4731,34 +4754,104 @@ function applyColumnWidths(widths) {
 }
 
 function initColumnResizer() {
-    const btnToggle = document.getElementById('btn-toggle-col-resize');
+    const btnOpen = document.getElementById('btn-open-col-resize') || document.getElementById('btn-toggle-col-resize');
     const btnReset = document.getElementById('btn-reset-col-widths');
+    const modal = document.getElementById('col-width-modal');
+    const btnModalClose = document.getElementById('btn-col-width-modal-close');
+    const btnModalDone = document.getElementById('btn-col-width-modal-done');
+    const btnModalReset = document.getElementById('btn-col-width-modal-reset');
+    const slidersContainer = document.getElementById('col-width-sliders');
+
     let currentWidths = getStoredColumnWidths();
 
-    // Apply initial column widths
+    // Apply initial column widths on startup
     applyColumnWidths(currentWidths);
 
-    // Toggle Resize Mode
-    if (btnToggle) {
-        btnToggle.addEventListener('click', () => {
-            const isActive = document.body.classList.toggle('col-resize-active');
-            btnToggle.classList.toggle('active', isActive);
-            if (btnReset) {
-                btnReset.style.display = isActive ? 'inline-flex' : 'none';
+    // Sync modal sliders with current widths
+    function updateModalSliders() {
+        if (!slidersContainer) return;
+        slidersContainer.innerHTML = '';
+        COL_CONFIGS.forEach((cfg, idx) => {
+            const row = document.createElement('div');
+            row.className = 'col-width-slider-row';
+
+            const lbl = document.createElement('span');
+            lbl.className = 'col-width-slider-label';
+            lbl.textContent = cfg.label;
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.className = 'col-width-slider-input';
+            slider.min = cfg.min;
+            slider.max = cfg.max;
+            slider.value = currentWidths[idx] || DEFAULT_COL_WIDTHS[idx];
+
+            const val = document.createElement('span');
+            val.className = 'col-width-slider-val';
+            val.textContent = `${slider.value}px`;
+
+            slider.addEventListener('input', () => {
+                const newW = parseInt(slider.value, 10);
+                val.textContent = `${newW}px`;
+                currentWidths[idx] = newW;
+                applyColumnWidths(currentWidths);
+                localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
+            });
+
+            row.appendChild(lbl);
+            row.appendChild(slider);
+            row.appendChild(val);
+            slidersContainer.appendChild(row);
+        });
+    }
+
+    // Modal Open button
+    if (btnOpen) {
+        btnOpen.addEventListener('click', () => {
+            updateModalSliders();
+            if (modal) {
+                modal.classList.add('active');
             }
         });
     }
 
-    // Reset button
-    if (btnReset) {
-        btnReset.addEventListener('click', () => {
-            currentWidths = [...DEFAULT_COL_WIDTHS];
-            localStorage.removeItem('tactical_archive_col_widths');
-            applyColumnWidths(currentWidths);
+    // Modal Close
+    const closeModal = () => {
+        if (modal) modal.classList.remove('active');
+    };
+    if (btnModalClose) btnModalClose.addEventListener('click', closeModal);
+    if (btnModalDone) btnModalDone.addEventListener('click', closeModal);
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
         });
     }
 
-    // Setup Resizer Drag Handlers
+    // Modal Presets
+    document.querySelectorAll('.preset-col-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const pKey = btn.dataset.preset;
+            if (PRESETS_COL_WIDTHS[pKey]) {
+                currentWidths = [...PRESETS_COL_WIDTHS[pKey]];
+                applyColumnWidths(currentWidths);
+                localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
+                updateModalSliders();
+            }
+        });
+    });
+
+    // Reset buttons (Header & Modal)
+    const handleReset = () => {
+        currentWidths = [...DEFAULT_COL_WIDTHS];
+        localStorage.removeItem('tactical_archive_col_widths');
+        applyColumnWidths(currentWidths);
+        updateModalSliders();
+    };
+
+    if (btnReset) btnReset.addEventListener('click', handleReset);
+    if (btnModalReset) btnModalReset.addEventListener('click', handleReset);
+
+    // Setup Direct Resizer Drag Handlers on Headers (Always Active Excel-style)
     document.querySelectorAll('.col-resizer').forEach(resizer => {
         const colIndex = parseInt(resizer.dataset.col, 10);
         if (isNaN(colIndex)) return;
@@ -4771,7 +4864,8 @@ function initColumnResizer() {
 
             const onMove = (moveX) => {
                 const diff = moveX - startX;
-                const newWidth = Math.max(26, Math.round(startWidth + diff));
+                const min = COL_CONFIGS[colIndex] ? COL_CONFIGS[colIndex].min : 26;
+                const newWidth = Math.max(min, Math.round(startWidth + diff));
                 currentWidths[colIndex] = newWidth;
                 applyColumnWidths(currentWidths);
             };
@@ -4784,6 +4878,7 @@ function initColumnResizer() {
                 window.removeEventListener('touchmove', onTouchMove);
                 window.removeEventListener('touchend', onTouchEnd);
                 localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
+                updateModalSliders();
             };
 
             const onMouseMove = (e) => {

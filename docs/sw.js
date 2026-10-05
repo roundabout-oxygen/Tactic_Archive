@@ -1,5 +1,5 @@
-// Tactical Archive Web PWA Service Worker (v1.0.3)
-const CACHE_NAME = 'tactical-archive-web-v1.0.3';
+// Tactical Archive Web PWA Service Worker (v1.0.4)
+const CACHE_NAME = 'tactical-archive-web-v1.0.4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

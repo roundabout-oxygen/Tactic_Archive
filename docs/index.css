@@ -23,6 +23,16 @@
     
     --font-outfit: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* Column Widths (Excel Resizable) */
+    --col-0-w: 42px;
+    --col-1-w: 42px;
+    --col-2-w: 60px;
+    --col-3-w: 120px;
+    --col-4-w: 200px;
+    --col-5-w: 36px;
+    --col-6-w: 200px;
+    --col-7-w: 56px;
 }
 
 /* Reset & Base Styles */
@@ -580,13 +590,11 @@ button:active,
 .header-btn-col-resize:hover {
     background: rgba(0, 163, 255, 0.18);
     border-color: var(--color-blue);
+    color: #ffffff;
 }
 
-.header-btn-col-resize.active {
-    background: var(--color-blue) !important;
-    color: #ffffff !important;
-    border-color: var(--color-blue) !important;
-    box-shadow: 0 0 10px rgba(0, 163, 255, 0.6);
+.header-btn-col-resize:active {
+    transform: scale(0.96);
 }
 
 .header-btn-col-reset {
@@ -607,7 +615,24 @@ button:active,
 .header-btn-col-reset:hover {
     color: var(--color-blue);
     border-color: var(--color-blue);
+    background: rgba(0, 163, 255, 0.1);
 }
+
+/* History Table Width Binding to CSS Variables */
+.history-table {
+    table-layout: fixed !important;
+    width: max-content !important;
+    min-width: 100% !important;
+}
+
+.history-table col.col-0, .history-table th:nth-child(1), .history-table td:nth-child(1) { width: var(--col-0-w) !important; min-width: var(--col-0-w) !important; max-width: var(--col-0-w) !important; }
+.history-table col.col-1, .history-table th:nth-child(2), .history-table td:nth-child(2) { width: var(--col-1-w) !important; min-width: var(--col-1-w) !important; max-width: var(--col-1-w) !important; }
+.history-table col.col-2, .history-table th:nth-child(3), .history-table td:nth-child(3) { width: var(--col-2-w) !important; min-width: var(--col-2-w) !important; max-width: var(--col-2-w) !important; }
+.history-table col.col-3, .history-table th:nth-child(4), .history-table td:nth-child(4) { width: var(--col-3-w) !important; min-width: var(--col-3-w) !important; max-width: var(--col-3-w) !important; }
+.history-table col.col-4, .history-table th:nth-child(5), .history-table td:nth-child(5) { width: var(--col-4-w) !important; min-width: var(--col-4-w) !important; max-width: var(--col-4-w) !important; }
+.history-table col.col-5, .history-table th:nth-child(6), .history-table td:nth-child(6) { width: var(--col-5-w) !important; min-width: var(--col-5-w) !important; max-width: var(--col-5-w) !important; }
+.history-table col.col-6, .history-table th:nth-child(7), .history-table td:nth-child(7) { width: var(--col-6-w) !important; min-width: var(--col-6-w) !important; max-width: var(--col-6-w) !important; }
+.history-table col.col-7, .history-table th:nth-child(8), .history-table td:nth-child(8) { width: var(--col-7-w) !important; min-width: var(--col-7-w) !important; max-width: var(--col-7-w) !important; }
 
 /* History Table Header Row */
 .history-header-row {
@@ -635,43 +660,73 @@ button:active,
     box-sizing: border-box;
 }
 
-/* Resizer handle (at right border of each header cell) */
+/* Excel Resizer handle (Always active at right border of each header cell) */
 .col-resizer {
     position: absolute;
     top: 0;
-    right: 0;
-    width: 7px;
+    right: -5px;
+    width: 10px;
     height: 100%;
-    cursor: col-resize;
+    cursor: col-resize !important;
     user-select: none;
-    z-index: 20;
-    transition: background 0.15s ease;
+    z-index: 30;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.col-resizer:hover,
-.col-resizer.is-resizing {
+.col-resizer::after {
+    content: '';
+    width: 2px;
+    height: 60%;
+    background: rgba(0, 163, 255, 0.25);
+    transition: background 0.15s ease, height 0.15s ease, box-shadow 0.15s ease;
+    border-radius: 1px;
+}
+
+.col-resizer:hover::after,
+.col-resizer.is-resizing::after {
     background: var(--color-blue) !important;
-    box-shadow: 0 0 8px var(--color-blue);
-}
-
-/* Column Resize Mode Active Highlights */
-body.col-resize-active .history-header-row th {
-    background: #132238;
-    color: #8be2f8;
-}
-
-body.col-resize-active .col-resizer {
-    background: rgba(0, 163, 255, 0.4);
-}
-
-body.col-resize-active .history-table td {
-    border-right: 1px dashed rgba(0, 163, 255, 0.25) !important;
+    height: 100% !important;
+    box-shadow: 0 0 8px var(--color-blue) !important;
 }
 
 /* Global body cursor during dragging */
-body.is-col-resizing {
+body.is-col-resizing,
+body.is-col-resizing * {
     cursor: col-resize !important;
     user-select: none !important;
+}
+
+/* Column Width Modal Sliders */
+.col-width-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 0;
+}
+.col-width-slider-label {
+    width: 72px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+.col-width-slider-input {
+    flex: 1;
+    height: 5px;
+    accent-color: var(--color-blue);
+    cursor: pointer;
+}
+.col-width-slider-val {
+    width: 46px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-blue);
+    flex-shrink: 0;
+    font-family: monospace;
 }
 
 /* History Result badges */
@@ -2158,41 +2213,33 @@ body.is-col-resizing {
         padding: 2px 4px !important;
     }
     .history-table td:nth-child(1) {
-        width: 30px !important;
         text-align: center !important;
         padding: 2px !important;
     }
     .history-table td:nth-child(2) {
-        width: 30px !important;
         text-align: center !important;
         padding: 2px !important;
     }
     .history-table td:nth-child(3) {
-        width: 36px !important;
         text-align: center !important;
         padding: 2px !important;
     }
     .history-table td:nth-child(4) {
-        width: 80px !important;
         padding: 2px 4px !important;
     }
     .history-table td:nth-child(5) {
-        width: 154px !important;
         padding: 2px !important;
         border-right: none !important;
     }
     .history-table td:nth-child(6) {
-        width: 22px !important;
         text-align: center !important;
         padding: 2px !important;
         border-right: none !important;
     }
     .history-table td:nth-child(7) {
-        width: 154px !important;
         padding: 2px !important;
     }
     .history-table td:nth-child(8) {
-        width: 50px !important;
         text-align: center !important;
         padding: 2px !important;
     }
