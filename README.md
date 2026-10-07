@@ -12,15 +12,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![note 解説記事](https://img.shields.io/badge/note-使い方・初期設定の解説-2cb69a?logo=note&logoColor=white)](https://note.com/glad_lilac3872/n/nb495e629f395)
 
-> 🌐 **ブラウザですぐに使えるWebアプリ版を公開しました！**  
-> インストール不要で、PCやiPhone、iPad、Androidの各ブラウザからご利用いただけます。  
+> 🌐 **Webアプリ版を公開しました**  
 > 👉 [**Tactical Archive Web版を開く**](https://roundabout-oxygen.github.io/Tactic_Archive/)
-> 
-> ⚠️ **※※※アップロードするスクショのサイズが変わると読込に失敗するので必ず統一させてください※※※**  
-> （※画像認識のトリミング設定が画像サイズ・解像度に紐づくため、取り込むスクリーンショットのサイズは必ず同一に統一してください）
+>  **※※※アップロードするスクショのサイズが変わると読込に失敗するので必ず統一させてください※※※**  
 
-> 📖 **詳しい使い方や初期設定手順は note でも解説しています**  
-> 導入の流れや日々のルーティン、初期トリミング設定の手順などを分かりやすくまとめています。ぜひ合わせてご覧ください。  
+> 📖 **詳しい使い方や初期設定手順は note でも解説しています**   
 > 👉 [**note解説記事: 戦術対抗戦の記録用Androidアプリを作成しました。**](https://note.com/glad_lilac3872/n/nb495e629f395)
 
 ---
