@@ -1,6 +1,6 @@
 
 // Tactical Archive Web Application Version
-const APP_VERSION = 'v1.0.4';
+const APP_VERSION = 'v1.0.5';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -98,12 +98,13 @@ function executeCsvExport() {
         const res = item.result || '';
         // 2. Utility
         const util = item.utility_level || '高';
-        // 3. Date
+        // 3. Date (Includes hours, minutes, seconds)
         let dateStr = '';
         if (item.created_at) {
             const d = new Date(item.created_at);
             if (!isNaN(d.getTime())) {
-                dateStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                const pad = (n) => String(n).padStart(2, '0');
+                dateStr = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
             }
         }
         // 4. Opponent Name
@@ -1065,17 +1066,29 @@ function dismissKeyboard() {
     }
 }
 
-// Global Enter / Done key listener for text input elements
+// Global Enter / Done key listener for text input & textarea elements
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.keyCode === 13) {
+        // IME変換・予測変換中は漢字確定を優先し、キーボードは閉じない
+        if (e.isComposing) return;
+
         const target = e.target;
-        if (target && target.tagName === 'INPUT') {
+        if (!target) return;
+
+        // 1. INPUT elements
+        if (target.tagName === 'INPUT') {
             const type = (target.type || '').toLowerCase();
             if (['text', 'search', 'number', 'email', 'password', 'url', 'tel', ''].includes(type)) {
                 e.preventDefault();
                 target.blur();
                 dismissKeyboard();
             }
+        }
+        // 2. TEXTAREA elements (メモ欄: 改行ではなく確定してキーボードを閉じる)
+        else if (target.tagName === 'TEXTAREA') {
+            e.preventDefault();
+            target.blur();
+            dismissKeyboard();
         }
     }
 });
@@ -1219,14 +1232,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Prevent viewport displacement / scroll shifting on virtual keyboard events
     window.addEventListener('scroll', () => {
+        // 入力欄にフォーカスがある間はIMEやキャレット追従と競合してガクガク揺れるのを防ぐ
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+            return;
+        }
         if (window.scrollX !== 0 || window.scrollY !== 0) {
             window.scrollTo(0, 0);
         }
     });
-    document.addEventListener('focusout', () => {
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
+    document.addEventListener('focusout', (e) => {
+        // フォーカスアウト時も次の要素への連続フォーカス移動を考慮
+        setTimeout(() => {
+            const currentActive = document.activeElement;
+            if (!currentActive || (currentActive.tagName !== 'INPUT' && currentActive.tagName !== 'TEXTAREA')) {
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+            }
+        }, 50);
     });
 
     // Tab Navigation setup
@@ -1821,27 +1845,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             defenseNames.push(slot.studentName || '生徒');
         }
 
-        // Save Battle History Record
-        const record = {
-            result: result,
-            battle_type: battleType,
-            utility_level: utility,
-            commander_name: opponentName,
-            attack_team: attackTeam,
-            defense_team: defenseTeam,
-            attack_icons: attackIcons,
-            defense_icons: defenseIcons,
-            attack_names: attackNames,
-            defense_names: defenseNames,
-            opponent_avatar: null, // Stored cleanly in opponent_directory DB keyed by commander_name
-            notes: notes,
-            filename: currentUploadData.filename || '', // Save filename to prevent duplicate uploads
-            created_at: new Date(dateInput).getTime() || new Date().getTime(),
-            box1_color: currentUploadData.box1_color || null,
-            box1_value: currentUploadData.box1_value || null,
-            box2_color: currentUploadData.box2_color || null,
-            box2_value: currentUploadData.box2_value || null
-        };
+            // Merge date input with exact time (hours, minutes, seconds)
+            let finalCreatedAt = currentUploadData.timestamp || Date.now();
+            if (dateInput) {
+                const parts = dateInput.split('-').map(Number);
+                if (parts.length === 3) {
+                    const base = new Date(finalCreatedAt);
+                    base.setFullYear(parts[0], parts[1] - 1, parts[2]);
+                    finalCreatedAt = base.getTime();
+                }
+            }
+
+            const record = {
+                result: result,
+                battle_type: battleType,
+                utility_level: utility,
+                commander_name: opponentName,
+                attack_team: attackTeam,
+                defense_team: defenseTeam,
+                attack_icons: attackIcons,
+                defense_icons: defenseIcons,
+                attack_names: attackNames,
+                defense_names: defenseNames,
+                opponent_avatar: null, // Stored cleanly in opponent_directory DB keyed by commander_name
+                notes: notes,
+                filename: currentUploadData.filename || '', // Save filename to prevent duplicate uploads
+                created_at: finalCreatedAt,
+                box1_color: currentUploadData.box1_color || null,
+                box1_value: currentUploadData.box1_value || null,
+                box2_color: currentUploadData.box2_color || null,
+                box2_value: currentUploadData.box2_value || null
+            };
 
         // Save Opponent Profile Avatar to Opponent Directory (only if first time)
         if (opponentName && currentUploadData.opponentAvatar) {
@@ -2027,13 +2061,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             utility = checkedUtility.value;
         }
 
+        // Preserve existing hours, minutes, seconds when updating date
+        let finalCreatedAt = editingRecord.created_at || Date.now();
+        if (dateInput) {
+            const parts = dateInput.split('-').map(Number);
+            if (parts.length === 3) {
+                const base = new Date(finalCreatedAt);
+                base.setFullYear(parts[0], parts[1] - 1, parts[2]);
+                finalCreatedAt = base.getTime();
+            }
+        }
+
         // Update the record fields
         editingRecord.commander_name = opponentName;
         editingRecord.result = result;
         editingRecord.battle_type = battleType;
         editingRecord.utility_level = utility;
         editingRecord.notes = notes;
-        editingRecord.created_at = new Date(dateInput).getTime() || new Date().getTime();
+        editingRecord.created_at = finalCreatedAt;
         editingRecord.box1_color = detailEditedData.box1_color || null;
         editingRecord.box1_value = detailEditedData.box1_value || null;
         editingRecord.box2_color = detailEditedData.box2_color || null;
@@ -2600,52 +2645,85 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
     return { profile, isCached: false };
 }
 
-// Extract date from File object (using filename patterns or lastModified timestamp, with local timezone fallback)
+// Extract date & timestamp from File object (using filename patterns or lastModified timestamp, with local timezone fallback)
 function extractDateFromFile(file) {
-    // 1. Try extracting date from filename first (immune to file copy/transfer timestamp changes)
+    let dateStr = '';
+    let timestamp = null;
+
     if (file && file.name) {
-        // Pattern A: YYYY-MM-DD, YYYY_MM_DD, YYYY.MM.DD
-        const matchDelimited = file.name.match(/(?:^|[^0-9])(20\d{2})[-_. /](0[1-9]|1[0-2])[-_. /](0[1-9]|[12]\d|3[01])(?:[^0-9]|$)/);
-        if (matchDelimited) {
-            const dateStr = `${matchDelimited[1]}-${matchDelimited[2]}-${matchDelimited[3]}`;
-            console.log(`Extracted date from filename (delimited): ${dateStr}`);
-            return dateStr;
+        // Pattern 1: YYYY-MM-DD or YYYY_MM_DD with optional time HH-MM-SS / HH_MM_SS / HHMMSS
+        // e.g. Screenshot_2026-09-19-18-57-00.png, 2026_09_19_185700.jpg, 2026.09.19 18:57:00
+        const mDelim = file.name.match(/(?:^|[^0-9])(20\d{2})[-_. /](0[1-9]|1[0-2])[-_. /](0[1-9]|[12]\d|3[01])(?:[-_. T/]?([01]\d|2[0-3])[-_.:]?([0-5]\d)[-_.:]?([0-5]\d)?)?(?:[^0-9]|$)/);
+        if (mDelim) {
+            const y = parseInt(mDelim[1], 10);
+            const m = parseInt(mDelim[2], 10);
+            const d = parseInt(mDelim[3], 10);
+            const hh = mDelim[4] ? parseInt(mDelim[4], 10) : null;
+            const mm = mDelim[5] ? parseInt(mDelim[5], 10) : null;
+            const ss = mDelim[6] ? parseInt(mDelim[6], 10) : null;
+            dateStr = `${mDelim[1]}-${mDelim[2]}-${mDelim[3]}`;
+
+            if (hh !== null && mm !== null) {
+                timestamp = new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+            }
         }
 
-        // Pattern B: YYYYMMDD (8 consecutive digits, e.g. Screenshot_20260919_185700)
-        const matchConsecutive = file.name.match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[^0-9]|$)/);
-        if (matchConsecutive) {
-            const dateStr = `${matchConsecutive[1]}-${matchConsecutive[2]}-${matchConsecutive[3]}`;
-            console.log(`Extracted date from filename (consecutive YYYYMMDD): ${dateStr}`);
-            return dateStr;
-        }
-    }
+        // Pattern 2: YYYYMMDD with optional HHMMSS (e.g. Screenshot_20260919_185700.png)
+        if (!dateStr) {
+            const mConsec = file.name.match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[-_T]?([01]\d|2[0-3])([0-5]\d)([0-5]\d)?)?(?:[^0-9]|$)/);
+            if (mConsec) {
+                const y = parseInt(mConsec[1], 10);
+                const m = parseInt(mConsec[2], 10);
+                const d = parseInt(mConsec[3], 10);
+                const hh = mConsec[4] ? parseInt(mConsec[4], 10) : null;
+                const mm = mConsec[5] ? parseInt(mConsec[5], 10) : null;
+                const ss = mConsec[6] ? parseInt(mConsec[6], 10) : null;
+                dateStr = `${mConsec[1]}-${mConsec[2]}-${mConsec[3]}`;
 
-    // 2. Try file.lastModified (device file modification/creation timestamp)
-    if (file && file.lastModified) {
-        const d = new Date(file.lastModified);
-        if (!isNaN(d.getTime())) {
-            const now = new Date();
-            const maxFuture = now.getTime() + 24 * 60 * 60 * 1000;
-            if (d.getFullYear() >= 2020 && d.getTime() <= maxFuture) {
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                const dateStr = `${year}-${month}-${day}`;
-                console.log(`Extracted date from file.lastModified: ${dateStr}`);
-                return dateStr;
+                if (hh !== null && mm !== null) {
+                    timestamp = new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+                }
             }
         }
     }
 
-    // 3. Fallback: device local current date (JST / device timezone)
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
-    console.log(`Fallback date (device local today): ${todayStr}`);
-    return todayStr;
+    // If filename gave date but not full time, try using file.lastModified for time
+    if (file && file.lastModified) {
+        const fileDate = new Date(file.lastModified);
+        if (!isNaN(fileDate.getTime())) {
+            const now = new Date();
+            const maxFuture = now.getTime() + 24 * 60 * 60 * 1000;
+            if (fileDate.getFullYear() >= 2020 && fileDate.getTime() <= maxFuture) {
+                if (!dateStr) {
+                    const pad = (n) => String(n).padStart(2, '0');
+                    dateStr = `${fileDate.getFullYear()}-${pad(fileDate.getMonth() + 1)}-${pad(fileDate.getDate())}`;
+                }
+                if (!timestamp) {
+                    if (dateStr) {
+                        const parts = dateStr.split('-').map(Number);
+                        const combined = new Date(file.lastModified);
+                        combined.setFullYear(parts[0], parts[1] - 1, parts[2]);
+                        timestamp = combined.getTime();
+                    } else {
+                        timestamp = file.lastModified;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: device local current time
+    if (!timestamp) {
+        timestamp = Date.now();
+    }
+    if (!dateStr) {
+        const d = new Date(timestamp);
+        const pad = (n) => String(n).padStart(2, '0');
+        dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    console.log(`Extracted Date & Time: dateStr="${dateStr}", timestamp=${timestamp} (${new Date(timestamp).toLocaleString('ja-JP')})`);
+    return { dateStr, timestamp };
 }
 
 // SCREENSHOT RECOGNITION PIPELINE
@@ -2671,8 +2749,10 @@ async function handleScreenshotUpload(file) {
     };
     reader.readAsDataURL(file);
     
-    // Extract Date from file (filename pattern or device lastModified timestamp)
-    const extractedDate = extractDateFromFile(file);
+    // Extract Date and Timestamp (including hours, minutes, seconds)
+    const dateInfo = extractDateFromFile(file);
+    const extractedDate = dateInfo.dateStr;
+    const extractedTimestamp = dateInfo.timestamp;
 
     try {
         const img = new Image();
@@ -2693,6 +2773,7 @@ async function handleScreenshotUpload(file) {
         lastUploadedImage = img;
         currentUploadFile = file;
         currentUploadExtractedDate = extractedDate;
+        currentUploadExtractedTimestamp = extractedTimestamp;
 
         // Check if layout calibration profile exists for this aspect ratio
         const { profile, isCached } = getOrComputeCalibrationProfile(img, scanStatusText);
@@ -2710,7 +2791,7 @@ async function handleScreenshotUpload(file) {
 
         if (isScanCancelled) return;
         // Calibrated: Run recognition pipeline directly
-        await runRecognitionPipeline(img, profile, file, extractedDate);
+        await runRecognitionPipeline(img, profile, file, extractedDate, extractedTimestamp);
 
     } catch (e) {
         if (isScanCancelled) return;
@@ -2723,7 +2804,7 @@ async function handleScreenshotUpload(file) {
     }
 }
 
-async function runRecognitionPipeline(img, profile, file, extractedDate) {
+async function runRecognitionPipeline(img, profile, file, extractedDate, extractedTimestamp) {
     if (isScanCancelled) return;
     dropZone.style.display = 'none';
     scannerScreen.style.display = 'flex';
@@ -2846,6 +2927,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate) {
         result: battleResult,
         battleType: detectedBattleType,
         date: extractedDate,
+        timestamp: extractedTimestamp,
         opponentName: correctedOpponentName,
         rawOcrOpponentName: opponentName,
         opponentAvatar: oppAvatarDataUrl,
