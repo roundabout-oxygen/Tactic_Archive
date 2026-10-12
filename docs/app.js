@@ -1,6 +1,6 @@
 
 // Tactical Archive Web Application Version
-const APP_VERSION = 'v1.0.5';
+const APP_VERSION = 'v1.0.6';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1048,6 +1048,7 @@ let lastUploadedImage = null; // Raw Image object of current uploaded screenshot
 let currentActiveProfile = null; // Calibration layout profile for active screenshot
 let currentUploadFile = null; // Currently processing File object
 let currentUploadExtractedDate = null; // Extracted date string of currently processing File
+let currentUploadExtractedTimestamp = null; // Extracted timestamp (including HH:mm:ss) of currently processing File
 let isScanCancelled = false; // Flag to abort processing if cancelled
 
 // ==========================================
@@ -3852,7 +3853,7 @@ async function applyCropInspector() {
         if (cropInspectorModal) cropInspectorModal.classList.remove('active');
         localStorage.setItem('tactical_archive_first_launch_done', 'true');
         if (currentUploadFile && currentUploadExtractedDate) {
-            await runRecognitionPipeline(lastUploadedImage, currentActiveProfile, currentUploadFile, currentUploadExtractedDate);
+            await runRecognitionPipeline(lastUploadedImage, currentActiveProfile, currentUploadFile, currentUploadExtractedDate, currentUploadExtractedTimestamp);
         }
         return;
     }
@@ -5557,6 +5558,7 @@ function cancelOngoingUpload() {
     currentUploadData = null;
     currentUploadFile = null;
     currentUploadExtractedDate = null;
+    currentUploadExtractedTimestamp = null;
     
     // Hide scanner and modals
     if (scannerScreen) scannerScreen.style.display = 'none';

@@ -4,8 +4,8 @@
 
 対戦後のリザルト画面（スクショ）をまとめて放り込むだけで、生徒アイコンや対戦相手名を自動認識して端末内に記録します。
 
-[![Android Version](https://img.shields.io/badge/Android-v1.2.6-blue.svg)](#)
-[![Web Version](https://img.shields.io/badge/Web-v1.0.5-orange.svg)](#)
+[![Android Version](https://img.shields.io/badge/Android-v1.2.7-blue.svg)](#)
+[![Web Version](https://img.shields.io/badge/Web-v1.0.6-orange.svg)](#)
 [![Web App](https://img.shields.io/badge/🌐_Web版-ブラウザで使ってみる-ff007f?style=for-the-badge&logo=googlechrome&logoColor=white)](https://roundabout-oxygen.github.io/Tactic_Archive/)
 [![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%2F%20Web-green.svg)](#)

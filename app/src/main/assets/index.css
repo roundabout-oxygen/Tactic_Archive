@@ -1295,6 +1295,8 @@ button:active,
     outline: none;
     resize: none;
     transition: border-color 0.2s;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 .form-textarea:focus {
@@ -1806,9 +1808,16 @@ button:active,
 
 /* --- MOBILE LANDSCAPE OPTIMIZATIONS (Height <= 500px) --- */
 @media (max-height: 500px) {
+    .modal-overlay {
+        align-items: flex-start !important;
+        padding-top: 4px !important;
+        overflow-y: auto !important;
+    }
+
     .modal-card {
         max-height: 98% !important;
         border-radius: 12px !important;
+        margin: 0 auto !important;
     }
     
     .modal-header {
