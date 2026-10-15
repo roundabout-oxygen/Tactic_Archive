@@ -1811,7 +1811,7 @@ button:active,
     .modal-overlay {
         align-items: flex-start !important;
         padding-top: 4px !important;
-        overflow-y: auto !important;
+        overflow: hidden !important;
     }
 
     .modal-card {
@@ -1941,9 +1941,39 @@ button:active,
     }
     
     .review-right .form-textarea {
-        height: 50px !important;
-        font-size: 12px !important;
+        height: 52px !important;
+        font-size: 13px !important;
+        line-height: 1.4 !important;
         padding: 6px 10px !important;
+        overscroll-behavior: contain !important;
+        touch-action: pan-y !important;
+        transition: border-color 0.15s, box-shadow 0.15s !important;
+    }
+
+    /* Notes Input Trigger */
+    .notes-trigger {
+        cursor: pointer !important;
+        transition: border-color 0.15s, background-color 0.15s !important;
+        background-color: rgba(0, 163, 255, 0.03) !important;
+    }
+    .notes-trigger:hover, .notes-trigger:focus {
+        border-color: var(--color-blue) !important;
+        background-color: rgba(0, 163, 255, 0.08) !important;
+    }
+
+    /* Notes Input Palette Animation */
+    .palette-card {
+        animation: paletteSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes paletteSlideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
     .review-right .utility-label-btn {

@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.7';
+const APP_VERSION = 'v1.2.8';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1068,8 +1068,17 @@ document.addEventListener('keydown', (e) => {
                 dismissKeyboard();
             }
         }
-        // 2. TEXTAREA elements (メモ欄: 改行ではなく確定してキーボードを閉じる)
+        // 2. TEXTAREA elements (メモ欄 / パレット: 改行ではなく確定してキーボードを閉じる)
         else if (target.tagName === 'TEXTAREA') {
+            if (target.id === 'notes-palette-textarea') {
+                if (!e.shiftKey) {
+                    e.preventDefault();
+                    if (typeof window.closeNotesPalette === 'function') {
+                        window.closeNotesPalette(true);
+                    }
+                }
+                return;
+            }
             e.preventDefault();
             target.blur();
             dismissKeyboard();
@@ -1213,17 +1222,109 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Prevent viewport displacement / scroll shifting on virtual keyboard events
     window.addEventListener('scroll', () => {
-        // 入力欄にフォーカスがある間はIMEやキャレット追従と競合してガクガク揺れるのを防ぐ
-        const active = document.activeElement;
-        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
-            return;
-        }
         if (window.scrollX !== 0 || window.scrollY !== 0) {
             window.scrollTo(0, 0);
         }
-    });
+    }, { passive: true });
+
+    // ==========================================
+    // NOTES INPUT PALETTE CONTROLLER (IME Jitter-Free Input Overlay)
+    // ==========================================
+    let activeNotesTargetId = null;
+
+    window.openNotesPalette = function(targetId) {
+        activeNotesTargetId = targetId;
+        const targetEl = document.getElementById(targetId);
+        const paletteModal = document.getElementById('notes-palette-modal');
+        const paletteTextarea = document.getElementById('notes-palette-textarea');
+        if (!paletteModal || !paletteTextarea) return;
+
+        paletteTextarea.value = targetEl ? targetEl.value : '';
+        paletteModal.classList.add('active');
+
+        // Autofocus on top-level palette textarea smoothly
+        setTimeout(() => {
+            paletteTextarea.focus();
+            try {
+                const len = paletteTextarea.value.length;
+                paletteTextarea.setSelectionRange(len, len);
+            } catch (err) {}
+            window.scrollTo(0, 0);
+        }, 50);
+    };
+
+    window.closeNotesPalette = function(shouldSave = false) {
+        const paletteModal = document.getElementById('notes-palette-modal');
+        const paletteTextarea = document.getElementById('notes-palette-textarea');
+
+        if (shouldSave && activeNotesTargetId && paletteTextarea) {
+            const targetEl = document.getElementById(activeNotesTargetId);
+            if (targetEl) {
+                targetEl.value = paletteTextarea.value.trim();
+                targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+                targetEl.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        if (paletteModal) {
+            paletteModal.classList.remove('active');
+        }
+        activeNotesTargetId = null;
+        dismissKeyboard();
+        window.scrollTo(0, 0);
+    };
+
+    function initNotesInputPalette() {
+        const noteIds = ['review-notes', 'detail-notes'];
+        noteIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            // Tap / Click opens the clean top palette, preventing modal layout shift
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                openNotesPalette(id);
+            });
+            el.addEventListener('focus', (e) => {
+                e.preventDefault();
+                el.blur();
+                openNotesPalette(id);
+            });
+        });
+
+        // Palette action buttons
+        const btnDone = document.getElementById('btn-palette-done');
+        const btnCancel = document.getElementById('btn-palette-cancel');
+        const paletteModal = document.getElementById('notes-palette-modal');
+        const paletteTextarea = document.getElementById('notes-palette-textarea');
+
+        if (btnDone) {
+            btnDone.addEventListener('click', () => closeNotesPalette(true));
+        }
+        if (btnCancel) {
+            btnCancel.addEventListener('click', () => closeNotesPalette(false));
+        }
+        if (paletteModal) {
+            paletteModal.addEventListener('click', (e) => {
+                if (e.target === paletteModal) {
+                    closeNotesPalette(false);
+                }
+            });
+        }
+        if (paletteTextarea) {
+            paletteTextarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    if (e.isComposing) return;
+                    if (!e.shiftKey) {
+                        e.preventDefault();
+                        closeNotesPalette(true);
+                    }
+                }
+            });
+        }
+    }
+    initNotesInputPalette();
+
     document.addEventListener('focusout', (e) => {
-        // フォーカスアウト時も次の要素への連続フォーカス移動を考慮
         setTimeout(() => {
             const currentActive = document.activeElement;
             if (!currentActive || (currentActive.tagName !== 'INPUT' && currentActive.tagName !== 'TEXTAREA')) {

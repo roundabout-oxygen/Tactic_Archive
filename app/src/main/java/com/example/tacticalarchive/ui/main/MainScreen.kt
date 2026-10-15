@@ -181,7 +181,7 @@ fun MainScreen(
       (function() {
         const activeModal = document.querySelector('.modal-overlay.active');
         if (activeModal) {
-          const closeBtn = activeModal.querySelector('.modal-close-btn, #btn-review-cancel, #btn-detail-cancel, #btn-rename-close, #btn-csv-modal-close, #btn-backup-close, #btn-restore-close');
+          const closeBtn = activeModal.querySelector('.modal-close-btn, #btn-review-cancel, #btn-detail-cancel, #btn-rename-close, #btn-csv-modal-close, #btn-backup-close, #btn-restore-close, #btn-palette-cancel');
           if (closeBtn) {
             closeBtn.click();
           } else {
@@ -279,6 +279,9 @@ fun MainScreen(
         }
         setBackgroundColor(android.graphics.Color.parseColor("#0e1e30"))
         setLayerType(android.view.View.LAYER_TYPE_NONE, null)
+        overScrollMode = android.view.View.OVER_SCROLL_NEVER
+        isVerticalScrollBarEnabled = false
+        isHorizontalScrollBarEnabled = false
         settings.apply {
           javaScriptEnabled = true
           domStorageEnabled = true
