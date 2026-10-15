@@ -1,86 +1,60 @@
-# Tactical Archive (タクティカル・アーカイブ)
+# Tactical Archive
 
-『ブルーアーカイブ』戦術対抗戦で、**「この相手の防衛、前はどうやって抜いたっけ？」「そもそもこの人の編成思い出せない…」** を解消するための戦績記録・検索 Android アプリです。
+『ブルーアーカイブ』戦術対抗戦の戦績記録ツール（Androidアプリ / Web版）。
+リザルト画面のスクリーンショットから生徒アイコンと相手プレイヤー名を認識し、戦績を記録・検索できます。
 
-対戦後のリザルト画面（スクショ）をまとめて放り込むだけで、生徒アイコンや対戦相手名を自動認識して端末内に記録します。
-
-[![Android Version](https://img.shields.io/badge/Android-v1.2.8-blue.svg)](#)
-[![Web Version](https://img.shields.io/badge/Web-v1.0.6-orange.svg)](#)
-[![Web App](https://img.shields.io/badge/🌐_Web版-ブラウザで使ってみる-ff007f?style=for-the-badge&logo=googlechrome&logoColor=white)](https://roundabout-oxygen.github.io/Tactic_Archive/)
-[![Download APK](https://img.shields.io/badge/Download-APK-00A3FF?logo=android&logoColor=white)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-[![Platform](https://img.shields.io/badge/Platform-Android%20%2F%20Web-green.svg)](#)
+[![Android Version](https://img.shields.io/badge/Android-v1.2.8-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+[![Web Version](https://img.shields.io/badge/Web-v1.0.6-orange.svg)](https://roundabout-oxygen.github.io/Tactic_Archive/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![note 解説記事](https://img.shields.io/badge/note-使い方・初期設定の解説-2cb69a?logo=note&logoColor=white)](https://note.com/glad_lilac3872/n/nb495e629f395)
-
-> 🌐 **Webアプリ版を公開しました**  
-> 👉 [**Tactical Archive Web版を開く**](https://roundabout-oxygen.github.io/Tactic_Archive/)
->  **※※※アップロードするスクショのサイズが変わると読込に失敗するので必ず統一させてください※※※**  
-
-> 📖 **詳しい使い方や初期設定手順は note でも解説しています**   
-> 👉 [**note解説記事: 戦術対抗戦の記録用Androidアプリを作成しました。**](https://note.com/glad_lilac3872/n/nb495e629f395)
 
 ---
 
-## 📱 毎日の使い方（シンプルな3ステップ）
+## リンク
 
-### 1. 対戦前：相手の名前で検索して過去の履歴をチェック
-対戦相手の名前を入力するだけで、過去に戦った相手の防衛編成や「以前どの攻め編成で勝てたか」を瞬時に確認できます。  
-*(※ひらがな・カタカナのどちらでも検索可能です)*
+- **Web版**: https://roundabout-oxygen.github.io/Tactic_Archive/
+- **Android版 APK (v1.2.8)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+- **初期設定手順（note）**: https://note.com/glad_lilac3872/n/nb495e629f395
 
-<p align="center">
-  <img src="docs/images/history_search_anonymous.png" width="680" alt="戦績履歴・検索画面">
-</p>
-
-### 2. 対戦後：リザルトのスクショを撮っておく
-5戦のチケットを消化しながら、勝敗が決まったリザルト画面（WINまたはLOSEの画面）のスクリーンショットを撮影しておきます。
-
-### 3. まとめて取り込み（1〜2分で完了）
-アプリの取り込み画面にスクショを一括で選択するだけで、生徒アイコンや相手の名前が自動で読み取られ、簡単に記録・蓄積できます。
-
-<p align="center">
-  <img src="docs/images/result_review_registration.png" width="680" alt="取り込み確認画面">
-</p>
+> **注意**: スクリーンショットの解像度やアスペクト比が変わると認識位置がズレます。取り込む画像のサイズは統一してください。
 
 ---
 
-## ⚙️ 初回起動時の初期設定について
+## 機能一覧
 
-本アプリはプライバシー保護のため、**画像を外部サーバーへ送信せず端末内だけで画像解析・保存**を行います。  
-そのため、お使いのスマートフォンの画面サイズに合わせて、最初に1枚だけリザルト画像を使い**アイコン枠を合わせる初期設定（トリミング位置の指定）**が必要です。
+- **リザルト画像認識**: リザルト画面のスクリーンショットから編成・勝敗・相手名を抽出して記録
+- **戦績検索**: 対戦相手名（ひらがな・カタカナ両対応）による防衛編成・勝敗履歴の検索
+- **データ管理**: JSONバックアップ・復元、CSV出力対応
+- **ローカル保存**: データは端末内（IndexedDB）に保存され、外部への通信は行いません
 
-| 生徒アイコン枠 | 相手アイコン枠 | 相手の名前枠 |
+---
+
+## 画面イメージ
+
+| 戦績一覧・検索 | リザルト取り込み |
+|:---:|:---:|
+| <img src="docs/images/history_search_anonymous.png" width="400" alt="戦績一覧"> | <img src="docs/images/result_review_registration.png" width="400" alt="取り込み"> |
+
+---
+
+## 初期設定（キャリブレーション）
+
+初回起動時のみ、端末の画面解像度に合わせて切り抜き枠の位置調整が必要です。
+
+| 生徒枠 | 相手アイコン枠 | 相手名前枠 |
 |:---:|:---:|:---:|
-| <img src="docs/images/setup_calibration_students.png" width="260" alt="生徒枠"> | <img src="docs/images/setup_calibration_opponent_icon.png" width="260" alt="相手アイコン枠"> | <img src="docs/images/setup_calibration_opponent_name.png" width="260" alt="相手名前枠"> |
+| <img src="docs/images/setup_calibration_students.png" width="220" alt="生徒枠"> | <img src="docs/images/setup_calibration_opponent_icon.png" width="220" alt="相手アイコン枠"> | <img src="docs/images/setup_calibration_opponent_name.png" width="220" alt="相手名前枠"> |
 
-※一度設定すれば端末内に保存されるため、2回目以降はこの設定は不要です。  
-※枠合わせの詳しいコツや生徒の登録手順は [**noteの解説記事**](https://note.com/glad_lilac3872/n/nb495e629f395) に画像付きで分かりやすく掲載しています。
-
-> [!CAUTION]
-> **※※※アップロードするスクショのサイズが変わると読込に失敗するので必ず統一させてください※※※**  
-> 異なる解像度や別端末で撮影したスクリーンショットを混ぜると、切り抜き位置がズレて判定に失敗します。必ず初期設定を行った時と同じ画面サイズ・解像度のリザルト画像をご使用ください。
+詳細な調整手順は [note記事](https://note.com/glad_lilac3872/n/nb495e629f395) を参照してください。
 
 ---
 
-## 📥 アプリのインストール
+## 動作環境
 
-Android端末のブラウザから下記リンクをタップして APK をダウンロードし、インストールしてください。
-
-<p align="left">
-  <a href="https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk">
-    <img src="https://img.shields.io/badge/⬇️_APKを直接ダウンロード-TacticalArchive.apk-00A3FF?style=for-the-badge&logo=android&logoColor=white" alt="APK直接ダウンロード" height="38">
-  </a>
-</p>
-
-- **直接ダウンロード**: [**`TacticalArchive.apk` (v1.2.5) をダウンロード**](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-- **対応OS**: Android 7.0 以上
-- **通信について**: 
-  - アプリサイズを約13MBと軽量に保つため、**初回起動時のみ**文字認識用の日本語データ（約10〜15MB）を自動ダウンロードします。
-  - 取得完了後はオフラインで動作し、対戦画像や戦績データが外部へ送信されることは一切ありません。
+- **Android版**: Android 7.0 以上
+- **Web版**: モダンブラウザ（Chrome, Safari, Edge 等）
 
 ---
 
-## 🔒 プライバシー・免責事項
+## 免責事項
 
-- **完全ローカル管理**: 戦績データや画像は端末内のストレージ（IndexedDB）にのみ保存されます。アカウント登録や外部送信は一切ありません。
-- **データバックアップ**: 設定画面からいつでも戦績データをJSONファイルとして「ダウンロード」フォルダに書き出し・復元できます（PC用CSV出力にも対応）。
-- **免責事項**: 本アプリはファンによる非公式ツールです。『ブルーアーカイブ』の著作権・知的財産権は株式会社YostarおよびNEXON Gamesに帰属します。
+本ツールは非公式ツールです。権利元（株式会社Yostar / NEXON Games）とは関係ありません。
