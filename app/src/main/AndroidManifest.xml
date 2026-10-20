@@ -12,11 +12,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
-        android:windowSoftInputMode="adjustNothing|stateHidden"
         android:theme="@style/Theme.TacticalArchive">
         <activity
             android:name=".MainActivity"
             android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
             android:windowSoftInputMode="adjustNothing|stateHidden"
             android:exported="true">
             <intent-filter>

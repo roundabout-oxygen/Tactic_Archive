@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -71,7 +72,9 @@ class WebAppInterface(private val context: Context) {
     }
   }
 
-  private fun writeBytesToDownload(bytes: ByteArray, filename: String): String {
+  private fun writeBytesToDownload(bytes: ByteArray, rawFilename: String): String {
+    // パス区切りや "../" を含む名前で Download フォルダ外に書き込まれないよう、ファイル名部分だけを使う
+    val filename = File(rawFilename).name.replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "download" }
     try {
       val mimeType = when {
         filename.endsWith(".json", ignoreCase = true) -> "application/json"
@@ -237,7 +240,19 @@ fun MainScreen(
           ViewGroup.LayoutParams.MATCH_PARENT,
           ViewGroup.LayoutParams.MATCH_PARENT
         )
-        webViewClient = WebViewClient()
+        webViewClient = object : WebViewClient() {
+          override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            val url = request?.url ?: return false
+            // アプリ本体 (assets) 以外へのページ遷移は外部ブラウザで開き、JS ブリッジを外部ページに公開しない
+            if (url.scheme == "file" && url.toString().startsWith("file:///android_asset/")) return false
+            try {
+              ctx.startActivity(Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+              e.printStackTrace()
+            }
+            return true
+          }
+        }
         webChromeClient = object : WebChromeClient() {
           override fun onShowFileChooser(
             webView: WebView?,
@@ -247,25 +262,36 @@ fun MainScreen(
             filePathCallbackState?.onReceiveValue(null)
             filePathCallbackState = filePathCallback
             try {
-              val acceptTypes = fileChooserParams?.acceptTypes
-              val mimeType = if (acceptTypes != null && acceptTypes.isNotEmpty() && acceptTypes[0].isNotBlank()) {
-                val raw = acceptTypes.joinToString(",").lowercase()
-                if (raw.contains("json")) "application/json"
-                else if (raw.contains("zip")) "application/zip"
-                else if (raw.contains("image")) "image/*"
-                else "*/*"
-              } else {
-                "*/*"
-              }
+              // accept 属性の各トークンを MIME タイプに変換（例: "image/*,.json" → image/* と application/json の両方）
+              val mimeTypes = (fileChooserParams?.acceptTypes ?: emptyArray())
+                .flatMap { it.split(",") }
+                .map { it.trim().lowercase() }
+                .filter { it.isNotEmpty() }
+                .map { token ->
+                  when {
+                    token == "*/*" -> "*/*"
+                    token.contains("json") -> "application/json"
+                    token.contains("zip") -> "application/zip"
+                    token.startsWith("image") || token in listOf(".png", ".jpg", ".jpeg", ".webp") -> "image/*"
+                    token.contains("/") -> token
+                    else -> "*/*"
+                  }
+                }
+                .distinct()
+              val allowMultiple = fileChooserParams?.mode == FileChooserParams.MODE_OPEN_MULTIPLE
 
               // ACTION_OPEN_DOCUMENT を使用して全画面の横向き対応ファイルピッカーを起動
               // （縦向き用の Photo Picker ボトムシートが狭く表示されるのを防止）
               val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
-                type = mimeType
-                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                if (mimeType == "*/*") {
-                  putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "application/json", "application/zip", "*/*"))
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple)
+                when {
+                  mimeTypes.isEmpty() || mimeTypes.contains("*/*") -> type = "*/*"
+                  mimeTypes.size == 1 -> type = mimeTypes[0]
+                  else -> {
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toTypedArray())
+                  }
                 }
               }
               launcher.launch(intent)
@@ -297,6 +323,10 @@ fun MainScreen(
         loadUrl("file:///android_asset/index.html")
       }
     },
-    modifier = modifier.fillMaxSize()
+    modifier = modifier.fillMaxSize(),
+    onRelease = { webView ->
+      webViewInstance = null
+      webView.destroy()
+    }
   )
 }

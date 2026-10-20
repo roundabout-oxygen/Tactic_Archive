@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.9';
+const APP_VERSION = 'v1.2.10';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -205,12 +205,6 @@ function initCsvExportListeners() {
     });
 }
 
-
-// Built-in Sword Template (Attack)
-const BUILTIN_ATTACK_SWORD_BASE64 = "data:image/png;base64,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";
-
-// Built-in Shield Template (Defense)
-const BUILTIN_DEFENSE_SHIELD_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAABXxSURBVGhDjZl5lNXVtedZvXq9P17302T1e0YRjQFFRYwa0+l0eq3uXv3W67w4JFGj0SAgSETFLE3ayKAQFFBiZEZBQGSSgoICCoqpZihqoAYZCgooarpD3apbd/rd33h+46fX+d3CR1zPwF13r3N+55zf+Z3v2WfvffbeI5pvu5/z//wIJx//OnWPPP41euyresMjPy/Qo8P1r8ph+nrflfaw7xfDfbK8evzXyq/qhXFNj/2C+kcf48Rjj9Lw+CO0PfYIp376Uw6Oe4B1/2UUra+9xQj916/A7v2Imhr08gqM8nKMoxVFkvWvtenl5ehfleWFsrzi328Ly6vH/3WbnPuv+q68e+XbFUfQjh5EO3IA61Ap/uFDsGsvsem/Z+/oh2h7dXYjfLcWQaQfHAGqAvlsoVTzoKqgqZBXIZcHZbiuyHGyPwf53L89y35Fg5wcL8fKNgWySqlFUsl+bXynML+tyHknhGuQ78jkLmqQMZJOF93tjZD9YzuH7fkzby28xwp39LiQSBPggNDDzIAwCYeJLsi18IfBMgW+5BJZDYBgElk7g6PhCxVc1AiEILBcsH5wAOR2+rNtgWmDoBJpSmN818GwdR2h4rsCZDxOQK/DyCYeJcKLAswkK1wK4bJICoHg0kZtHhC+XbAQggS946uAZO+4M4Y4O28+pQo5i43oR3C4QWDoBYnCYF1pYw5wAg9KAEWw2I4L/ACQeB5QAg1wAAcO4J3Cpwg5n0N7vC9G77mE84wAg9yB2x3C9M53DNg8/mO+7fK+uH9zO44yO7r4eI2P7j1cE2Z1ZzO0u7Z+d6cI42D2D79mN/9Tff44kHX89w5/4q2r/+N07886N8+Huf15g9+P8pYj79c37uWbbf++8p5j4tD/87fI8x9i5/u5//YI79O7b89B7/z+YpL/71M3yT872Zp6x23n38XvufxL+k833+1P/768+9/lD+y4c/0u39H5tZt7r+mdf/P31O7/e98r/l7/8w08uv2049H6w5v/83z037vH//9X3/7L/2P+n/9q+7f8+xYv7/924+e/X/y9e/9f/Z9mP///+kAAAAASUVORK5CYII=";
 
 // Built-in Battle Type (Attack Sword) Template — shared constant to avoid duplication
 // This same base64 PNG is referenced in BUILTIN_CALIBRATION_PROFILES and openCropInspector()
@@ -565,9 +559,11 @@ async function saveRename(ocrName, correctedName) {
                     oppStore.put({ name: correctedName, avatar: getOldAv.result.avatar, updated_at: Date.now() });
                 }
             };
-            resolve(true);
         };
         request.onerror = () => reject(request.error);
+        // Resolve after all writes (including the avatar link) are committed
+        transaction.oncomplete = () => resolve(true);
+        transaction.onabort = () => reject(transaction.error);
     });
 }
 
@@ -710,6 +706,16 @@ async function getLatestHistoryFast(limit = 15) {
 // Defense feature is now fully supported
 async function cleanupDefenseRecords() {
     return false;
+}
+
+// Helper: escape text for safe insertion into innerHTML templates
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Helper: check if two arrays are equal
@@ -1015,6 +1021,8 @@ let detailEditedData = null; // Temporary edits during Detail Modal editing
 let opponentDirectory = {}; // Cache of { name: avatar_data_url }
 let opponentRenames = []; // Cache of name translation rules: [ { ocr_name, corrected_name } ]
 let currentAddStudentFeatures = null; // Extracted face features to save for newly registered student
+let manualIconDataUrl = ''; // Icon data URL for the Student Add modal (shared with bulk roster flow)
+let pendingBulkSlotSave = null; // Bulk roster flow: callback(name) invoked by the Student Add modal save button
 let uploadQueue = []; // Queue of File objects to review sequentially
 let activePositionFilter = null; // Filter for specific position: { sourceTab: 'attack'|'defense', team: 'attack'|'defense', index: 0-5, studentName: string }
 
@@ -1085,6 +1093,26 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// Async click handler with re-entrancy guard (prevents duplicate saves on double tap)
+function addGuardedClickListener(btn, handler) {
+    if (!btn) return;
+    let running = false;
+    btn.addEventListener('click', async (e) => {
+        if (running) return;
+        running = true;
+        btn.disabled = true;
+        try {
+            await handler(e);
+        } catch (err) {
+            console.error('Save handler failed:', err);
+            alert('保存中にエラーが発生しました: ' + (err && err.message ? err.message : err));
+        } finally {
+            running = false;
+            btn.disabled = false;
+        }
+    });
+}
 
 // Enable instant :active state on touch devices
 document.addEventListener('touchstart', () => {}, { passive: true });
@@ -1179,7 +1207,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     getOpponents(),
                     getRenames()
                 ]);
-                currentHistory = fullHistory || [];
+                // Keep records saved/edited while the full load was running (the readonly snapshot may be older)
+                const mergedById = new Map((fullHistory || []).map(h => [h.id, h]));
+                currentHistory.forEach(h => { if (h.id !== undefined) mergedById.set(h.id, h); });
+                currentHistory = Array.from(mergedById.values());
                 opponentDirectory = opponents || {};
                 opponentRenames = renames || [];
                 isFullHistoryLoaded = true;
@@ -1611,9 +1642,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Student Registration Modal events
     const studentIconInput = document.getElementById('student-icon-input');
-    let manualIconDataUrl = '';
 
-    document.getElementById('btn-student-cancel').addEventListener('click', () => studentModal.classList.remove('active'));
+    document.getElementById('btn-student-cancel').addEventListener('click', () => {
+        pendingBulkSlotSave = null;
+        studentModal.classList.remove('active');
+    });
 
     studentIconInput.addEventListener('change', () => {
         if (studentIconInput.files.length > 0) {
@@ -1632,10 +1665,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         reader.readAsDataURL(file);
     }
 
-    document.getElementById('btn-student-save').addEventListener('click', async () => {
+    addGuardedClickListener(document.getElementById('btn-student-save'), async () => {
         const name = document.getElementById('add-student-name').value.trim();
         if (!name) {
             alert('生徒名を入力してください。');
+            return;
+        }
+
+        // Bulk roster flow: delegate to the bulk registration callback only
+        if (pendingBulkSlotSave) {
+            const bulkSave = pendingBulkSlotSave;
+            pendingBulkSlotSave = null;
+            await bulkSave(name);
             return;
         }
         
@@ -1752,11 +1793,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         uploadQueue = []; // Clear queue when reset
     }
 
-    function processMultipleScreenshotUploads(files) {
+    async function processMultipleScreenshotUploads(files) {
+        const fileList = Array.from(files); // Copy before awaiting (input may be reset meanwhile)
+        // Startup loads only the latest 15 records; make sure duplicate check sees the full history
+        // (no wait if the background full load has already finished)
+        if (!isFullHistoryLoaded) {
+            await ensureFullHistoryLoaded();
+        }
         const duplicateNames = [];
         const validFiles = [];
         
-        Array.from(files).forEach(file => {
+        fileList.forEach(file => {
             const isDuplicate = currentHistory.some(item => item.filename === file.name);
             if (isDuplicate) {
                 duplicateNames.push(file.name);
@@ -1800,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         processNextInUploadQueue();
     });
 
-    document.getElementById('btn-review-save').addEventListener('click', async () => {
+    addGuardedClickListener(document.getElementById('btn-review-save'), async () => {
         if (!currentUploadData) return;
         
         const opponentName = document.getElementById('review-opponent-name').value.replace(/[\s\u3000]+/g, '');
@@ -2025,7 +2072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    btnDetailSave.addEventListener('click', async () => {
+    addGuardedClickListener(btnDetailSave, async () => {
         if (!editingRecord || !detailEditedData) return;
 
         const opponentName = document.getElementById('detail-opponent-name').value.replace(/[\s\u3000]+/g, '');
@@ -2155,6 +2202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     studentModal.addEventListener('click', (e) => {
         if (e.target === studentModal) {
+            pendingBulkSlotSave = null;
             studentModal.classList.remove('active');
         }
     });
@@ -2612,15 +2660,8 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
         cardSize
     };
 
-    // Save to persistent cache
-    try {
-        cachedProfiles[aspectKey] = profile;
-        localStorage.setItem('tactical_archive_calibration_profiles', JSON.stringify(cachedProfiles));
-        console.log(`[Calibration] Successfully cached universal calibration profile for aspect ratio ${aspectKey}!`);
-    } catch (e) {
-        console.warn("[Calibration] Failed to persist calibration profile:", e);
-    }
-
+    // NOTE: Not persisted here. The profile is saved only when the user completes the Crop Inspector
+    // (applyCropInspector), so cancelling the first-time calibration shows the wizard again next time.
     return { profile, isCached: false };
 }
 
@@ -2873,6 +2914,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
             console.error("Opponent OCR failed:", ocrErr);
         }
     }
+    if (isScanCancelled) return;
 
     // 3. Crop Opponent profile avatar
     const oppAvatarCanvas = cropImage(
@@ -2900,6 +2942,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
     } catch (e) {
         console.warn('Battle type detection error:', e);
     }
+    if (isScanCancelled) return;
 
     const reviewData = {
         result: battleResult,
@@ -2976,6 +3019,8 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
         }
         reviewData.defense.push(slotData);
     }
+
+    if (isScanCancelled) return;
 
     // Populate Review UI
     currentUploadData = reviewData;
@@ -3829,7 +3874,7 @@ async function applyCropInspector() {
     if (!currentUploadData) {
         if (cropInspectorModal) cropInspectorModal.classList.remove('active');
         localStorage.setItem('tactical_archive_first_launch_done', 'true');
-        if (currentUploadFile && currentUploadExtractedDate) {
+        if (currentUploadFile && currentUploadExtractedDate && !isScanCancelled) {
             await runRecognitionPipeline(lastUploadedImage, currentActiveProfile, currentUploadFile, currentUploadExtractedDate, currentUploadExtractedTimestamp);
         }
         return;
@@ -4050,8 +4095,10 @@ function selectStudentForEditingSlot(student) {
         slot.studentName = student.name;
         slot.icon_path = student.icon_path || slot.icon_path;
         slot.userSelected = true; // Mark as user corrected
-        if (student.features && student.features.length > 0) {
-            slot.faceFeatures = student.features[0];
+        // Review Modal: keep the face features cropped from the screenshot so they are learned as a new pattern on save.
+        // Detail Modal: slots hold no crop features (only the previously shown student's), so use the selected student's.
+        if (modal === 'detail' || !slot.faceFeatures) {
+            slot.faceFeatures = (student.features && student.features.length > 0) ? student.features[0] : null;
         }
     } else {
         slot.studentId = null;
@@ -4126,9 +4173,15 @@ function openBattleDetailModal(item) {
     // Populate opponent name & Date
     document.getElementById('detail-opponent-name').value = item.commander_name || '';
     
-    const formattedDate = new Date(item.created_at).toISOString().split('T')[0];
+    // Use LOCAL date (toISOString() is UTC and shifts JST 0:00-8:59 records to the previous day)
+    const createdDate = new Date(item.created_at);
+    const isValidDate = !isNaN(createdDate.getTime());
+    const padDate = (n) => String(n).padStart(2, '0');
+    const formattedDate = isValidDate
+        ? `${createdDate.getFullYear()}-${padDate(createdDate.getMonth() + 1)}-${padDate(createdDate.getDate())}`
+        : '';
     document.getElementById('detail-date-input').value = formattedDate;
-    document.getElementById('detail-date-str').innerText = new Date(item.created_at).toLocaleDateString('ja-JP');
+    document.getElementById('detail-date-str').innerText = isValidDate ? createdDate.toLocaleDateString('ja-JP') : '';
     
     // Notes
     document.getElementById('detail-notes').value = item.notes || '';
@@ -4152,7 +4205,7 @@ function openBattleDetailModal(item) {
         avWrapper.appendChild(img);
     } else {
         // Fallback: use first defender student icon
-        const firstDefStudent = currentRoster.find(s => s.id === item.defense_team[0]);
+        const firstDefStudent = currentRoster.find(s => s.id === (item.defense_team && item.defense_team[0]));
         if (firstDefStudent && firstDefStudent.icon_path) {
             const img = document.createElement('img');
             img.src = firstDefStudent.icon_path;
@@ -4544,7 +4597,7 @@ function createHistoryRowElement(item, type = 'attack') {
     // 1. Result
     const tdResult = document.createElement('td');
     const resBadge = document.createElement('span');
-    resBadge.className = `result-badge ${item.result.toLowerCase()}`;
+    resBadge.className = `result-badge ${(item.result || 'lose').toLowerCase()}`;
     resBadge.innerText = item.result === 'WIN' ? 'W' : 'L';
     tdResult.appendChild(resBadge);
     
@@ -4593,7 +4646,7 @@ function createHistoryRowElement(item, type = 'attack') {
         commEl.appendChild(avImg);
     } else {
         // Fallback: first defender slot student icon
-        const firstDefStudent = currentRoster.find(s => s.id === item.defense_team[0]);
+        const firstDefStudent = currentRoster.find(s => s.id === (item.defense_team && item.defense_team[0]));
         if (firstDefStudent && firstDefStudent.icon_path) {
             const avImg = document.createElement('img');
             avImg.className = 'commander-avatar';
@@ -4644,7 +4697,7 @@ function createHistoryRowElement(item, type = 'attack') {
     const attackRow = document.createElement('div');
     attackRow.className = 'team-icons-row';
     for (let i = 0; i < 6; i++) {
-        const studentId = item.attack_team[i];
+        const studentId = item.attack_team ? item.attack_team[i] : null;
         const el = createStudentIconRowElement(studentId, i, 'attack', item, type);
         attackRow.appendChild(el);
     }
@@ -4662,7 +4715,7 @@ function createHistoryRowElement(item, type = 'attack') {
     const defenseRow = document.createElement('div');
     defenseRow.className = 'team-icons-row';
     for (let i = 0; i < 6; i++) {
-        const studentId = item.defense_team[i];
+        const studentId = item.defense_team ? item.defense_team[i] : null;
         const el = createStudentIconRowElement(studentId, i, 'defense', item, type);
         defenseRow.appendChild(el);
     }
@@ -4827,7 +4880,11 @@ function createStudentIconRowElement(studentId, index, team, item, type = 'attac
 
 // Backfill historical battle records to guarantee independent snapshot preservation
 async function backfillHistorySnapshots() {
-    if (!currentHistory || currentHistory.length === 0) return;
+    if (!currentHistory || currentHistory.length === 0) {
+        // 履歴が空 = 旧データなし。移行済みとしてマークしないと、後から登録した防衛記録が次回起動時に攻撃へ上書きされる
+        localStorage.setItem('tactical_archive_migrated_all_to_attack_v1124', 'true');
+        return;
+    }
     const db = await openDB();
     const itemsToUpdate = [];
 
@@ -4837,8 +4894,9 @@ async function backfillHistorySnapshots() {
         let itemUpdated = false;
         
         // ユーザー指示: 既存の戦績データは全て攻撃編成とする
+        // ※ 防衛機能追加後に登録された 'defense' は正しい値なので保持する（攻撃への上書きでデータが消えるのを防止）
         if (!isAllMigrated) {
-            if (item.battle_type !== 'attack') {
+            if (item.battle_type !== 'attack' && item.battle_type !== 'defense') {
                 item.battle_type = 'attack';
                 itemUpdated = true;
             }
@@ -4882,14 +4940,14 @@ async function backfillHistorySnapshots() {
 
         // Restore missing icon snapshots from current roster whenever student exists in roster
         for (let i = 0; i < 6; i++) {
-            if (!item.attack_icons[i] && item.attack_names && item.attack_names[i]) {
+            if (item.attack_icons && !item.attack_icons[i] && item.attack_names && item.attack_names[i]) {
                 const s = currentRoster.find(r => r.name === item.attack_names[i]);
                 if (s && s.icon_path) {
                     item.attack_icons[i] = s.icon_path;
                     itemUpdated = true;
                 }
             }
-            if (!item.defense_icons[i] && item.defense_names && item.defense_names[i]) {
+            if (item.defense_icons && !item.defense_icons[i] && item.defense_names && item.defense_names[i]) {
                 const s = currentRoster.find(r => r.name === item.defense_names[i]);
                 if (s && s.icon_path) {
                     item.defense_icons[i] = s.icon_path;
@@ -5258,12 +5316,76 @@ async function executeRestore() {
         });
     };
 
+    // Merge mode for auto-increment stores: never reuse backup IDs (they may belong to different local records)
+    const mergeHistoryStore = (items) => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('battle_history', 'readwrite');
+            const store = tx.objectStore('battle_history');
+            const historyKey = (h) => `${h.filename || ''}|${h.created_at || ''}|${h.commander_name || ''}`;
+            const getAllReq = store.getAll();
+            getAllReq.onsuccess = () => {
+                const existingKeys = new Set((getAllReq.result || []).map(historyKey));
+                (items || []).forEach(item => {
+                    const key = historyKey(item);
+                    if (existingKeys.has(key)) return; // already registered
+                    existingKeys.add(key);
+                    const copy = { ...item };
+                    delete copy.id;
+                    store.add(copy);
+                });
+            };
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    };
+
+    const mergeRosterStore = (items) => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('roster_students', 'readwrite');
+            const store = tx.objectStore('roster_students');
+            const nameIndex = store.index('name');
+            (items || []).forEach(item => {
+                if (!item || !item.name) return;
+                const getReq = nameIndex.get(item.name);
+                getReq.onsuccess = () => {
+                    const existing = getReq.result;
+                    if (existing) {
+                        // Same student name: merge feature patterns, keep local ID
+                        const features = [...(existing.features || [])];
+                        (item.features || []).forEach(f => {
+                            if (f && !features.some(ef => arraysEqual(ef, f))) features.push(f);
+                        });
+                        existing.features = features;
+                        if (!existing.icon_path && item.icon_path) existing.icon_path = item.icon_path;
+                        store.put(existing);
+                    } else {
+                        const copy = { ...item };
+                        delete copy.id;
+                        store.add(copy);
+                    }
+                };
+            });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    };
+
     try {
         if (doHistory) {
-            await restoreStore('battle_history', pendingRestoreData.battle_history, mode === 'overwrite');
+            if (mode === 'overwrite') {
+                await restoreStore('battle_history', pendingRestoreData.battle_history, true);
+            } else {
+                await mergeHistoryStore(pendingRestoreData.battle_history);
+            }
         }
         if (doRoster) {
-            await restoreStore('roster_students', pendingRestoreData.roster_students, mode === 'overwrite');
+            if (mode === 'overwrite') {
+                await restoreStore('roster_students', pendingRestoreData.roster_students, true);
+            } else {
+                await mergeRosterStore(pendingRestoreData.roster_students);
+            }
         }
         if (doOpponents) {
             if (pendingRestoreData.opponent_directory) {
@@ -5299,7 +5421,8 @@ async function executeRestore() {
         alert('選択した項目の復元が正常に完了しました！');
     } catch (e) {
         console.error('Restore execution failed:', e);
-        alert('復元中にエラーが発生しました: ' + e.message);
+        const errMsg = (e && (e.message || (e.target && e.target.error && e.target.error.message) || e.name)) || String(e);
+        alert('復元中にエラーが発生しました: ' + errMsg);
     }
 }
 
@@ -5540,7 +5663,7 @@ function setupStudentAutocomplete() {
             chip.innerText = m.name;
             chip.addEventListener('click', () => {
                 nameInput.value = m.name;
-                listEl.innerHTML = `<span style="font-size: 11px; color: #00e676; padding: 4px;"><i class="fa-solid fa-check"></i> 「${m.name}」を選択しました</span>`;
+                listEl.innerHTML = `<span style="font-size: 11px; color: #00e676; padding: 4px;"><i class="fa-solid fa-check"></i> 「${escapeHtml(m.name)}」を選択しました</span>`;
                 if (hintEl) hintEl.innerText = '';
             });
             listEl.appendChild(chip);
@@ -5614,6 +5737,7 @@ function initBulkFeatures() {
                     currentRoster = (await getStudents()) || [];
                 }
 
+                let hasUncalibratedImage = false;
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     const loadingText = document.getElementById('bulk-roster-loading-text');
@@ -5622,8 +5746,9 @@ function initBulkFeatures() {
                     }
 
                     const img = await loadImageFromFile(file);
-                    const { profile } = getOrComputeCalibrationProfile(img, null);
+                    const { profile, isCached } = getOrComputeCalibrationProfile(img, null);
                     if (!profile || !profile.modalBox) continue;
+                    if (!isCached) hasUncalibratedImage = true;
 
                     const normW = profile.normalizedWidth || 2400;
                     const normH = profile.normalizedHeight || 1040;
@@ -5691,6 +5816,10 @@ function initBulkFeatures() {
                     if (bulkRosterModal) bulkRosterModal.classList.remove('active');
                     alert('スロット画像を抽出できませんでした。画像を確認してください。');
                     return;
+                }
+
+                if (hasUncalibratedImage) {
+                    alert('トリミング領域が未設定の画像サイズ（縦横比）が含まれています。\n推定位置で切り抜いているため、アイコンがずれている場合は先に戦績のアップロードからトリミング領域を設定してください。');
                 }
 
                 // Start interactive step-by-step review
@@ -5825,8 +5954,8 @@ function initBulkFeatures() {
             leftCol.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px;';
             leftCol.innerHTML = `
                 <span style="font-size: 10px; font-weight: bold; color: #0077ff;">${slot.slotName} (${slot.slotDesc}) 新規</span>
-                <img src="${slot.iconDataUrl}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid #00a3ff; object-fit: cover;">
-                <span style="font-size: 8.5px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${slot.filename}</span>
+                <img src="${escapeHtml(slot.iconDataUrl)}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid #00a3ff; object-fit: cover;">
+                <span style="font-size: 8.5px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${escapeHtml(slot.filename)}</span>
             `;
 
             // Arrow
@@ -5842,8 +5971,8 @@ function initBulkFeatures() {
             rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px;';
             rightCol.innerHTML = `
                 <span style="font-size: 10px; font-weight: bold; color: var(--text-primary);">辞書登録中の生徒</span>
-                <img src="${activeMatchStudent.icon_path || ''}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid var(--border-color); object-fit: cover; background: #e2e8f0;">
-                <span style="font-size: 11px; font-weight: 800; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${activeMatchStudent.name}</span>
+                <img src="${escapeHtml(activeMatchStudent.icon_path || '')}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid var(--border-color); object-fit: cover; background: #e2e8f0;">
+                <span style="font-size: 11px; font-weight: 800; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${escapeHtml(activeMatchStudent.name)}</span>
             `;
 
             compBox.appendChild(leftCol);
@@ -6045,21 +6174,13 @@ function initBulkFeatures() {
         document.getElementById('add-student-icon-preview').style.display = 'block';
         document.getElementById('add-student-placeholder').style.display = 'none';
 
-        // Override save once for this bulk flow
-        const origSaveBtn = document.getElementById('btn-student-save');
-        const customSave = async () => {
-            const name = document.getElementById('add-student-name').value.trim();
-            if (!name) {
-                alert('生徒名を入力してください。');
-                return;
-            }
+        // Route the next save of the Student Add modal to this bulk slot (handled in btn-student-save)
+        pendingBulkSlotSave = async (name) => {
             await registerStudentInBulk(name, slot);
             studentModal.classList.remove('active');
             currentBulkRosterIndex++;
             showNextBulkRosterStep();
-            origSaveBtn.removeEventListener('click', customSave);
         };
-        origSaveBtn.addEventListener('click', customSave, { once: true });
 
         studentModal.classList.add('active');
     }
