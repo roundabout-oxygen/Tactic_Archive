@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.10';
+const APP_VERSION = 'v1.2.11';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -32,6 +32,48 @@ function formatCustomTagForExport(color, val) {
     if (color === 'yellow') return `☆${val}`;
     if (color === 'blue') return `固有${val}`;
     return `${val}`;
+}
+
+// Characters used for anonymized opponent names: hiragana + half-width alphanumerics
+const CSV_RANDOM_NAME_CHARS = Array.from(
+    'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん' +
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+);
+const CSV_RANDOM_NAME_LENGTH = 6;
+
+// Generate a random 6-char name with a cryptographically secure RNG (rejection sampling avoids bias)
+function generateRandomOpponentName() {
+    const chars = CSV_RANDOM_NAME_CHARS;
+    const limit = 256 - (256 % chars.length);
+    let result = '';
+    while (result.length < CSV_RANDOM_NAME_LENGTH) {
+        const buf = new Uint8Array(16);
+        crypto.getRandomValues(buf);
+        for (const b of buf) {
+            if (b >= limit) continue;
+            result += chars[b % chars.length];
+            if (result.length === CSV_RANDOM_NAME_LENGTH) break;
+        }
+    }
+    return result;
+}
+
+// Build a per-export mapping (same opponent -> same random name). The mapping is never stored,
+// and the random names are not derived from the original names, so they cannot be reversed.
+function buildRandomOpponentNameMap(records) {
+    const map = new Map();
+    const used = new Set();
+    records.forEach(item => {
+        const name = item.commander_name || '';
+        if (!name || name === '匿名' || map.has(name)) return;
+        let randomName;
+        do {
+            randomName = generateRandomOpponentName();
+        } while (used.has(randomName));
+        used.add(randomName);
+        map.set(name, randomName);
+    });
+    return map;
 }
 
 function openCsvExportModal() {
@@ -71,7 +113,7 @@ function updateCsvExportPreview() {
 function executeCsvExport() {
     const selectedTypeEl = document.querySelector('input[name="csv-export-type"]:checked');
     const selectedType = selectedTypeEl ? selectedTypeEl.value : 'attack';
-    const omitOpponentName = document.getElementById('chk-csv-omit-opponent-name')?.checked || false;
+    const randomizeOpponentName = document.getElementById('chk-csv-randomize-opponent-name')?.checked || false;
 
     const records = getFilteredRecordsForExport();
     if (records.length === 0) {
@@ -93,6 +135,9 @@ function executeCsvExport() {
 
     const rows = [headers.map(escapeCsv).join(',')];
 
+    // Re-generated on every export; discarded when this function returns
+    const randomNameMap = randomizeOpponentName ? buildRandomOpponentNameMap(records) : null;
+
     records.forEach(item => {
         // 1. Result
         const res = item.result || '';
@@ -108,7 +153,8 @@ function executeCsvExport() {
             }
         }
         // 4. Opponent Name
-        const opponent = omitOpponentName ? '' : (item.commander_name || '');
+        const rawOpponent = item.commander_name || '';
+        const opponent = randomNameMap ? (randomNameMap.get(rawOpponent) || rawOpponent) : rawOpponent;
         // 5. Attack / Defense
         const battleTypeStr = (item.battle_type === 'defense') ? '防衛' : '攻撃';
 
@@ -1043,6 +1089,68 @@ let currentUploadExtractedTimestamp = null; // Extracted timestamp (including HH
 let isScanCancelled = false; // Flag to abort processing if cancelled
 
 // ==========================================
+// FAST MODE (auto-register screenshots that need no manual check)
+// ==========================================
+let isFastMode = false;
+try {
+    isFastMode = localStorage.getItem('tactical_archive_fast_mode') === 'true';
+} catch (e) {}
+let fastModeAutoSavedCount = 0; // Number of records auto-registered in the current upload batch
+
+function updateFastModeButton() {
+    const btn = document.getElementById('btn-fast-mode');
+    const label = document.getElementById('btn-fast-mode-label');
+    if (!btn) return;
+    if (label) label.innerText = isFastMode ? '高速モード ON' : '高速モード OFF';
+    btn.style.background = isFastMode ? '#00e676' : 'rgba(255, 255, 255, 0.9)';
+    btn.style.borderColor = isFastMode ? '#00c853' : 'var(--border-color)';
+    btn.style.color = isFastMode ? '#000' : 'var(--text-secondary)';
+    btn.style.boxShadow = isFastMode ? '0 2px 8px rgba(0, 230, 118, 0.4)' : 'none';
+}
+
+function toggleFastMode() {
+    isFastMode = !isFastMode;
+    try {
+        localStorage.setItem('tactical_archive_fast_mode', isFastMode ? 'true' : 'false');
+    } catch (e) {}
+    updateFastModeButton();
+}
+
+// Returns the reason the screenshot needs a manual check, or null if it can be auto-registered
+function getFastModeStopReason(data) {
+    if (!data) return '認識結果がありません';
+    const allSlots = [...(data.attack || []), ...(data.defense || [])];
+    if (allSlots.length < 12 || allSlots.some(slot => !slot || !slot.studentId)) {
+        return '未登録の生徒がいるため確認が必要です';
+    }
+    const name = (data.opponentName || '').replace(/[\s　]+/g, '');
+    const rawName = (data.rawOcrOpponentName || '').replace(/[\s　]+/g, '');
+    if (!name) {
+        return '対戦相手の名前を読み取れなかったため確認が必要です';
+    }
+    if (data.battleType !== 'defense' && (name === '匿名' || rawName === '匿名')) {
+        return '匿名相手の攻撃のため、相手SPの固有を入力してください';
+    }
+    const hasFoughtBefore = currentHistory.some(h => (h.commander_name || '') === name);
+    if (!hasFoughtBefore) {
+        return '初めて対戦する相手のため確認が必要です';
+    }
+    return null;
+}
+
+function setReviewFastModeReason(reason) {
+    const el = document.getElementById('review-fast-mode-reason');
+    if (!el) return;
+    if (reason) {
+        el.innerText = `高速モード: ${reason}`;
+        el.style.display = 'inline-block';
+    } else {
+        el.innerText = '';
+        el.style.display = 'none';
+    }
+}
+
+// ==========================================
 // KEYBOARD UTILITY (Soft Keyboard Auto-Dismiss)
 // ==========================================
 function dismissKeyboard() {
@@ -1469,6 +1577,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         fileInput.click();
     });
 
+    const btnFastMode = document.getElementById('btn-fast-mode');
+    if (btnFastMode) btnFastMode.addEventListener('click', toggleFastMode);
+    updateFastModeButton();
+
     fileInput.addEventListener('change', () => {
         try {
             if (fileInput.files && fileInput.files.length > 0) {
@@ -1795,6 +1907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function processMultipleScreenshotUploads(files) {
         const fileList = Array.from(files); // Copy before awaiting (input may be reset meanwhile)
+        fastModeAutoSavedCount = 0;
         // Startup loads only the latest 15 records; make sure duplicate check sees the full history
         // (no wait if the background full load has already finished)
         if (!isFullHistoryLoaded) {
@@ -1833,6 +1946,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Queue is empty: reset UI and switch to Attack tab
             resetUploadUI();
             window.switchToTab('attack');
+            if (fastModeAutoSavedCount > 0) {
+                const count = fastModeAutoSavedCount;
+                fastModeAutoSavedCount = 0;
+                alert(`高速モードで ${count} 件の戦績を自動登録しました。`);
+            }
             return;
         }
         
@@ -1847,7 +1965,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         processNextInUploadQueue();
     });
 
-    addGuardedClickListener(document.getElementById('btn-review-save'), async () => {
+    // Save the record currently shown in the Review Modal (used by the save button and by Fast Mode)
+    async function saveReviewFromModal() {
         if (!currentUploadData) return;
         
         const opponentName = document.getElementById('review-opponent-name').value.replace(/[\s\u3000]+/g, '');
@@ -1981,7 +2100,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         reviewModal.classList.remove('active');
         uploadQueue.shift();
         processNextInUploadQueue();
-    });
+    }
+    window.saveReviewFromModal = saveReviewFromModal;
+    addGuardedClickListener(document.getElementById('btn-review-save'), saveReviewFromModal);
 
     // Student Selector Modal handlers
     document.getElementById('btn-selector-close').addEventListener('click', () => {
@@ -3025,6 +3146,27 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
     // Populate Review UI
     currentUploadData = reviewData;
     populateReviewModal(reviewData);
+
+    // Fast Mode: auto-register when no manual check is needed, then continue with the next screenshot
+    const fastModeStopReason = isFastMode ? getFastModeStopReason(reviewData) : null;
+    if (isFastMode && !fastModeStopReason && typeof window.saveReviewFromModal === 'function') {
+        if (isScanCancelled) return;
+        scanStatusText.innerText = '高速モード: 自動登録しています...';
+        // Count before saving: the save advances the queue and the batch-end summary may run inside it
+        fastModeAutoSavedCount++;
+        try {
+            await window.saveReviewFromModal();
+            return;
+        } catch (err) {
+            fastModeAutoSavedCount = Math.max(0, fastModeAutoSavedCount - 1);
+            console.error('Fast mode auto-save failed:', err);
+            setReviewFastModeReason('自動登録に失敗したため確認してください');
+            scannerScreen.style.display = 'none';
+            reviewModal.classList.add('active');
+            return;
+        }
+    }
+    setReviewFastModeReason(fastModeStopReason);
 
     // Hide scanner and open Review Modal
     scannerScreen.style.display = 'none';
