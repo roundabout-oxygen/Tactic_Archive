@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.11';
+const APP_VERSION = 'v1.2.12';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1136,18 +1136,6 @@ function getFastModeStopReason(data) {
         return '初めて対戦する相手のため確認が必要です';
     }
     return null;
-}
-
-function setReviewFastModeReason(reason) {
-    const el = document.getElementById('review-fast-mode-reason');
-    if (!el) return;
-    if (reason) {
-        el.innerText = `高速モード: ${reason}`;
-        el.style.display = 'inline-block';
-    } else {
-        el.innerText = '';
-        el.style.display = 'none';
-    }
 }
 
 // ==========================================
@@ -3160,13 +3148,11 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
         } catch (err) {
             fastModeAutoSavedCount = Math.max(0, fastModeAutoSavedCount - 1);
             console.error('Fast mode auto-save failed:', err);
-            setReviewFastModeReason('自動登録に失敗したため確認してください');
             scannerScreen.style.display = 'none';
             reviewModal.classList.add('active');
             return;
         }
     }
-    setReviewFastModeReason(fastModeStopReason);
 
     // Hide scanner and open Review Modal
     scannerScreen.style.display = 'none';
