@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.12';
+const APP_VERSION = 'v1.2.13';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -533,7 +533,7 @@ async function saveOpponent(name, avatar, overwrite = false) {
 async function migrateOpponentAvatars() {
     try {
         const db = await openDB();
-        const allHistory = await getHistory();
+        const allHistory = isFullHistoryLoaded ? currentHistory : await getHistory();
         const allRenames = await getRenames();
         
         let needMigrationCount = 0;
@@ -746,6 +746,50 @@ async function getLatestHistoryFast(limit = 15) {
         };
         request.onerror = () => resolve([]);
     });
+}
+
+// Load up to `limit` records with id < upperId (newest first). upperId = null starts from the newest.
+async function getHistoryChunkBefore(upperId, limit) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('battle_history', 'readonly');
+        const store = transaction.objectStore('battle_history');
+        const range = (upperId === null || upperId === undefined) ? null : IDBKeyRange.upperBound(upperId, true);
+        const request = store.openCursor(range, 'prev');
+        const results = [];
+        request.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor && results.length < limit) {
+                results.push(cursor.value);
+                cursor.continue();
+            } else {
+                resolve(results);
+            }
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+const HISTORY_LOAD_CHUNK = 100;
+
+// Load all records older than the ones already in memory, chunk by chunk, merging each chunk into the view
+async function loadRemainingHistoryProgressively() {
+    const ids = currentHistory.map(h => h.id).filter(id => typeof id === 'number');
+    let upperId = ids.length > 0 ? Math.min(...ids) : null;
+    while (true) {
+        const chunk = await getHistoryChunkBefore(upperId, HISTORY_LOAD_CHUNK);
+        if (chunk.length === 0) break;
+        upperId = chunk[chunk.length - 1].id;
+        // currentHistory may have been replaced meanwhile (restore / delete all), so dedupe against it each time
+        const known = new Set(currentHistory.map(h => h.id));
+        const fresh = chunk.filter(h => !known.has(h.id));
+        if (fresh.length > 0) {
+            currentHistory.push(...fresh);
+            appendLoadedRecordsToView(fresh);
+        }
+        if (chunk.length < HISTORY_LOAD_CHUNK) break;
+        await new Promise(r => setTimeout(r, 0)); // yield so taps / typing stay responsive
+    }
 }
 
 // Remove any existing Defense battle records from IndexedDB
@@ -1295,39 +1339,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateRosterView();
         updateHistoryView();
 
-        // STEP 2: BACKGROUND FULL DATA LOADING (Non-blocking)
+        // STEP 2: BACKGROUND PROGRESSIVE LOADING (Non-blocking)
+        // Older records are loaded HISTORY_LOAD_CHUNK at a time (newest first) and merged into the
+        // visible list as they arrive, so recent battles and search results appear immediately.
         fullHistoryLoadPromise = (async () => {
             try {
-                const [fullHistory, opponents, renames] = await Promise.all([
-                    getHistory(),
-                    getOpponents(),
-                    getRenames()
-                ]);
-                // Keep records saved/edited while the full load was running (the readonly snapshot may be older)
-                const mergedById = new Map((fullHistory || []).map(h => [h.id, h]));
-                currentHistory.forEach(h => { if (h.id !== undefined) mergedById.set(h.id, h); });
-                currentHistory = Array.from(mergedById.values());
+                const [opponents, renames] = await Promise.all([getOpponents(), getRenames()]);
                 opponentDirectory = opponents || {};
                 opponentRenames = renames || [];
+                updateHistoryView(); // re-render so opponent avatars appear on the initial rows
+
+                await loadRemainingHistoryProgressively();
                 isFullHistoryLoaded = true;
-
-                // If user has already entered a search/filter, re-run filter on full dataset
-                const searchAtk = document.getElementById('search-commander-attack');
-                const searchDef = document.getElementById('search-commander-defense');
-                const hasSearch = (searchAtk?.value?.trim() || searchDef?.value?.trim() || activePositionFilter);
-
-                if (hasSearch) {
-                    updateHistoryView();
-                } else {
-                    // Otherwise silently update stats and pagination buffer without UI flicker
-                    updateHistoryAllFilteredSilently();
-                }
+                refreshHistoryEmptyStates();
 
                 // Background migration (non-blocking)
                 migrateOpponentAvatars();
                 backfillHistorySnapshots().catch(err => console.warn("Background backfill error:", err));
             } catch (err) {
                 console.error("Background full history load error:", err);
+                // Fallback: load everything at once so no data is missing
+                try {
+                    const all = await getHistory();
+                    const known = new Set(currentHistory.map(h => h.id));
+                    const missing = all.filter(h => !known.has(h.id));
+                    currentHistory.push(...missing);
+                    appendLoadedRecordsToView(missing);
+                } catch (e2) {
+                    console.error("Fallback full history load failed:", e2);
+                }
+                isFullHistoryLoaded = true;
+                refreshHistoryEmptyStates();
             }
         })();
     } catch (e) {
@@ -1522,7 +1564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (searchAtk) {
         searchAtk.addEventListener('input', () => {
-            syncSearchInput(searchAtk.value, false);
+            scheduleSearchInput(searchAtk.value);
         });
     }
     if (btnClearAtk) {
@@ -1533,7 +1575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (searchDef) {
         searchDef.addEventListener('input', () => {
-            syncSearchInput(searchDef.value, false);
+            scheduleSearchInput(searchDef.value);
         });
     }
     if (btnClearDef) {
@@ -4464,138 +4506,181 @@ function createDetailSlotElement(slotData, team, index) {
     return slotEl;
 }
 
-// Filter and render History items
-async function filterHistory(type = 'attack') {
+// ---- History search (fast) ----
+// Per-record cache of normalized strings (WeakMap: not stored into IndexedDB).
+// Signature check keeps it valid when a record is edited in place.
+const _historySearchKeyCache = new WeakMap();
+
+function getHistorySearchKeys(item) {
+    const atk = item.attack_names || [];
+    const def = item.defense_names || [];
+    const sig = (item.commander_name || '') + '\u0001' + atk.join('\u0002') + '\u0001' + def.join('\u0002');
+    const cached = _historySearchKeyCache.get(item);
+    if (cached && cached.sig === sig) return cached;
+    const names = [...atk, ...def].filter(Boolean);
+    const keys = {
+        sig,
+        cmdLower: (item.commander_name || '').toLowerCase(),
+        cmdHira: toHiragana(item.commander_name || ''),
+        namesLower: names.map(n => n.toLowerCase()),
+        namesHira: names.map(n => toHiragana(n))
+    };
+    _historySearchKeyCache.set(item, keys);
+    return keys;
+}
+
+// Build the search criteria once per search (terms, normalized forms, matching roster IDs)
+function buildHistorySearchCriteria(type) {
     const searchEl = document.getElementById(`search-commander-${type}`);
     const searchVal = (searchEl?.value || '').toLowerCase().trim();
-    const effectiveFilter = getEffectivePositionFilter(type);
+    const terms = searchVal === '' ? [] : searchVal.split(/[\s,，、]+/).filter(t => t.length > 0).map(term => {
+        const lowerTerm = term.toLowerCase();
+        const hiraTerm = toHiragana(term);
+        const studentIds = new Set(
+            currentRoster
+                .filter(s => s.name && (s.name.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(s.name).includes(hiraTerm))))
+                .map(s => s.id)
+        );
+        return { lowerTerm, hiraTerm, studentIds };
+    });
+    return {
+        type,
+        searchVal,
+        terms,
+        positionFilter: getEffectivePositionFilter(type)
+    };
+}
 
-    // If searching or filtering, guarantee that the complete history dataset is loaded!
-    if ((searchVal !== '' || effectiveFilter) && !isFullHistoryLoaded) {
-        await ensureFullHistoryLoaded();
+function historyMatchesCriteria(item, criteria) {
+    // Tab (battle type)
+    if (criteria.type === 'defense') {
+        if (item.battle_type !== 'defense') return false;
+    } else if (item.battle_type === 'defense') {
+        return false;
     }
 
-    const baseList = currentHistory.filter(item => {
-        if (type === 'defense') {
-            return item.battle_type === 'defense';
-        } else {
-            return item.battle_type !== 'defense';
+    // Position Filter (D1 Eimi, D5/D6 Special order-independent, etc.)
+    const pf = criteria.positionFilter;
+    if (pf) {
+        const { team, index, studentName } = pf;
+        const namesArray = (team === 'attack') ? item.attack_names : item.defense_names;
+        const matchSlot = (i) => {
+            if (!studentName || studentName === '生徒' || studentName === '未登録') return false;
+            return (namesArray && namesArray[i]) === studentName;
+        };
+        if (index >= 4) {
+            if (!matchSlot(4) && !matchSlot(5)) return false;
+        } else if (!matchSlot(index)) {
+            return false;
         }
-    });
+    }
 
-    const filtered = baseList.filter(item => {
-        // Position Filter (D1 Eimi, D5/D6 Special order-independent, etc.)
-        if (effectiveFilter) {
-            const { team, index, studentName } = effectiveFilter;
-            const namesArray = (team === 'attack') ? item.attack_names : item.defense_names;
-            
-            const matchSlot = (i) => {
-                if (!studentName || studentName === '生徒' || studentName === '未登録') return false;
-                const slotName = namesArray && namesArray[i];
-                return slotName === studentName;
-            };
-
-            if (index >= 4) {
-                if (!matchSlot(4) && !matchSlot(5)) return false;
-            } else {
-                if (!matchSlot(index)) return false;
-            }
-        }
-        
-        // Search commander name / student name / team composition
-        if (searchVal !== '') {
-            const terms = searchVal.split(/[\s,，、]+/).filter(t => t.length > 0);
-            
-            for (const term of terms) {
-                let termMatched = false;
-                const lowerTerm = term.toLowerCase();
-                const hiraTerm = toHiragana(term);
-                
-                // 1. Match commander name (Hiragana / Katakana bidirectional match)
-                if (item.commander_name) {
-                    const cmdLower = item.commander_name.toLowerCase();
-                    const cmdHira = toHiragana(item.commander_name);
-                    if (cmdLower.includes(lowerTerm) || (hiraTerm && cmdHira.includes(hiraTerm))) {
-                        termMatched = true;
-                    }
+    // Search commander name / student name / team composition (all terms must match)
+    if (criteria.terms.length > 0) {
+        const keys = getHistorySearchKeys(item);
+        for (const t of criteria.terms) {
+            // 1. Commander name (Hiragana / Katakana bidirectional match)
+            if (keys.cmdLower.includes(t.lowerTerm) || (t.hiraTerm && keys.cmdHira.includes(t.hiraTerm))) continue;
+            // 2. Student names saved in the record
+            let matched = false;
+            for (let i = 0; i < keys.namesLower.length; i++) {
+                if (keys.namesLower[i].includes(t.lowerTerm) || (t.hiraTerm && keys.namesHira[i].includes(t.hiraTerm))) {
+                    matched = true;
+                    break;
                 }
-                
-                // 2. Match student name (Hiragana / Katakana bidirectional match)
-                if (!termMatched) {
-                    const matchName = n => n && (n.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(n).includes(hiraTerm)));
-                    const hasAtkName = item.attack_names && item.attack_names.some(matchName);
-                    const hasDefName = item.defense_names && item.defense_names.some(matchName);
-                    if (hasAtkName || hasDefName) {
-                        termMatched = true;
-                    } else {
-                        const matchingStudentIds = currentRoster
-                            .filter(s => s.name && (s.name.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(s.name).includes(hiraTerm))))
-                            .map(s => s.id);
-                        
-                        if (matchingStudentIds.length > 0) {
-                            const atkStrikers = (item.attack_team || []).slice(0, 4);
-                            const defStrikers = (item.defense_team || []).slice(0, 4);
-                            const atkSpecials = (item.attack_team || []).slice(4);
-                            const defSpecials = (item.defense_team || []).slice(4);
-                            
-                            const hasAtkStriker = atkStrikers.some(id => matchingStudentIds.includes(id));
-                            const hasDefStriker = defStrikers.some(id => matchingStudentIds.includes(id));
-                            const hasAtkSpecial = atkSpecials.some(id => matchingStudentIds.includes(id));
-                            const hasDefSpecial = defSpecials.some(id => matchingStudentIds.includes(id));
-                            
-                            if (hasAtkStriker || hasDefStriker || hasAtkSpecial || hasDefSpecial) {
-                                termMatched = true;
-                            }
-                        }
-                    }
-                }
-                
-                if (!termMatched) return false;
             }
+            // 3. Student IDs (records whose snapshot names are missing)
+            if (!matched && t.studentIds.size > 0) {
+                matched = (item.attack_team || []).some(id => t.studentIds.has(id)) ||
+                          (item.defense_team || []).some(id => t.studentIds.has(id));
+            }
+            if (!matched) return false;
         }
-        
-        return true;
-    });
-
-    renderHistoryItems(filtered, type);
+    }
+    return true;
 }
 
-// Render History View
+function compareHistoryDesc(a, b) {
+    return (b.created_at - a.created_at) || ((b.id || 0) - (a.id || 0));
+}
+
+function isHistoryTab(type) {
+    return type === 'attack' || type === 'defense';
+}
+
+// Filter and render History items (only the requested tab)
+async function filterHistory(type = 'attack') {
+    const criteria = buildHistorySearchCriteria(type);
+    const filtered = currentHistory.filter(item => historyMatchesCriteria(item, criteria));
+    renderHistoryItems(filtered, type, criteria);
+}
+
+// Render History View: only the visible history tab is searched.
+// The other tab is re-filtered when it is opened (switchToTab calls filterHistory).
 async function updateHistoryView() {
-    await filterHistory('attack');
-    await filterHistory('defense');
+    if (isHistoryTab(activeTab)) {
+        await filterHistory(activeTab);
+    }
 }
 
-// Silently update statistics and full scroll buffer after background load without UI flicker
-function updateHistoryAllFilteredSilently() {
-    ['attack', 'defense'].forEach(type => {
-        const baseList = currentHistory.filter(item => {
-            return type === 'defense' ? item.battle_type === 'defense' : item.battle_type !== 'defense';
-        });
-        const sorted = [...baseList].sort((a, b) => b.created_at - a.created_at || (b.id || 0) - (a.id || 0));
+// Merge newly loaded (older) records into the visible tab without re-rendering everything
+function appendLoadedRecordsToView(newItems) {
+    if (!newItems || newItems.length === 0) return;
+    const type = activeTab;
+    if (!isHistoryTab(type)) return;
+    const state = historyRenderState[type];
+    if (!state || !state.criteria) return;
 
-        // Update statistics with full dataset numbers
-        const total = sorted.length;
-        let wins = 0;
-        sorted.forEach(h => { if (h.result === 'WIN') wins++; });
-        const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+    const matched = newItems.filter(item => historyMatchesCriteria(item, state.criteria));
+    if (matched.length === 0) return;
 
-        const statTotalEl = document.getElementById(`stat-total-battles-${type}`);
-        const statWinRateEl = document.getElementById(`stat-win-rate-${type}`);
-        const statRatioEl = document.getElementById(`stat-win-lose-ratio-${type}`);
-        if (statTotalEl) statTotalEl.innerText = total;
-        if (statWinRateEl) statWinRateEl.innerText = `${winRate}%`;
-        if (statRatioEl) statRatioEl.innerText = `${wins} / ${total - wins}`;
+    const tbody = document.getElementById(`${type}-history-items`);
+    if (!tbody) return;
+    if (state.allFiltered.length === 0) {
+        tbody.innerHTML = ''; // remove the empty-state row
+    }
 
-        // Silently update allFiltered list so subsequent scroll loads records 16+ from full history!
-        if (historyRenderState[type]) {
-            historyRenderState[type].allFiltered = sorted;
+    // Keep the number of rendered rows (first page, or how far the user has scrolled)
+    const renderLimit = Math.max(HISTORY_PAGE_SIZE, state.renderedCount);
+
+    matched.sort(compareHistoryDesc);
+    for (const item of matched) {
+        // Binary search for the insertion point in the date-descending list
+        let lo = 0, hi = state.allFiltered.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (compareHistoryDesc(state.allFiltered[mid], item) <= 0) lo = mid + 1;
+            else hi = mid;
         }
-    });
+        state.allFiltered.splice(lo, 0, item);
+        if (lo < state.renderedCount) {
+            // Falls inside the already-rendered range: insert the row at its place
+            tbody.insertBefore(createHistoryRowElement(item, type), tbody.children[lo] || null);
+            state.renderedCount++;
+            // Rows pushed past the limit are removed; they stay in allFiltered and render again on scroll
+            while (state.renderedCount > renderLimit && tbody.lastElementChild) {
+                tbody.removeChild(tbody.lastElementChild);
+                state.renderedCount--;
+            }
+        }
+        state.total++;
+        if (item.result === 'WIN') state.wins++;
+    }
+    updateHistoryStats(type, state.total, state.wins);
+
+    // Fill the first page if it is not full yet
+    if (state.renderedCount < HISTORY_PAGE_SIZE) {
+        renderNextHistoryBatch(type, HISTORY_PAGE_SIZE - state.renderedCount);
+    }
 }
 
 // Synchronized Search Input handler (Shared across Attack and Defense tabs, callable from any scope)
 async function syncSearchInput(value, clearPositionFilter = false) {
+    // A direct call (clear button, commander tap, etc.) supersedes any pending typed search
+    if (_searchInputTimer) {
+        clearTimeout(_searchInputTimer);
+        _searchInputTimer = null;
+    }
     if (clearPositionFilter) {
         activePositionFilter = null;
     }
@@ -4610,38 +4695,68 @@ async function syncSearchInput(value, clearPositionFilter = false) {
     if (btnClearAtk) btnClearAtk.style.display = hasValue ? 'block' : 'none';
     if (btnClearDef) btnClearDef.style.display = hasValue ? 'block' : 'none';
 
-    // Searching must always query the full dataset!
-    if (hasValue && !isFullHistoryLoaded) {
-        await ensureFullHistoryLoaded();
-    }
+    // Search what is loaded now; older records are merged in as they finish loading
     await updateHistoryView();
 }
 window.syncSearchInput = syncSearchInput;
+
+// Typing: search after a short pause instead of on every keystroke
+let _searchInputTimer = null;
+function scheduleSearchInput(value) {
+    if (_searchInputTimer) clearTimeout(_searchInputTimer);
+    _searchInputTimer = setTimeout(() => {
+        _searchInputTimer = null;
+        syncSearchInput(value, false);
+    }, 150);
+}
 
 const HISTORY_PAGE_SIZE = 30;
 
 // Pagination state for incremental rendering
 const historyRenderState = {
-    attack: {
-        allFiltered: [],
-        renderedCount: 0
-    },
-    defense: {
-        allFiltered: [],
-        renderedCount: 0
-    }
+    attack: { allFiltered: [], renderedCount: 0, total: 0, wins: 0, criteria: null },
+    defense: { allFiltered: [], renderedCount: 0, total: 0, wins: 0, criteria: null }
 };
+
+function updateHistoryStats(type, total, wins) {
+    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+    const statTotalEl = document.getElementById(`stat-total-battles-${type}`);
+    const statWinRateEl = document.getElementById(`stat-win-rate-${type}`);
+    const statRatioEl = document.getElementById(`stat-win-lose-ratio-${type}`);
+    if (statTotalEl) statTotalEl.innerText = total;
+    if (statWinRateEl) statWinRateEl.innerText = `${winRate}%`;
+    if (statRatioEl) statRatioEl.innerText = `${wins} / ${total - wins}`;
+}
+
+function getHistoryEmptyStateHtml() {
+    const msg = isFullHistoryLoaded
+        ? '対戦履歴が見つかりません。スクショをアップロードしてください。'
+        : '対戦履歴を読み込み中です...';
+    const icon = isFullHistoryLoaded ? 'fa-box-open' : 'fa-circle-notch fa-spin';
+    return `
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <i class="fa-solid ${icon}"></i>
+                    <p>${msg}</p>
+                </td>
+            </tr>
+        `;
+}
+
+// After loading finishes, replace "loading" placeholders with the normal empty message
+function refreshHistoryEmptyStates() {
+    ['attack', 'defense'].forEach(type => {
+        const state = historyRenderState[type];
+        const tbody = document.getElementById(`${type}-history-items`);
+        if (state && tbody && state.allFiltered.length === 0) {
+            tbody.innerHTML = getHistoryEmptyStateHtml();
+        }
+    });
+}
 
 async function renderNextHistoryBatch(type = 'attack', count = HISTORY_PAGE_SIZE) {
     const state = historyRenderState[type];
     if (!state) return;
-
-    // If user scrolled to the end of the initial batch and full history is still loading, wait for it!
-    if (state.renderedCount >= state.allFiltered.length && !isFullHistoryLoaded) {
-        await ensureFullHistoryLoaded();
-        updateHistoryAllFilteredSilently();
-    }
-
     if (state.renderedCount >= state.allFiltered.length) return;
 
     const tbody = document.getElementById(`${type}-history-items`);
@@ -4659,48 +4774,35 @@ async function renderNextHistoryBatch(type = 'attack', count = HISTORY_PAGE_SIZE
     state.renderedCount += nextBatch.length;
 }
 
-function renderHistoryItems(historyArray, type = 'attack') {
-    // 1. Calculate stats on the FULL filtered dataset (All matched data!)
+function renderHistoryItems(historyArray, type = 'attack', criteria = null) {
+    // 1. Calculate stats on the filtered dataset (grows as older records finish loading)
     const total = historyArray.length;
     let wins = 0;
     historyArray.forEach(h => {
         if (h.result === 'WIN') wins++;
     });
-    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
-    
-    const statTotalEl = document.getElementById(`stat-total-battles-${type}`);
-    const statWinRateEl = document.getElementById(`stat-win-rate-${type}`);
-    const statRatioEl = document.getElementById(`stat-win-lose-ratio-${type}`);
+    updateHistoryStats(type, total, wins);
+
     const tbody = document.getElementById(`${type}-history-items`);
-
-    if (statTotalEl) statTotalEl.innerText = total;
-    if (statWinRateEl) statWinRateEl.innerText = `${winRate}%`;
-    if (statRatioEl) statRatioEl.innerText = `${wins} / ${total - wins}`;
-
     if (!tbody) return;
     tbody.innerHTML = '';
-    
-    if (historyArray.length === 0) {
-        historyRenderState[type] = { allFiltered: [], renderedCount: 0 };
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty-state">
-                    <i class="fa-solid fa-box-open"></i>
-                    <p>対戦履歴が見つかりません。スクショをアップロードしてください。</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
+
     // Sort all matched data by Date descending (fall back to ID descending for same-day items)
-    const sorted = [...historyArray].sort((a, b) => b.created_at - a.created_at || (b.id || 0) - (a.id || 0));
-    
-    // Set pagination state
+    const sorted = [...historyArray].sort(compareHistoryDesc);
+
+    // Set pagination state (criteria is kept so progressively loaded records use the same filter)
     historyRenderState[type] = {
         allFiltered: sorted,
-        renderedCount: 0
+        renderedCount: 0,
+        total,
+        wins,
+        criteria: criteria || buildHistorySearchCriteria(type)
     };
+
+    if (sorted.length === 0) {
+        tbody.innerHTML = getHistoryEmptyStateHtml();
+        return;
+    }
 
     // Reset scroll position to top
     const wrapper = document.querySelector(`#tab-${type} .history-list-wrapper`);
