@@ -1163,6 +1163,19 @@ body.narrow .history-table .team-icons-row > .mini-icon { border-radius: 7px; }
 /* portrait: icons fill the team cells (original layout) */
 body.narrow:not(.landscape) .history-table .team-icons-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 body.narrow:not(.landscape) .history-table .team-icons-row > .mini-icon { width: 100%; flex: none; }
+/* Icons getting small (set by app.js): narrower opponent column, then no face icon */
+.history-pane.comm-s .history-table .td-commander { width: 100px; }
+.history-pane.comm-s .history-table td.td-commander { padding-left: 3px; padding-right: 3px; }
+.history-pane.comm-s .history-table .commander-clickable { padding: 2px 7px 2px 2px; gap: 5px; }
+.history-pane.comm-s .history-table .commander-avatar,
+.history-pane.comm-s .history-table .commander-avatar-placeholder { width: 22px; height: 22px; font-size: 11px; }
+.history-pane.comm-s .history-table .commander-name-text { font-size: 11.5px; }
+.history-pane.comm-xs .history-table .td-commander { width: 80px; }
+.history-pane.comm-xs .history-table .commander-clickable { padding: 2px 5px; gap: 0; }
+.history-pane.comm-xs .history-table .commander-avatar,
+.history-pane.comm-xs .history-table .commander-avatar-placeholder { display: none; }
+.history-pane.comm-xs .history-table .commander-name-text { font-size: 10.5px; }
+.history-pane.comm-xs .history-table .td-date { width: 28px; font-size: 9px; }
 /* Narrowed to "匿名": slim name column + small SP tags on the right */
 body.narrow .anon-filter .history-table .td-commander { width: 50px; }
 body.narrow .anon-filter .history-table .commander-clickable { padding: 3px 6px; gap: 0; }

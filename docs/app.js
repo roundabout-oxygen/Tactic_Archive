@@ -1323,20 +1323,28 @@ function updateHistoryIconSize() {
         const pane = document.getElementById(`tab-${type}`);
         if (!pane || !pane.classList.contains('active')) return;
         const table = pane.querySelector('.history-table');
-        if (table && !document.body.classList.contains('landscape')) {
-            table.style.removeProperty('--icon-size'); // portrait keeps the original layout
-            return;
-        }
         const wrapper = pane.querySelector('.history-list-wrapper');
         const th = pane.querySelector('thead th.td-left');
-        if (!table || !wrapper || !th || !th.offsetWidth) return;
+        if (!table || !wrapper || !th) return;
         const sample = pane.querySelector('tbody td.td-left');
         const row = sample ? sample.querySelector('.team-icons-row') : null;
         const cs = sample ? getComputedStyle(sample) : null;
         const padH = cs ? parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderRightWidth || 0) : 18;
         const padV = cs ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 1 : 17;
         const gap = row ? (parseFloat(getComputedStyle(row).columnGap) || 4) : 4;
-        const widthLimit = Math.floor((th.offsetWidth - padH - gap * 5) / 6);
+        const fitWidth = () => Math.floor((th.offsetWidth - padH - gap * 5) / 6); // offsetWidth forces layout
+        // Icons too small: narrow the opponent column, then also hide the opponent's face icon
+        pane.classList.remove('comm-s', 'comm-xs');
+        if (!th.offsetWidth) return;
+        if (fitWidth() < 32) {
+            pane.classList.add('comm-s');
+            if (fitWidth() < 28) pane.classList.add('comm-xs');
+        }
+        if (!document.body.classList.contains('landscape')) {
+            table.style.removeProperty('--icon-size'); // portrait: icons fill the team cells
+            return;
+        }
+        const widthLimit = fitWidth();
         const thead = table.querySelector('thead');
         const listH = wrapper.clientHeight - (thead && getComputedStyle(thead).display !== 'none' ? thead.offsetHeight : 0);
         const heightLimit = Math.floor(listH / 10 - padV);
