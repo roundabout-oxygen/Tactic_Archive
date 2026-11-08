@@ -12,6 +12,9 @@
         localStorage.setItem('tactical_archive_demo_first_launch_done', 'true');
         localStorage.setItem('tactical_archive_demo_defense_feature_notified', 'true');
         localStorage.setItem('tactical_archive_demo_migrated_all_to_attack_v1124', 'true');
+        // Web v2: skip the platform choice screen (the demo never reads screenshots)
+        localStorage.setItem('tactical_archive_demo_web_platform', 'pc');
+        localStorage.setItem('tactical_archive_demo_web_pc_aspect', '16:9');
     } catch (e) {}
 
     function openDemoDB() {
