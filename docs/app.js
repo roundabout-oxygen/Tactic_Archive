@@ -5884,6 +5884,33 @@ const btnRestoreCancel = document.getElementById('btn-restore-cancel');
 const btnRestoreExecute = document.getElementById('btn-restore-execute');
 const dbRestoreInput = document.getElementById('db-restore-input');
 
+// Parse a backup file leniently: BOM / surrounding whitespace, and extra bytes before or after the JSON object
+// (e.g. a prefix added by a file-sharing app, or leftover bytes after the closing brace) are tolerated.
+function parseBackupJsonText(raw, file) {
+    const text = String(raw || '').replace(/^﻿/, '').trim();
+    try {
+        return JSON.parse(text);
+    } catch (firstErr) {
+        const start = text.indexOf('{');
+        let end = text.lastIndexOf('}');
+        // Try the last few closing braces (extra bytes after the JSON may contain '}' too)
+        for (let tries = 0; start !== -1 && end > start && tries < 50; tries++) {
+            try {
+                const data = JSON.parse(text.slice(start, end + 1));
+                console.warn(`[Restore] Ignored ${start} byte(s) before and ${text.length - end - 1} byte(s) after the JSON`);
+                return data;
+            } catch (e) {
+                end = text.lastIndexOf('}', end - 1);
+            }
+        }
+        const head = text.slice(0, 30).replace(/\s+/g, ' ');
+        const info = file ? `
+ファイル: ${file.name}（${Math.round(file.size / 1024)}KB）` : '';
+        throw new Error(`${firstErr.message}${info}
+ファイルの先頭: 「${head}」`);
+    }
+}
+
 function openRestoreFilePicker() {
     dbRestoreInput.value = '';
     dbRestoreInput.click();
@@ -5896,7 +5923,7 @@ dbRestoreInput.addEventListener('change', (e) => {
     const reader = new FileReader();
     reader.onload = (re) => {
         try {
-            const data = JSON.parse(re.target.result);
+            const data = parseBackupJsonText(re.target.result, file);
             if (!data || (data.version === undefined && !data.battle_history && !data.roster_students)) {
                 alert('無効なバックアップファイルです。ファイル構造が正しくありません。');
                 return;
