@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.13';
+const APP_VERSION = 'v1.2.14';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1563,8 +1563,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnClearDef = document.getElementById('btn-clear-search-defense');
 
     if (searchAtk) {
-        searchAtk.addEventListener('input', () => {
-            scheduleSearchInput(searchAtk.value);
+        // 'input' fires per character; composition events cover IMEs that skip 'input' while converting
+        ['input', 'compositionupdate', 'compositionend'].forEach(evt => {
+            searchAtk.addEventListener(evt, () => scheduleSearchInput(searchAtk));
         });
     }
     if (btnClearAtk) {
@@ -1574,8 +1575,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (searchDef) {
-        searchDef.addEventListener('input', () => {
-            scheduleSearchInput(searchDef.value);
+        // 'input' fires per character; composition events cover IMEs that skip 'input' while converting
+        ['input', 'compositionupdate', 'compositionend'].forEach(evt => {
+            searchDef.addEventListener(evt, () => scheduleSearchInput(searchDef));
         });
     }
     if (btnClearDef) {
@@ -4700,14 +4702,16 @@ async function syncSearchInput(value, clearPositionFilter = false) {
 }
 window.syncSearchInput = syncSearchInput;
 
-// Typing: search after a short pause instead of on every keystroke
+// Typing: search on every character, including uncommitted IME text (no need to confirm conversion).
+// Events in the same tick are coalesced into one search, and the value is read when the search runs
+// so it always reflects the latest composing text.
 let _searchInputTimer = null;
-function scheduleSearchInput(value) {
-    if (_searchInputTimer) clearTimeout(_searchInputTimer);
+function scheduleSearchInput(inputEl) {
+    if (_searchInputTimer) return;
     _searchInputTimer = setTimeout(() => {
         _searchInputTimer = null;
-        syncSearchInput(value, false);
-    }, 150);
+        syncSearchInput(inputEl.value, false);
+    }, 0);
 }
 
 const HISTORY_PAGE_SIZE = 30;
