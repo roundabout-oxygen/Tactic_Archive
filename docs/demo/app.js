@@ -1289,21 +1289,61 @@ let _layoutLastW = 0;
 function updateViewportLayout() {
     const w = window.innerWidth, h = window.innerHeight;
     const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    const force = coarse && h > w && w <= 640;
     const b = document.body;
     if (!b) return;
+    // Demo only: the viewer picks 'landscape' or 'portrait' at startup (window.__taLayoutPref)
+    const pref = window.__taLayoutPref;
+    const uprightTouch = coarse && h > w;
+    let force = uprightTouch && w <= 640;
+    if (pref === 'landscape') force = uprightTouch;
+    if (pref === 'portrait') force = false;
+    // 'portrait' on a PC / landscape screen: show the app in a phone-width column
+    const frame = pref === 'portrait' && !uprightTouch;
+    b.classList.toggle('demo-portrait', frame);
     // While typing on a rotated screen the soft keyboard only changes the height: keep the layout stable
     const ae = document.activeElement;
     const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
     if (force && typing && b.classList.contains('force-landscape') && w === _layoutLastW) return;
     _layoutLastW = w;
     b.classList.toggle('force-landscape', force);
-    const aw = force ? h : w;
+    const aw = force ? h : (frame ? Math.min(w, 430) : w);
     const ah = force ? w : h;
     document.documentElement.style.setProperty('--app-w', aw + 'px');
     document.documentElement.style.setProperty('--app-h', ah + 'px');
     b.classList.toggle('narrow', aw < 1024);
     b.classList.toggle('compact', ah <= 520);
+    b.classList.toggle('landscape', aw > ah); // icon auto-sizing applies to landscape screens only
+    requestAnimationFrame(updateHistoryIconSize);
+}
+
+// Team icon size in the history table: as large as possible until either the list shows
+// 10 rows or the team column runs out of width (never smaller than the default 44px unless
+// the column itself is narrower). Sets --icon-size on the visible table.
+function updateHistoryIconSize() {
+    ['attack', 'defense'].forEach(type => {
+        const pane = document.getElementById(`tab-${type}`);
+        if (!pane || !pane.classList.contains('active')) return;
+        const table = pane.querySelector('.history-table');
+        if (table && !document.body.classList.contains('landscape')) {
+            table.style.removeProperty('--icon-size'); // portrait keeps the original layout
+            return;
+        }
+        const wrapper = pane.querySelector('.history-list-wrapper');
+        const th = pane.querySelector('thead th.td-left');
+        if (!table || !wrapper || !th || !th.offsetWidth) return;
+        const sample = pane.querySelector('tbody td.td-left');
+        const row = sample ? sample.querySelector('.team-icons-row') : null;
+        const cs = sample ? getComputedStyle(sample) : null;
+        const padH = cs ? parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderRightWidth || 0) : 18;
+        const padV = cs ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 1 : 17;
+        const gap = row ? (parseFloat(getComputedStyle(row).columnGap) || 4) : 4;
+        const widthLimit = Math.floor((th.offsetWidth - padH - gap * 5) / 6);
+        const thead = table.querySelector('thead');
+        const listH = wrapper.clientHeight - (thead && getComputedStyle(thead).display !== 'none' ? thead.offsetHeight : 0);
+        const heightLimit = Math.floor(listH / 10 - padV);
+        const size = Math.max(Math.min(widthLimit, 44), Math.min(widthLimit, heightLimit, 120));
+        table.style.setProperty('--icon-size', Math.max(16, size) + 'px');
+    });
 }
 function isForcedLandscape() {
     return !!(document.body && document.body.classList.contains('force-landscape'));
@@ -1326,6 +1366,7 @@ function appViewport() {
     return isForcedLandscape() ? { w: window.innerHeight, h: window.innerWidth } : { w: window.innerWidth, h: window.innerHeight };
 }
 updateViewportLayout();
+window.__taUpdateLayout = updateViewportLayout;
 window.addEventListener('resize', updateViewportLayout);
 window.addEventListener('orientationchange', () => setTimeout(updateViewportLayout, 250));
 window.addEventListener('load', updateViewportLayout);
@@ -5056,9 +5097,14 @@ function isHistoryTab(type) {
 
 // Filter and render History items (only the requested tab)
 async function filterHistory(type = 'attack') {
+    // Web: when narrowed to anonymous opponents, the table shows a slim name column and the SP tags
+    const searchEl = document.getElementById(`search-commander-${type}`);
+    const paneEl = document.getElementById(`tab-${type}`);
+    if (paneEl) paneEl.classList.toggle('anon-filter', ((searchEl && searchEl.value) || '').replace(/[\s　]+/g, '') === '匿名');
     const criteria = buildHistorySearchCriteria(type);
     const filtered = currentHistory.filter(item => historyMatchesCriteria(item, criteria));
     renderHistoryItems(filtered, type, criteria);
+    requestAnimationFrame(updateHistoryIconSize);
 }
 
 // Render History View: only the visible history tab is searched.
@@ -5459,9 +5505,14 @@ function createHistoryRowElement(item, type = 'attack') {
     row.appendChild(tdUtility);
     row.appendChild(tdDate);
     row.appendChild(tdComm);
-    row.appendChild(tdAttack);
+    // Web: the user's own team is always on the left (defense records: defense | attack)
+    const leftTeam = recType === 'defense' ? tdDefense : tdAttack;
+    const rightTeam = recType === 'defense' ? tdAttack : tdDefense;
+    leftTeam.classList.add('td-left');
+    rightTeam.classList.add('td-right');
+    row.appendChild(leftTeam);
     row.appendChild(tdVs);
-    row.appendChild(tdDefense);
+    row.appendChild(rightTeam);
     row.appendChild(tdTags);
     
     return row;
@@ -5885,6 +5936,33 @@ const btnRestoreCancel = document.getElementById('btn-restore-cancel');
 const btnRestoreExecute = document.getElementById('btn-restore-execute');
 const dbRestoreInput = document.getElementById('db-restore-input');
 
+// Parse a backup file leniently: BOM / surrounding whitespace, and extra bytes before or after the JSON object
+// (e.g. a prefix added by a file-sharing app, or leftover bytes after the closing brace) are tolerated.
+function parseBackupJsonText(raw, file) {
+    const text = String(raw || '').replace(/^﻿/, '').trim();
+    try {
+        return JSON.parse(text);
+    } catch (firstErr) {
+        const start = text.indexOf('{');
+        let end = text.lastIndexOf('}');
+        // Try the last few closing braces (extra bytes after the JSON may contain '}' too)
+        for (let tries = 0; start !== -1 && end > start && tries < 50; tries++) {
+            try {
+                const data = JSON.parse(text.slice(start, end + 1));
+                console.warn(`[Restore] Ignored ${start} byte(s) before and ${text.length - end - 1} byte(s) after the JSON`);
+                return data;
+            } catch (e) {
+                end = text.lastIndexOf('}', end - 1);
+            }
+        }
+        const head = text.slice(0, 30).replace(/\s+/g, ' ');
+        const info = file ? `
+ファイル: ${file.name}（${Math.round(file.size / 1024)}KB）` : '';
+        throw new Error(`${firstErr.message}${info}
+ファイルの先頭: 「${head}」`);
+    }
+}
+
 function openRestoreFilePicker() {
     dbRestoreInput.value = '';
     dbRestoreInput.click();
@@ -5897,7 +5975,7 @@ dbRestoreInput.addEventListener('change', (e) => {
     const reader = new FileReader();
     reader.onload = (re) => {
         try {
-            const data = JSON.parse(re.target.result);
+            const data = parseBackupJsonText(re.target.result, file);
             if (!data || (data.version === undefined && !data.battle_history && !data.roster_students)) {
                 alert('無効なバックアップファイルです。ファイル構造が正しくありません。');
                 return;

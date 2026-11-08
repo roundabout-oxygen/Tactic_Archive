@@ -76,8 +76,36 @@
         document.body.appendChild(badge);
     }
 
+    // Ask every time: landscape (table as on PC / phone held sideways) or portrait (phone held upright)
+    function chooseLayout() {
+        return new Promise(function (resolve) {
+            var box = document.createElement('div');
+            box.id = 'demo-layout-choice';
+            box.innerHTML =
+                '<div class="demo-choice-card">' +
+                '<div class="demo-choice-title">表示方法を選んでください</div>' +
+                '<div class="demo-choice-sub">デモを開くたびに選べます</div>' +
+                '<div class="demo-choice-btns">' +
+                '<button type="button" data-layout="landscape"><span class="demo-shape wide"></span><b>横表示</b><small>スマホを縦に持っても横向きの画面で表示</small></button>' +
+                '<button type="button" data-layout="portrait"><span class="demo-shape tall"></span><b>縦表示</b><small>スマホの縦画面のまま表示（PCでは縦長の幅で表示）</small></button>' +
+                '</div></div>';
+            document.body.appendChild(box);
+            box.addEventListener('click', function (e) {
+                var btn = e.target.closest('button[data-layout]');
+                if (!btn) return;
+                window.__taLayoutPref = btn.getAttribute('data-layout');
+                box.remove();
+                if (typeof window.__taUpdateLayout === 'function') window.__taUpdateLayout();
+                resolve();
+            });
+        });
+    }
+
     window.__taDemoReady = new Promise(function (resolve) {
         function start() {
+            chooseLayout().then(load);
+        }
+        function load() {
             var overlay = showOverlay('デモデータを読み込んでいます...');
             fetch('demo-data.json', { cache: 'no-cache' })
                 .then(function (res) {

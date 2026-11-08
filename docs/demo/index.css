@@ -335,7 +335,8 @@ kbd {
 .history-row[data-winner="defense"] td.td-attack { background-color: var(--lose-bg-soft); }
 .history-table td.td-vs { background: transparent; }
 .history-table td.td-vs .vs-text { display: none; }
-.history-table td.td-attack { border-right: 2px solid #fff; }
+/* divider between the user's team (left) and the opponent's team (right) */
+.history-table .td-left { border-right: 2px solid #9fb0c5 !important; }
 
 .result-badge {
     display: inline-flex; align-items: center; justify-content: center;
@@ -382,9 +383,11 @@ kbd {
 }
 
 .team-icons-row { display: flex; gap: 4px; align-items: center; justify-content: center; }
-.history-table td.td-attack .team-icons-row { justify-content: flex-end; }
-.history-table td.td-defense .team-icons-row { justify-content: flex-start; }
+.history-table td.td-left .team-icons-row { justify-content: flex-end; }
+.history-table td.td-right .team-icons-row { justify-content: flex-start; }
 .team-icons-row > .mini-icon { flex: 0 1 44px; min-width: 0; }
+/* history table: size computed by app.js (updateHistoryIconSize) */
+body.landscape .history-table .team-icons-row > .mini-icon { width: var(--icon-size, 44px); flex: 0 0 var(--icon-size, 44px); }
 .mini-icon {
     width: 44px; aspect-ratio: 1 / 1; height: auto;
     border-radius: 9px; object-fit: cover;
@@ -1147,7 +1150,27 @@ body.narrow .tab-btn { padding: 0 12px; }
 body.narrow .history-pane { padding: 12px 12px 0; }
 body.narrow .history-table .td-utility, body.narrow .history-table .td-tags { display: none; }
 body.narrow .history-table .td-commander { width: 150px; }
-body.narrow .history-table .td-date { width: 48px; }
+/* Phones / tablets: no result column (the row colors show it), small date, icons fill the team cells */
+body.narrow .history-pane { padding: 6px 6px 0; gap: 6px; }
+body.narrow .history-table .td-result,
+body.narrow .history-table .td-vs { display: none; }
+body.narrow .history-table .td-date { width: 34px; padding-left: 0; padding-right: 0; font-size: 10px; }
+body.narrow .history-table th.td-date { font-size: 9.5px; }
+body.narrow .history-table td.td-commander { padding-left: 4px; padding-right: 4px; }
+body.narrow .history-table td.td-team { padding: 3px; }
+body.narrow .history-table .team-icons-row { gap: 3px; }
+body.narrow .history-table .team-icons-row > .mini-icon { border-radius: 7px; }
+/* portrait: icons fill the team cells (original layout) */
+body.narrow:not(.landscape) .history-table .team-icons-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+body.narrow:not(.landscape) .history-table .team-icons-row > .mini-icon { width: 100%; flex: none; }
+/* Narrowed to "匿名": slim name column + small SP tags on the right */
+body.narrow .anon-filter .history-table .td-commander { width: 50px; }
+body.narrow .anon-filter .history-table .commander-clickable { padding: 3px 6px; gap: 0; }
+body.narrow .anon-filter .history-table .commander-avatar,
+body.narrow .anon-filter .history-table .commander-avatar-placeholder { display: none; }
+body.narrow .anon-filter .history-table .td-tags { display: table-cell; width: 44px; padding: 2px; }
+body.narrow .anon-filter .history-table td.td-tags > div { gap: 2px !important; }
+body.narrow .anon-filter .history-table td.td-tags > div > div { width: 18px !important; height: 18px !important; font-size: 10px !important; border-radius: 3px !important; }
 body.narrow .stat { padding: 9px 12px; }
 body.narrow .review-layout { grid-template-columns: 1fr; }
 body.narrow .review-right { padding-left: 0; border-left: none; border-top: 1px solid var(--border); padding-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -1161,8 +1184,6 @@ body.compact .history-pane { padding-top: 8px; gap: 8px; }
 body.compact .search-box input { height: 36px; }
 body.compact .stat { padding: 6px 10px; }
 body.compact .history-table td { padding: 5px 6px; }
-body.compact .mini-icon { width: 38px; }
-body.compact .team-icons-row > .mini-icon { flex-basis: 38px; }
 body.compact .modal-overlay { padding: 8px; }
 body.compact .modal-card { max-height: calc(var(--app-h, 100dvh) - 16px); }
 body.compact .modal-body { padding: 12px; }
