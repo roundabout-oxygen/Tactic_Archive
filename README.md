@@ -12,6 +12,7 @@
 
 - **Android版 APK (v1.2.14)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 - **初期設定手順（note）**: https://note.com/glad_lilac3872/n/nb495e629f395
+- **デモ（閲覧専用）**: https://roundabout-oxygen.github.io/Tactic_Archive/demo/ — 作者の今シーズンの実戦データ（対戦相手の名前は架空の名前に置き換えています）でアプリの画面を試せます
 
 > **注意**: スクリーンショットの解像度やアスペクト比が変わると認識位置がズレます。取り込む画像のサイズは統一してください。
 

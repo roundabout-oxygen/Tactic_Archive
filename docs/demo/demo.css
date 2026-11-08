@@ -1,0 +1,52 @@
+/* Tactical Archive DEMO: read-only view (copied into docs/demo/ by tools/build_demo.py) */
+
+/* Hide features that change data */
+.tab-btn[data-tab="upload"],
+.tab-btn[data-tab="settings"],
+.roster-card-actions,
+#btn-detail-delete,
+#btn-detail-save,
+#detail-modal .tip {
+    display: none !important;
+}
+
+/* Detail modal: view only (no student changes, no edits) */
+#detail-modal .result-toggle-group,
+#detail-modal .formation-grid,
+#detail-modal input,
+#detail-modal textarea,
+#detail-modal .utility-select-group,
+#detail-box1,
+#detail-box2 {
+    pointer-events: none !important;
+}
+
+/* Demo badge */
+.demo-badge {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    z-index: 9000;
+    pointer-events: none;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(0, 119, 255, 0.85);
+    padding: 3px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Loading overlay while demo-data.json is imported */
+#demo-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14, 30, 48, 0.85);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+}

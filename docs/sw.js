@@ -38,6 +38,9 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
+  // The read-only demo (./demo/) is a separate app: never intercept or cache its requests
+  if (url.pathname.includes('/demo/')) return;
+
   // Network first with fallback to cache for local assets, cache-first for fonts/cdn
   if (url.origin === self.location.origin) {
     event.respondWith(
