@@ -546,21 +546,61 @@ button:active,
     background-color: rgba(0, 163, 255, 0.02);
 }
 
-/* History table column sizing and alignment */
-.history-table td:nth-child(1) {
-    width: 42px;
-    text-align: center;
-    padding: 4px 2px !important;
-}
+/* History table column sizing and alignment
+   8 columns: 1 result / 2 utility / 3 date / 4 opponent / 5 attack team / 6 VS / 7 defense team / 8 tags
+   (the two team columns share the remaining width; the compact phone layout overrides these below) */
+.history-table td:nth-child(1),
 .history-table td:nth-child(2) {
     width: 42px;
     text-align: center;
     padding: 4px 2px !important;
 }
-.history-table td:nth-child(5) {
-    width: 26px;
+.history-table td:nth-child(3) {
+    width: 52px;
     text-align: center;
     padding: 4px 2px !important;
+}
+.history-table td:nth-child(4) {
+    width: 170px; /* fixed so the opponent name never collapses (avatar + ~5 chars fit) */
+    padding: 4px 8px !important;
+}
+.history-table td:nth-child(5),
+.history-table td:nth-child(7) {
+    padding: 4px 6px !important;
+}
+.history-table td:nth-child(5),
+.history-table td:nth-child(6) {
+    border-right: none !important;
+}
+.history-table td:nth-child(6) {
+    width: 34px;
+    text-align: center;
+    padding: 4px 2px !important;
+}
+.history-table td:nth-child(8) {
+    width: 64px;
+    text-align: center;
+    padding: 4px 2px !important;
+}
+
+/* Team icons: up to 38px, shrinking when the team column is narrow (e.g. zoomed browser / tablet).
+   Attack icons sit next to VS (right-aligned), defense icons start right after VS.
+   Not applied to the compact phone layout (max-height: 500px), which uses fixed 24px icons. */
+@media (min-height: 501px) {
+    .history-table td:nth-child(5) .team-icons-row {
+        justify-content: flex-end;
+    }
+    .history-table td:nth-child(7) .team-icons-row {
+        justify-content: flex-start;
+    }
+    .history-table .team-icons-row > .mini-icon {
+        flex: 0 1 38px;
+        width: auto;
+        min-width: 0;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        box-sizing: border-box;
+    }
 }
 
 /* History Result badges */
@@ -634,6 +674,10 @@ button:active,
     color: #0077ff;
     font-weight: 600;
     text-decoration: none;
+    /* stay inside the opponent column; long names are truncated with an ellipsis */
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .commander-clickable:hover {
@@ -643,6 +687,7 @@ button:active,
 }
 
 .commander-avatar {
+    flex-shrink: 0;
     width: 28px;
     height: 28px;
     border-radius: 6px;
@@ -651,6 +696,7 @@ button:active,
 }
 
 .commander-avatar-placeholder {
+    flex-shrink: 0;
     width: 28px;
     height: 28px;
     border-radius: 6px;
@@ -668,6 +714,7 @@ button:active,
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 140px;
+    min-width: 0;
 }
 
 /* Team Icons row */

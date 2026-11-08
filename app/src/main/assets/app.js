@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.14';
+const APP_VERSION = 'v1.2.15';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1936,6 +1936,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentUploadData = null;
         uploadQueue = []; // Clear queue when reset
     }
+
+    // Also called from top-level code (duplicate / error paths in handleScreenshotUpload)
+    window.processMultipleScreenshotUploads = processMultipleScreenshotUploads;
+    window.processNextInUploadQueue = processNextInUploadQueue;
 
     async function processMultipleScreenshotUploads(files) {
         const fileList = Array.from(files); // Copy before awaiting (input may be reset meanwhile)
