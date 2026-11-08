@@ -1,6 +1,6 @@
 
-// Tactical Archive Web Application Version
-const APP_VERSION = 'v1.0.6';
+// Tactical Archive Android Application Version
+const APP_VERSION = 'Web v2.0.0';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -32,6 +32,48 @@ function formatCustomTagForExport(color, val) {
     if (color === 'yellow') return `☆${val}`;
     if (color === 'blue') return `固有${val}`;
     return `${val}`;
+}
+
+// Characters used for anonymized opponent names: hiragana + half-width alphanumerics
+const CSV_RANDOM_NAME_CHARS = Array.from(
+    'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん' +
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+);
+const CSV_RANDOM_NAME_LENGTH = 6;
+
+// Generate a random 6-char name with a cryptographically secure RNG (rejection sampling avoids bias)
+function generateRandomOpponentName() {
+    const chars = CSV_RANDOM_NAME_CHARS;
+    const limit = 256 - (256 % chars.length);
+    let result = '';
+    while (result.length < CSV_RANDOM_NAME_LENGTH) {
+        const buf = new Uint8Array(16);
+        crypto.getRandomValues(buf);
+        for (const b of buf) {
+            if (b >= limit) continue;
+            result += chars[b % chars.length];
+            if (result.length === CSV_RANDOM_NAME_LENGTH) break;
+        }
+    }
+    return result;
+}
+
+// Build a per-export mapping (same opponent -> same random name). The mapping is never stored,
+// and the random names are not derived from the original names, so they cannot be reversed.
+function buildRandomOpponentNameMap(records) {
+    const map = new Map();
+    const used = new Set();
+    records.forEach(item => {
+        const name = item.commander_name || '';
+        if (!name || name === '匿名' || map.has(name)) return;
+        let randomName;
+        do {
+            randomName = generateRandomOpponentName();
+        } while (used.has(randomName));
+        used.add(randomName);
+        map.set(name, randomName);
+    });
+    return map;
 }
 
 function openCsvExportModal() {
@@ -71,7 +113,7 @@ function updateCsvExportPreview() {
 function executeCsvExport() {
     const selectedTypeEl = document.querySelector('input[name="csv-export-type"]:checked');
     const selectedType = selectedTypeEl ? selectedTypeEl.value : 'attack';
-    const omitOpponentName = document.getElementById('chk-csv-omit-opponent-name')?.checked || false;
+    const randomizeOpponentName = document.getElementById('chk-csv-randomize-opponent-name')?.checked || false;
 
     const records = getFilteredRecordsForExport();
     if (records.length === 0) {
@@ -93,6 +135,9 @@ function executeCsvExport() {
 
     const rows = [headers.map(escapeCsv).join(',')];
 
+    // Re-generated on every export; discarded when this function returns
+    const randomNameMap = randomizeOpponentName ? buildRandomOpponentNameMap(records) : null;
+
     records.forEach(item => {
         // 1. Result
         const res = item.result || '';
@@ -108,7 +153,8 @@ function executeCsvExport() {
             }
         }
         // 4. Opponent Name
-        const opponent = omitOpponentName ? '' : (item.commander_name || '');
+        const rawOpponent = item.commander_name || '';
+        const opponent = randomNameMap ? (randomNameMap.get(rawOpponent) || rawOpponent) : rawOpponent;
         // 5. Attack / Defense
         const battleTypeStr = (item.battle_type === 'defense') ? '防衛' : '攻撃';
 
@@ -206,89 +252,15 @@ function initCsvExportListeners() {
 }
 
 
-// Built-in Sword Template (Attack)
-const BUILTIN_ATTACK_SWORD_BASE64 = "data:image/png;base64,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";
-
-// Built-in Shield Template (Defense)
-const BUILTIN_DEFENSE_SHIELD_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAABXxSURBVGhDjZl5lNXVtedZvXq9P17302T1e0YRjQFFRYwa0+l0eq3uXv3W67w4JFGj0SAgSETFLE3ayKAQFFBiZEZBQGSSgoICCoqpZihqoAYZCgooarpD3apbd/rd33h+46fX+d3CR1zPwF13r3N+55zf+Z3v2WfvffbeI5pvu5/z//wIJx//OnWPPP41euyresMjPy/Qo8P1r8ph+nrflfaw7xfDfbK8evzXyq/qhXFNj/2C+kcf48Rjj9Lw+CO0PfYIp376Uw6Oe4B1/2UUra+9xQj916/A7v2Imhr08gqM8nKMoxVFkvWvtenl5ehfleWFsrzi328Ly6vH/3WbnPuv+q68e+XbFUfQjh5EO3IA61Ap/uFDsGsvsem/Z+/oh2h7dXYjfLcWQaQfHAGqAvlsoVTzoKqgqZBXIZcHZbiuyHGyPwf53L89y35Fg5wcL8fKNgWySqlFUsl+bXynML+tyHknhGuQ78jkLmqQMZJOF93tjZD9YzuH7fkzby28xwp39LiQSBPggNDDzIAwCYeJLsi18IfBMgW+5BJZDYBgElk7g6PhCxVc1AiEILBcsH5wAOR2+rNtgWmDoBJpSmN818GwdR2h4rsCZDxOQK/DyCYeJcKLAswkK1wK4bJICoHg0kZtHhC+XbAQggS946uAZO+4M4Y4O28+pQo5i43oR3C4QWDoBYnCYF1pYw5wAg9KAEWw2I4L/ACQeB5QAg1wAAcO4J3Cpwg5n0N7vC9G77mE84wAg9yB2x3C9M53DNg8/mO+7fK+uH9zO44yO7r4eI2P7j1cE2Z1ZzO0u7Z+d6cI42D2D79mN/9Tff44kHX89w5/4q2r/+N07886N8+Huf15g9+P8pYj79c37uWbbf++8p5j4tD/87fI8x9i5/u5//YI79O7b89B7/z+YpL/71M3yT872Zp6x23n38XvufxL+k833+1P/768+9/lD+y4c/0u39H5tZt7r+mdf/P31O7/e98r/l7/8w08uv2049H6w5v/83z037vH//9X3/7L/2P+n/9q+7f8+xYv7/924+e/X/y9e/9f/Z9mP///+kAAAAASUVORK5CYII=";
-
 // Built-in Battle Type (Attack Sword) Template — shared constant to avoid duplication
 // This same base64 PNG is referenced in BUILTIN_CALIBRATION_PROFILES and openCropInspector()
 const BUILTIN_BATTLE_TYPE_TEMPLATE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAABC2lDQ1BJQ0MgUHJvZmlsZQAAeJyVkLFOwlAUhr+LJILBOMjAwNCBgUWCDsaBCYaGzRRJKE5tKV2gbW5rfAHZGFjZiItvIK/ghomJg5OPQEh0NtdqysLAmb785885/zkgXgCydRj7sTT0ptYz+9rhJwKhOmA5UcjuEvD9nnjfzti/8gM3coA1UJE9sw+iCBS9hKuK7YQbiu/jMAZxrVjeGC0QA6DqbbG9xU4olX8KNMajO7XrLzcF1+92gBxQJsJAp6nuTyzBI1x9wcEs1ew5LCdQ+ki1ygJOHuB5lWrpT0JLWr9SFsgMh7B5gmMTTl/h6Pb/ETuyqXlldAICPEa4aLTxcaihcUGdcy5/AKbWPz8bOFjoAAAREElEQVR4nJ1Z+XMc13Hu7vfeHHtiARAAQUKkKFEiTVIWddCSbEVH5Bwupyr/QP7GVKriSsWRfMSyaEmUeN/iTYIAiWPPOd/rl+q3AC2b8i+ZWmB3Z2bn9XR/3f31N+i/uQepAk1gPaAHIJhuiOFtunN38yh75Oj0z//1fsCd82XP9Ao77373z3sCcAAWwYJ3qDWQAvKwNYStoYYmQENBpOUcQJCzafcqHtCFH+9e3BN4tfuVgVDsdiynyGcA78J+5a0DUAAavJgGWoX/BNogExgCX4OtgSuoa/mhicB5yHMNLeSWcUmELOuhrKd2bhwZsPa7BnkAOerl0l6+eo9e7pdBk0Ii9g5c5b0HRVq3gJKd22A5v8htVoyzcTYZTmp22qhOt9XttlOFYC2QIuuw0xJ3WVI1KQQGRHJ/drVHlBcpL6sDAClWKKGUu2ZA9szASu5bsWfvvFeatFakBkU9GDzNa+dR2ZorV4+Gw+FwkGV5lmfggT0vLu459qNXFud6CgltWNhEOiw7dX0IEXj0LngfGJh3sCFfFaO8PHlkRi8OBUJFgN5WhWMm0qQiQD0cFxcuXVtdWytdbRmcuJisc4qo1WjO9GbnZnsPHtzvb2+XeVkWRUqkiEii73QIPqFAh+V3cuc7Dpoid/pGwV3hP4jfZOPS1rFJAdw4z5K0EUWxUWb16fCLr76+defuS4dfeXFluajrOGmlcQMDNONIpw3Ta6qizNbX1tlzVVZJHFNiQClg1mFljwIKFbwRQiHGeY8EoAKqguPEMU7SiMWpBGhIeydnpWmDlK5qlxXu0pVrZ749//4HH7169BDq2HmvdRTFijywoA3SBGK5ugV2RmmldLh+8LhkQYiHOEnCwx53XuinyFbkKThJvjIxi+FEIatNFJd1xeDiRmprZ0x89eaNm7dunTh+4tSpk2kCm2NLEjJXFk6TUohEQCwYKbOsripFSivtwbNlkghNDdpBr9QeMUQ+hReyoA94B2EhrSSzSZILAAlDPXHeMGltHjx8fPHC+Xar+ctf/FwZX9c+1VRU1rMjhERRrFVsQIs7WNwdUpWdZYmECaUrGPT9Lex8VtE8i7ckclMHAboAIU/iYQBvvbhcs1dlxf/96/8ZjUe/+OUv4lgCG7JWgGeUUxoaBiLNKkBpOB55Wwt0wDtnAcXpctfei0HBK0yy9tQYcd5O0mHI+FB+vWcmkAAyh4CHtEdltB6NynPfniuK8q03T7764gHxH6JSaBHQEaMiAo1eIStAZl8WZV1WBKSNbBJKcb2sQVMEAToMtdx6byUwGtAIogHAWa5KZBsZA0ROPIYE3rvaMRtFZVVfvnb93KWLPzp+7K03T5JCFcoGoTfSAkghxsZoraVqARHS5tYgz6sojpUSVIfKZuWmBeE7ec1S9WUpdEBSnMQ7SITGkK+dt85ZtgBeBwRZFynjURmlbt9fPXvum30ryydfP95qpIWttIBXEVJRueGwYM+1Nc1WopTmUF22hxNG1Wq1ZQ2W6wVQCoh1sMN7RMeIpIxW4JgteyDSEaOq2Mc6JvLjfAxGbtfXFhxoY9BEDze3z1+6SAre/9m7szMdy6yVtrU1KHDrDyZPt/o6TjAvJ9a3mnEjIQe4tjVkVN2ZbrCHpa4Ep0/rUA3kGJMAGEXSEUvvrVLKo14blHdX11pJ+tL+BTJtE3u2hfIq0UlVuLKsTn9++uGj+//wyd/PznVLyRmINekoKh0Mhvn2JLcCeQKvB5tZNLJ7l9qO4ea9hzPtxtzcHPlndXaaRQJqBnBE6HUkUHWOnUAvMtFWyZ+duXj+1oOI9BtHDv3TB8dCv9VKSYlHrU9/cXrt8eMTx390+KVDSnAp3q68QG9zUGxuDUCRSZpZXtuaCSPUjTuPhjeuX2PUS3uXtBAPFqRO7QlBkyrpLbMgmBx4abzexaEqPNzs//bK7ScQ9Vrtjcv3x4o+eevIcmKIXW7h5vVbl69cO/DSCz97841EKRtoTqQxq/zWdpZV0sGJdOGgsE5rs2ehvbY2/sMf/jiZbJ/88dGDK4u2LilOJKOegVgMQmFCzgW/inWsCLXRg1F+9d6jNVa8ciha3Ld+/ca/n76mtfn4xAsLzWhtOPrjmbNz8/M/efNkt9kqnKQ2e29rHo6r7VEpDCROC2stu0azzQ7u3Hn03c3bthofPrR/Ya6rFJAAB5U01eDc0Kw1YAReKSkt7MEp8iiExKwO+1cerqmlveXsnic6xeWDtaZffXu5cPbo/uWH16+xVqfeeXv/4nwZ0sF7qB1u9YthVkRplJfOOvCotSZ2/tHD+zevXiH0J48fXtzTzUb9WtukvSeYg96zIDiktRZSRqHC1IUH6xRUnnIHj7Lqzrj0yy+UjWa/4k671221nt6uf33l1u//9FXPFf/2y388eHAvS031aCAvIStcWdW1s4EaYV25OG1URXn9ysW731378bHDB/Ytbj1Zy7cme2Z73V4nMmQ0hTxzUqylI3gtpQqEIZFl9gwKrLOZrQZ5OcoyUqiNUspYijZz3z7w8sNbF3tx56O33ztweAURS8saiR1kef20PyydRdI1s/MqTtLN9Y0bV69MJluvHzsy14tH/bVWAnPdRq/daDRiFRmSvuakREsllRKtA/kgIGI15V0cKaydnWuaV5Znv7h3HcG35le28hEorZOZ9MVXu555YX9fURN8Q0kRG46r/jivvC/DTBAlTbDu7ne31x+sRsBLy8srS/NZscVU71lamu900yiVzjKlPrvUdNo+tXR4aU6eUIF0GhdJMawXW+bdIwe3Lt+5sX4/sw7be5xRAw+92eWsyL++t5mqmXR/rAnGo3JLzLEqjpXWlmE0yW7fuvX03upMnBx8YW+3E5fZyERqaXl/r9uNtdFkAm2QRrLTzCVe8pIeyyy54GTCIE9knbVVTnW+1DD/+tNTh5sJrD2aBTZloVGNK96qeL2mL+8Mv16trvT5dr/eLrkmVQVOMhkNL1+6cPXihcW57pHDBwhqZ/N2u7U4v9BrzSZRg7SxOz17l1XsMFSJmQYKLEf6pbKOawEBKkXgSjcq223z8Ssv+av3L9+8uXToqITFxJQkfVv5yv/HhcdHFnpHFzszSZK4ykA96m9fOX9hbfXxx+++1+s06nzUSeIkjWZmut1WM46NpBSxYxkCtRi0SwRDmQ6V2lsMh+RMIhlhZKSJWmma5axNhJ2oU5fjG7cJ4tbKoazyHOl4Znb9yZO7q4O1raJw9MZKSyl9+/rF0fr9bhqvnDjajtGVoyjCmW6z2Ug77VZiEs/s2AnflP79bBb9i00DW63JeVvXNoqiSMXWOuf8TGePSRceD/IL5y48vH5dD8cbly5Uo6x78GWYmdnaGmxnhUlafeuvrQ7cZOIe3+250Uq7sbfX6Dbjsug30mSuN99pNxtxJOnt69oJ3VMQS1UPdfmHDJKOKk3X2QKFuyhw0gNYx+NJ/vmZs7//8tutUTlDSdV/2s+LpjHI9dZoXJs4iloQ0VZVfXvj0ebVix8dXnrv6PGuKcf9x3sXZ3u92UbajLUh79BZocPCb4ySaXPKwsJM8ZxByOxIK4qMONRZZWJQ6t6TyW+++vq/fvO/E8/tzmydu6VWsl3Ua5cuwMZGsn/FmDTLspqMNypJms1Dh+/m/Rvb47dfXu7ENL8422qkCIzsPMugJxRJiqDsCHwrOOn7wsFuyCRaGCljDNdQSYhpc1R9efHa7746lytDcVSxT4UAR9lge7jZr4rSMLQPvhyl7dzBgF1udNrpYak+u/skU+qTk68WxmmwRgaEOsw5MvBpIOs91xWqYNtfRS2QQh0opfJeJmsPpNJkfWv82RdnPv3ymyfjHBsxqgg9OsfFaBih6yVqazIY372pEeOVQ2mzUwDmDkpQkM5Uk35++S6X1b+8c7zbSmxZGQLUOkTMSydXVHMQJJ7zzbOQKQTN3iCSJf1kkP32qzOfnj69NhgmrY4tC+UYyeR5XebWE0aRbmEN1ah+dAeJGgcOUdLarsGrNEPERD19OvnT+esHZ9ud11a6USx9DZXEjBRBoPCaw2Aa5uRnA87uRiCAQySNRj8elJ+eOf+rL/70YNSPey2H1jBjXhT9UZ1bpQ0oU9kyUe7EysLHrx1+MVWw9og3nqQeEh07p9hHZFr9rD578dr6xlDrxHqqGVnagHGKZFzVzpPY9Gd56S/qkJOGbTRtDPPPvz77+ZkzG5Oxj+O8tuR8SydllldZhToBD1EaQ4yzreSjN46+8/6H39x4+J+fn1ldHzX2HiyLkh0bX/tspGzViLUWWuFIhkTtvZf5O+TWFNJBNXjOPxIypVRkKg+Xrn336e8+67MnEzEIL+bCbfczXaPRSe0ZXV3n1b7l2X/+8N1Tx46srd54ba6z58OTvzl7/dztq0l7Tia3fHBoLv34nbffOLy80IztOI+URid8kkXRkAlHmJk4I0ylz1mkgdnZGjCOk8RosJNS6URr4x3VlSuFZ6EmtlxHAPuW5j98941jL61k26t28MTT5uH5ffrEC6ouSu86rdbywr59c8lSm2M7pDpVlCjSog7IRCakVEwIateuxPc8hsL0kZfF4kL3kw/fW+g0YraGsRpX5cSiTlib3FaI1b6F7gc/ee3EoWU72pz0N5aXZmJT5+PVxY57/8TiqUOt1w80jq20lrro8+1yuAEuM2TRW9FyAIlF71JO2EVQvP5WlinUmvLJkOvx8VdezCbZl2evPVwfQyVFxMkcZglpZXHhk787dezlfZD3Nbj9B/ebSPfm2083NwbDp/s6ei7xuR2Nt7ZZ65XF3vKemWakgSuMlEMrMpsQLgRwQqFlMpeq87xREjLmOo7VcLvMRtn7p94uM9ffOEdGEfpRmQPafQszP33n5N/99K3+ozvoqhdW9jW7naoulYl0BGmss2GhXJ3GptGcaTXSdpq0mg0dssYTOvRuqjwEE0j2CZqmEsBzBmlNRMQuVcYKkLOP3juVpt3PPj9j+yOqhisryz//4J3XX31h4/H9VPn5pYW02dTaaBNZ5xqJUbNJqoslY2rHJkARpWUoKSai16gawClm0YU8WTaCpaBV/lDQdBCOvVFmptsxOnq6OUDNb792tN3ufPnNt0VdnTh+9MSrB8hmk8H28osrs7MzIrAJVRGyp5AaSRyrdtC2VJAERRREEp7lgsRkBaZWtA/P3rMKDOh7IHo2JQrUZbZn58mYKJUCYK1/8Gi92fHHXl5GNwbChYV5XWeuzJaXFnszPa21ddIe2TkKpYSEPqmqqoK+4GXgEJFCjnEQTEkUaFGXp0mFYVydWkNeBkEFQBpFjSZpL8F5YTCK47jXm2HPTzY2B/31fb3UE3I+hMgszc/OzfVio8MAReBZ2NxUmQ8UIoq12CIaRVBXpGHJHCiekzN2rJJOtZNn4UKeQuUUtcMTIzrp9orIKw3snHNKYbfT0gpHo1FVVqLfmDSO4067ERuxfqqbTGXYv4z+s8Hh+/t3njcEKX73CcMzlZcYRXEST7K1Ium7WkNVC9Y0+coFZQziJNZaG6OzTNplFEVp2kjShIicjG4cfIAyqXwflj/YCH6w1oTT2NfCh8ggalFCZZ9AToNOSEWo9LSLiA5LEsnYRO1WW9ArTgrirfcKnGj1EnQRLn9otb9ae0cs/fODmvAB0UtJCuqQ4J4URgoiAyrSsLpFW0MRhphFCpzeqAcjkMPwhSX84VrieSER4TTeRekz93xvyZ3HRX/rqMQrzF2i4oZnNImGYR+ebGq4cVf0nKnWoJXI6eJQYcDSnJVGdiCPdsKznOmoMC0hfsqS/78GiS1e0lxKj5L7HA1he/v/AKHoyH1+KpdZAAAAAElFTkSuQmCC";
 
-// Pre-cached template grayscales for ultra-fast and accurate battle type matching
-let _cachedAttackTemplateNorm = null;
-let _cachedDefenseTemplateNorm = null;
-
-async function getTemplateGrayscaleNorm(base64) {
-    if (!base64) return null;
-    return new Promise(resolve => {
-        const tImg = new Image();
-        tImg.src = base64;
-        const onDone = () => {
-            if (tImg.naturalWidth <= 0) return resolve(null);
-            const c = document.createElement('canvas');
-            c.width = 48;
-            c.height = 48;
-            const ctx = c.getContext('2d');
-            ctx.drawImage(tImg, 0, 0, 48, 48);
-            const data = ctx.getImageData(0, 0, 48, 48).data;
-            let sum = 0;
-            const gray = new Float32Array(48 * 48);
-            for (let i = 0; i < 48 * 48; i++) {
-                const val = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
-                gray[i] = val;
-                sum += val;
-            }
-            const mean = sum / (48 * 48);
-            let variance = 0;
-            for (let i = 0; i < 48 * 48; i++) {
-                gray[i] -= mean;
-                variance += gray[i] * gray[i];
-            }
-            const std = Math.sqrt(variance);
-            resolve({ norm: gray, std: std });
-        };
-        if (tImg.complete) {
-            onDone();
-        } else {
-            tImg.onload = onDone;
-            tImg.onerror = () => resolve(null);
-        }
-    });
-}
-
-function calculateZNCCMultiShift(testNorm, testStd, templNorm, templStd) {
-    if (!templNorm || templStd < 1e-4 || testStd < 1e-4) return -1.0;
-    let maxCorr = -1.0;
-    for (let dy = -4; dy <= 4; dy += 2) {
-        for (let dx = -4; dx <= 4; dx += 2) {
-            let dot = 0;
-            let count = 0;
-            for (let y = 0; y < 48; y++) {
-                const ty = y + dy;
-                if (ty < 0 || ty >= 48) continue;
-                for (let x = 0; x < 48; x++) {
-                    const tx = x + dx;
-                    if (tx < 0 || tx >= 48) continue;
-                    dot += testNorm[y * 48 + x] * templNorm[ty * 48 + tx];
-                    count++;
-                }
-            }
-            if (count > 0) {
-                const corr = dot / (testStd * templStd + 1e-5);
-                if (corr > maxCorr) maxCorr = corr;
-            }
-        }
-    }
-    return maxCorr;
-}
-
-// Fast ZNCC comparison helper: Matches cropped image against both Attack (Sword) and Defense (Shield) templates
+// Fast ZNCC comparison helper: Matches cropped image against the template saved during calibration
 async function detectBattleTypeFromImage(procCanvas, profile) {
     try {
         const bt = (profile && profile.battleTypeIcon) ? profile.battleTypeIcon : { sx: 58, sy: 172, sw: 110, sh: 110 };
-        // procCanvas is normalized 2400 x 1040
+        // procCanvas is normalized 2400 x 1040 (identically aligned with calibration canvas)
         const testCanvas = cropImage(procCanvas, bt.sx, bt.sy, bt.sw, bt.sh, 48, 48);
         const testCtx = testCanvas.getContext('2d');
         const testData = testCtx.getImageData(0, 0, 48, 48).data;
@@ -310,54 +282,105 @@ async function detectBattleTypeFromImage(procCanvas, profile) {
         const testStd = Math.sqrt(testVar);
         if (testStd < 1e-4) return 'attack';
 
-        // Load built-in attack & defense template norms
-        if (!_cachedAttackTemplateNorm) {
-            _cachedAttackTemplateNorm = await getTemplateGrayscaleNorm(BUILTIN_BATTLE_TYPE_TEMPLATE);
-        }
-        if (!_cachedDefenseTemplateNorm) {
-            _cachedDefenseTemplateNorm = await getTemplateGrayscaleNorm(BUILTIN_DEFENSE_SHIELD_BASE64);
-        }
-
-        // Check user calibration profile custom template if available
-        let userTemplNorm = null;
-        let userTemplStd = 0;
-        if (profile && profile.battleTypeGrayscale) {
-            userTemplNorm = new Float32Array(profile.battleTypeGrayscale);
-            let uSum = 0;
-            for (let i = 0; i < 48 * 48; i++) uSum += userTemplNorm[i];
-            const uMean = uSum / (48 * 48);
-            let uVar = 0;
-            for (let i = 0; i < 48 * 48; i++) {
-                userTemplNorm[i] -= uMean;
-                uVar += userTemplNorm[i] * userTemplNorm[i];
+        // Retrieve or generate template grayscale array from user's calibration profile
+        let templGrayscale = profile && profile.battleTypeGrayscale ? new Float32Array(profile.battleTypeGrayscale) : null;
+        let templSource = profile ? profile.battleTypeTemplate : null;
+        if (!templGrayscale && templSource) {
+            const tImg = new Image();
+            tImg.src = templSource;
+            if (!tImg.complete) {
+                await new Promise(resolve => {
+                    tImg.onload = resolve;
+                    tImg.onerror = resolve;
+                });
             }
-            userTemplStd = Math.sqrt(uVar);
-        } else if (profile && profile.battleTypeTemplate) {
-            const parsed = await getTemplateGrayscaleNorm(profile.battleTypeTemplate);
-            if (parsed) {
-                userTemplNorm = parsed.norm;
-                userTemplStd = parsed.std;
+            if (tImg.naturalWidth > 0) {
+                const templCanvas = document.createElement('canvas');
+                templCanvas.width = 48;
+                templCanvas.height = 48;
+                const templCtx = templCanvas.getContext('2d');
+                templCtx.drawImage(tImg, 0, 0, 48, 48);
+                const templData = templCtx.getImageData(0, 0, 48, 48).data;
+
+                templGrayscale = new Float32Array(48 * 48);
+                for (let i = 0; i < 48 * 48; i++) {
+                    templGrayscale[i] = 0.299 * templData[i * 4] + 0.587 * templData[i * 4 + 1] + 0.114 * templData[i * 4 + 2];
+                }
+                if (profile) profile.battleTypeGrayscale = Array.from(templGrayscale);
             }
         }
 
-        const corrAttack = calculateZNCCMultiShift(testNorm, testStd, userTemplNorm || (_cachedAttackTemplateNorm ? _cachedAttackTemplateNorm.norm : null), userTemplStd || (_cachedAttackTemplateNorm ? _cachedAttackTemplateNorm.std : 0));
-        const corrDefense = calculateZNCCMultiShift(testNorm, testStd, _cachedDefenseTemplateNorm ? _cachedDefenseTemplateNorm.norm : null, _cachedDefenseTemplateNorm ? _cachedDefenseTemplateNorm.std : 0);
+        // If no template is found in active profile, fallback to builtin default template
+        if (!templGrayscale) {
+            const defaultTemplate = (BUILTIN_CALIBRATION_PROFILES["2.166"] && BUILTIN_CALIBRATION_PROFILES["2.166"].battleTypeTemplate);
+            if (defaultTemplate) {
+                const tImg = new Image();
+                tImg.src = defaultTemplate;
+                if (!tImg.complete) {
+                    await new Promise(resolve => {
+                        tImg.onload = resolve;
+                        tImg.onerror = resolve;
+                    });
+                }
+                if (tImg.naturalWidth > 0) {
+                    const templCanvas = document.createElement('canvas');
+                    templCanvas.width = 48;
+                    templCanvas.height = 48;
+                    const templCtx = templCanvas.getContext('2d');
+                    templCtx.drawImage(tImg, 0, 0, 48, 48);
+                    const templData = templCtx.getImageData(0, 0, 48, 48).data;
 
-        console.log(`[BattleType] Correlation -> Attack: ${corrAttack.toFixed(3)}, Defense: ${corrDefense.toFixed(3)}`);
-
-        // If shield match is higher or exceeds reasonable defense threshold
-        let decision = 'attack';
-        if (corrDefense > corrAttack && corrDefense >= 0.40) {
-            decision = 'defense';
-        } else if (corrAttack >= 0.60) {
-            decision = 'attack';
-        } else if (corrDefense >= 0.50) {
-            decision = 'defense';
-        } else {
-            // Relative winner
-            decision = (corrDefense > corrAttack + 0.05) ? 'defense' : 'attack';
+                    templGrayscale = new Float32Array(48 * 48);
+                    for (let i = 0; i < 48 * 48; i++) {
+                        templGrayscale[i] = 0.299 * templData[i * 4] + 0.587 * templData[i * 4 + 1] + 0.114 * templData[i * 4 + 2];
+                    }
+                }
+            }
         }
 
+        if (!templGrayscale) return 'attack';
+
+        let templSum = 0;
+        for (let i = 0; i < 48 * 48; i++) {
+            templSum += templGrayscale[i];
+        }
+        const templMean = templSum / (48 * 48);
+        const normTempl = new Float32Array(48 * 48);
+        let templVar = 0;
+        for (let i = 0; i < 48 * 48; i++) {
+            normTempl[i] = templGrayscale[i] - templMean;
+            templVar += normTempl[i] * normTempl[i];
+        }
+        const templStd = Math.sqrt(templVar);
+        if (templStd < 1e-4) return 'attack';
+
+        // Multi-shift ZNCC to handle minor pixel shifts (±4px)
+        let maxCorrelation = -1.0;
+        for (let dy = -4; dy <= 4; dy += 2) {
+            for (let dx = -4; dx <= 4; dx += 2) {
+                let dot = 0;
+                let count = 0;
+                for (let y = 0; y < 48; y++) {
+                    const ty = y + dy;
+                    if (ty < 0 || ty >= 48) continue;
+                    for (let x = 0; x < 48; x++) {
+                        const tx = x + dx;
+                        if (tx < 0 || tx >= 48) continue;
+                        dot += testNorm[y * 48 + x] * normTempl[ty * 48 + tx];
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    const corr = dot / (testStd * templStd + 1e-5);
+                    if (corr > maxCorrelation) maxCorrelation = corr;
+                }
+            }
+        }
+
+        console.log(`[BattleType] Correlation with User-Calibrated Template: ${maxCorrelation.toFixed(3)}`);
+        // Threshold: 0.65 (Same-device Attack match is typically > 0.85, Defense vs Attack is < 0.50)
+        // 一致する場合は「攻撃」、一致しない場合は「防衛」
+        const decision = (maxCorrelation >= 0.65) ? 'attack' : 'defense';
         console.log(`[BattleType] Recognition Decision: ${decision.toUpperCase()}`);
         return decision;
     } catch (e) {
@@ -369,6 +392,127 @@ async function detectBattleTypeFromImage(procCanvas, profile) {
 
 // Built-in verified calibration profiles
 const BUILTIN_CALIBRATION_PROFILES = {
+    // Web PC client: default crop layout per chosen aspect ratio (screenshots are resized to 1920x1080 / 1600x1200 first)
+    "pc-16:9": {
+        "aspectRatio": "pc-16:9",
+        "relModal": {
+            "rx": 0.019791666666666666,
+            "ry": 0.13148148148148148,
+            "rw": 0.9598958333333333,
+            "rh": 0.7351851851851852
+        },
+        "normalizedWidth": 2400,
+        "normalizedHeight": 1040,
+        "winLose": {
+            "sx": 110,
+            "sy": 100,
+            "sw": 280,
+            "sh": 160,
+            "dw": 280,
+            "dh": 160
+        },
+        "battleTypeIcon": {
+            "sx": 58,
+            "sy": 167,
+            "sw": 110,
+            "sh": 110
+        },
+        "battleTypeTemplate": "data:image/png;base64,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",
+        "oppAvatar": {
+            "sx": 1718,
+            "sy": 162,
+            "sw": 120,
+            "sh": 120,
+            "dw": 100,
+            "dh": 100
+        },
+        "oppName": {
+            "sx": 1995,
+            "sy": 142,
+            "sw": 375,
+            "sh": 58,
+            "dw": 1100,
+            "dh": 200
+        },
+        "atkCenters": [
+            206,
+            353,
+            500,
+            646,
+            794,
+            941
+        ],
+        "defCenters": [
+            1450,
+            1596,
+            1744,
+            1890,
+            2036,
+            2185
+        ],
+        "cardTop": 859,
+        "cardSize": 88
+    },
+    "pc-4:3": {
+        "aspectRatio": "pc-4:3",
+        "relModal": {
+            "rx": 0.02,
+            "ry": 0.22333333333333333,
+            "rw": 0.96,
+            "rh": 0.5516666666666666
+        },
+        "normalizedWidth": 2400,
+        "normalizedHeight": 1040,
+        "winLose": {
+            "sx": 110,
+            "sy": 100,
+            "sw": 280,
+            "sh": 160,
+            "dw": 280,
+            "dh": 160
+        },
+        "battleTypeIcon": {
+            "sx": 58,
+            "sy": 172,
+            "sw": 110,
+            "sh": 110
+        },
+        "battleTypeTemplate": "data:image/png;base64,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",
+        "oppAvatar": {
+            "sx": 1718,
+            "sy": 162,
+            "sw": 120,
+            "sh": 120,
+            "dw": 100,
+            "dh": 100
+        },
+        "oppName": {
+            "sx": 1995,
+            "sy": 142,
+            "sw": 375,
+            "sh": 58,
+            "dw": 1100,
+            "dh": 200
+        },
+        "atkCenters": [
+            206,
+            353,
+            500,
+            646,
+            793,
+            941
+        ],
+        "defCenters": [
+            1450,
+            1596,
+            1744,
+            1890,
+            2036,
+            2185
+        ],
+        "cardTop": 860,
+        "cardSize": 88
+    },
     "2.166": {
         "aspectRatio": "2.166",
         "relModal": {
@@ -510,7 +654,7 @@ async function saveOpponent(name, avatar, overwrite = false) {
 async function migrateOpponentAvatars() {
     try {
         const db = await openDB();
-        const allHistory = await getHistory();
+        const allHistory = isFullHistoryLoaded ? currentHistory : await getHistory();
         const allRenames = await getRenames();
         
         let needMigrationCount = 0;
@@ -582,9 +726,11 @@ async function saveRename(ocrName, correctedName) {
                     oppStore.put({ name: correctedName, avatar: getOldAv.result.avatar, updated_at: Date.now() });
                 }
             };
-            resolve(true);
         };
         request.onerror = () => reject(request.error);
+        // Resolve after all writes (including the avatar link) are committed
+        transaction.oncomplete = () => resolve(true);
+        transaction.onabort = () => reject(transaction.error);
     });
 }
 
@@ -723,10 +869,64 @@ async function getLatestHistoryFast(limit = 15) {
     });
 }
 
+// Load up to `limit` records with id < upperId (newest first). upperId = null starts from the newest.
+async function getHistoryChunkBefore(upperId, limit) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('battle_history', 'readonly');
+        const store = transaction.objectStore('battle_history');
+        const range = (upperId === null || upperId === undefined) ? null : IDBKeyRange.upperBound(upperId, true);
+        const request = store.openCursor(range, 'prev');
+        const results = [];
+        request.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor && results.length < limit) {
+                results.push(cursor.value);
+                cursor.continue();
+            } else {
+                resolve(results);
+            }
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+const HISTORY_LOAD_CHUNK = 100;
+
+// Load all records older than the ones already in memory, chunk by chunk, merging each chunk into the view
+async function loadRemainingHistoryProgressively() {
+    const ids = currentHistory.map(h => h.id).filter(id => typeof id === 'number');
+    let upperId = ids.length > 0 ? Math.min(...ids) : null;
+    while (true) {
+        const chunk = await getHistoryChunkBefore(upperId, HISTORY_LOAD_CHUNK);
+        if (chunk.length === 0) break;
+        upperId = chunk[chunk.length - 1].id;
+        // currentHistory may have been replaced meanwhile (restore / delete all), so dedupe against it each time
+        const known = new Set(currentHistory.map(h => h.id));
+        const fresh = chunk.filter(h => !known.has(h.id));
+        if (fresh.length > 0) {
+            currentHistory.push(...fresh);
+            appendLoadedRecordsToView(fresh);
+        }
+        if (chunk.length < HISTORY_LOAD_CHUNK) break;
+        await new Promise(r => setTimeout(r, 0)); // yield so taps / typing stay responsive
+    }
+}
+
 // Remove any existing Defense battle records from IndexedDB
 // Defense feature is now fully supported
 async function cleanupDefenseRecords() {
     return false;
+}
+
+// Helper: escape text for safe insertion into innerHTML templates
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Helper: check if two arrays are equal
@@ -1032,6 +1232,8 @@ let detailEditedData = null; // Temporary edits during Detail Modal editing
 let opponentDirectory = {}; // Cache of { name: avatar_data_url }
 let opponentRenames = []; // Cache of name translation rules: [ { ocr_name, corrected_name } ]
 let currentAddStudentFeatures = null; // Extracted face features to save for newly registered student
+let manualIconDataUrl = ''; // Icon data URL for the Student Add modal (shared with bulk roster flow)
+let pendingBulkSlotSave = null; // Bulk roster flow: callback(name) invoked by the Student Add modal save button
 let uploadQueue = []; // Queue of File objects to review sequentially
 let activePositionFilter = null; // Filter for specific position: { sourceTab: 'attack'|'defense', team: 'attack'|'defense', index: 0-5, studentName: string }
 
@@ -1050,6 +1252,352 @@ let currentUploadFile = null; // Currently processing File object
 let currentUploadExtractedDate = null; // Extracted date string of currently processing File
 let currentUploadExtractedTimestamp = null; // Extracted timestamp (including HH:mm:ss) of currently processing File
 let isScanCancelled = false; // Flag to abort processing if cancelled
+
+// ==========================================
+// FAST MODE (auto-register screenshots that need no manual check)
+// ==========================================
+let isFastMode = false;
+try {
+    isFastMode = localStorage.getItem('tactical_archive_fast_mode') === 'true';
+} catch (e) {}
+let fastModeAutoSavedCount = 0; // Number of records auto-registered in the current upload batch
+
+// ==========================================
+// WEB PLATFORM (PC browser / smartphone & tablet browser)
+// ==========================================
+// PC: screenshots from the PC client can change size, but are always 4:3 or 16:9.
+//     The user picks one ratio; other ratios are skipped, and accepted images are resized
+//     to one canonical size so a single calibration (crop layout) fits every screenshot.
+// Mobile: screenshot size never changes, so it works like the Android app
+//     (one calibration profile per exact aspect ratio).
+const WEB_PLATFORM_KEY = 'tactical_archive_web_platform';
+const WEB_PC_ASPECT_KEY = 'tactical_archive_web_pc_aspect';
+const PC_ASPECTS = {
+    '4:3': { ratio: 4 / 3, width: 1600, height: 1200 },
+    '16:9': { ratio: 16 / 9, width: 1920, height: 1080 }
+};
+const PC_ASPECT_TOLERANCE = 0.03; // ±3% (window captures can be a few pixels off)
+let pcSkippedCount = 0; // Screenshots skipped in the current batch because of the aspect ratio
+
+// ==========================================
+// FORCED LANDSCAPE (phones held upright show the landscape UI rotated 90°)
+// ==========================================
+// body gets .force-landscape (rotated), .narrow (< 1024px wide) and .compact (<= 520px tall),
+// computed from the *effective* (possibly rotated) size, plus --app-w / --app-h for CSS.
+let _layoutLastW = 0;
+function updateViewportLayout() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const force = coarse && h > w && w <= 640;
+    const b = document.body;
+    if (!b) return;
+    // While typing on a rotated screen the soft keyboard only changes the height: keep the layout stable
+    const ae = document.activeElement;
+    const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+    if (force && typing && b.classList.contains('force-landscape') && w === _layoutLastW) return;
+    _layoutLastW = w;
+    b.classList.toggle('force-landscape', force);
+    const aw = force ? h : w;
+    const ah = force ? w : h;
+    document.documentElement.style.setProperty('--app-w', aw + 'px');
+    document.documentElement.style.setProperty('--app-h', ah + 'px');
+    b.classList.toggle('narrow', aw < 1024);
+    b.classList.toggle('compact', ah <= 520);
+}
+function isForcedLandscape() {
+    return !!(document.body && document.body.classList.contains('force-landscape'));
+}
+// Screen (client) point -> app point. The app is rotated 90° clockwise: screen(X, Y) = (vw - y, x)
+function toAppPoint(x, y) {
+    return isForcedLandscape() ? { x: y, y: window.innerWidth - x } : { x, y };
+}
+function evAppX(p) { return toAppPoint(p.clientX, p.clientY).x; }
+function evAppY(p) { return toAppPoint(p.clientX, p.clientY).y; }
+function pointerSource(e) { return (e.touches && e.touches[0]) ? e.touches[0] : e; }
+// Element rect in app coordinates
+function appRect(el) {
+    const r = el.getBoundingClientRect();
+    if (!isForcedLandscape()) return r;
+    const vw = window.innerWidth;
+    return { left: r.top, top: vw - r.right, right: r.bottom, bottom: vw - r.left, width: r.height, height: r.width };
+}
+function appViewport() {
+    return isForcedLandscape() ? { w: window.innerHeight, h: window.innerWidth } : { w: window.innerWidth, h: window.innerHeight };
+}
+updateViewportLayout();
+window.addEventListener('resize', updateViewportLayout);
+window.addEventListener('orientationchange', () => setTimeout(updateViewportLayout, 250));
+window.addEventListener('load', updateViewportLayout);
+document.addEventListener('DOMContentLoaded', updateViewportLayout);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', updateViewportLayout);
+if (window.matchMedia) {
+    const _mqOrient = window.matchMedia('(orientation: portrait)');
+    if (_mqOrient.addEventListener) _mqOrient.addEventListener('change', updateViewportLayout);
+}
+
+function lsGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function lsSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) {}
+}
+function getWebPlatform() {
+    const v = lsGet(WEB_PLATFORM_KEY);
+    return (v === 'pc' || v === 'mobile') ? v : null;
+}
+function getPcAspect() {
+    const v = lsGet(WEB_PC_ASPECT_KEY);
+    return PC_ASPECTS[v] ? v : null;
+}
+function isPcMode() {
+    return getWebPlatform() === 'pc' && !!getPcAspect();
+}
+function guessWebPlatform() {
+    const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    return coarse ? 'mobile' : 'pc';
+}
+function classifyPcAspect(width, height) {
+    if (!width || !height) return null;
+    const r = width / height;
+    for (const [key, a] of Object.entries(PC_ASPECTS)) {
+        if (Math.abs(r - a.ratio) / a.ratio <= PC_ASPECT_TOLERANCE) return key;
+    }
+    return null;
+}
+// Calibration profiles are stored per key: PC uses one key per chosen ratio, mobile the exact ratio
+function getCalibrationKeyForImage(img) {
+    if (isPcMode()) return 'pc-' + getPcAspect();
+    return (img.width / img.height).toFixed(3);
+}
+// Redraw a PC screenshot at the canonical size of its ratio (same layout, so the same crops apply)
+function normalizePcScreenshot(img, aspectKey) {
+    const a = PC_ASPECTS[aspectKey];
+    if (!a || (img.width === a.width && img.height === a.height)) return Promise.resolve(img);
+    const canvas = document.createElement('canvas');
+    canvas.width = a.width;
+    canvas.height = a.height;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, a.width, a.height);
+    return new Promise((resolve, reject) => {
+        const out = new Image();
+        out.onload = () => resolve(out);
+        out.onerror = reject;
+        out.src = canvas.toDataURL('image/png');
+    });
+}
+
+function showToast(message, kind = 'info', duration = 4000) {
+    let host = document.getElementById('toast-host');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'toast-host';
+        document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.className = `toast toast-${kind}`;
+    const icon = kind === 'warn' ? 'fa-triangle-exclamation' : kind === 'success' ? 'fa-circle-check' : 'fa-circle-info';
+    el.innerHTML = `<i class="fa-solid ${icon}"></i><span></span>`;
+    el.querySelector('span').textContent = message;
+    host.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+    }, duration);
+}
+
+function getPlatformLabel() {
+    const p = getWebPlatform();
+    if (p === 'pc') return `PC版ブルーアーカイブ（${getPcAspect() || '未選択'}）`;
+    if (p === 'mobile') return 'スマホ・タブレット版';
+    return '未設定';
+}
+
+function updatePlatformUI() {
+    const p = getWebPlatform() || 'unset';
+    document.body.dataset.platform = p;
+    const label = document.getElementById('web-platform-label');
+    if (label) label.textContent = getPlatformLabel();
+    const hint = document.getElementById('upload-platform-hint');
+    if (hint) {
+        hint.innerHTML = isPcMode()
+            ? `<i class="fa-solid fa-desktop"></i> PCモード：<b>${getPcAspect()}</b> のスクリーンショットのみ読み込みます（サイズ違いは自動でリサイズ）`
+            : `<i class="fa-solid fa-mobile-screen"></i> スマホ・タブレットモード`;
+    }
+    const capture = document.getElementById('btn-web-capture');
+    if (capture) {
+        const canCapture = !!(navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function');
+        capture.hidden = !(canCapture && p === 'pc');
+    }
+}
+
+// Welcome screen: first launch (or "使用環境" in Settings) — choose PC (4:3 / 16:9) or mobile
+function openWelcomeScreen({ isFreshInstall = false, isChange = false } = {}) {
+    const screen = document.getElementById('welcome-screen');
+    if (!screen) return;
+    let platform = getWebPlatform() || guessWebPlatform();
+    let aspect = getPcAspect();
+    const prevPlatform = getWebPlatform();
+    const prevAspect = getPcAspect();
+
+    const cards = screen.querySelectorAll('[data-platform-choice]');
+    const aspectBox = document.getElementById('welcome-aspect');
+    const aspectBtns = screen.querySelectorAll('[data-aspect-choice]');
+    const startBtn = document.getElementById('btn-welcome-start');
+    const cancelBtn = document.getElementById('btn-welcome-cancel');
+
+    const render = () => {
+        cards.forEach(c => c.classList.toggle('selected', c.dataset.platformChoice === platform));
+        aspectBtns.forEach(b => b.classList.toggle('selected', b.dataset.aspectChoice === aspect));
+        if (aspectBox) aspectBox.hidden = platform !== 'pc';
+        if (startBtn) startBtn.disabled = platform === 'pc' && !aspect;
+    };
+    cards.forEach(c => { c.onclick = () => { platform = c.dataset.platformChoice; render(); }; });
+    aspectBtns.forEach(b => { b.onclick = () => { aspect = b.dataset.aspectChoice; render(); }; });
+    if (cancelBtn) {
+        cancelBtn.hidden = !isChange;
+        cancelBtn.onclick = () => { screen.classList.remove('active'); };
+    }
+    if (startBtn) {
+        startBtn.textContent = isChange ? 'この設定で保存' : 'はじめる';
+        startBtn.onclick = () => {
+            if (platform === 'pc' && !aspect) return;
+            const changed = platform !== prevPlatform || (platform === 'pc' && aspect !== prevAspect);
+            lsSet(WEB_PLATFORM_KEY, platform);
+            if (platform === 'pc') lsSet(WEB_PC_ASPECT_KEY, aspect);
+            screen.classList.remove('active');
+            updatePlatformUI();
+            if (isFreshInstall) {
+                lsSet('tactical_archive_first_launch_done', 'true');
+                window.switchToTab('upload');
+                const msg = platform === 'pc'
+                    ? `戦術対抗戦の戦闘履歴のスクリーンショット（初回は攻撃のリザルト）を読み込んでください。<br><br>今後も <b>${aspect}</b> のスクリーンショットを読み込んでください（サイズが違っても同じ比率なら自動でリサイズします）。`
+                    : '戦術対抗戦の戦闘履歴のスクリーンショット（初回は攻撃のリザルト）を読み込んでください。';
+                setTimeout(() => showTutorialPopup(msg, '<i class="fa-solid fa-cloud-arrow-up"></i>', '初回セットアップ'), 150);
+            } else if (changed) {
+                showToast(`使用環境を「${getPlatformLabel()}」に設定しました。この環境で初めて読み込むときはトリミング位置の調整画面が開きます`, 'success', 6000);
+            }
+        };
+    }
+    render();
+    screen.classList.add('active');
+}
+
+function initWebPlatformUI({ isFreshInstall = false } = {}) {
+    updatePlatformUI();
+    const btn = document.getElementById('btn-web-platform');
+    if (btn) btn.addEventListener('click', () => openWelcomeScreen({ isChange: true }));
+    if (!getWebPlatform()) {
+        openWelcomeScreen({ isFreshInstall });
+    }
+}
+
+// Paste (Ctrl+V), drag & drop anywhere, and screen capture (PC browsers)
+function initWebInputSources() {
+    window.addEventListener('paste', (e) => {
+        if (!e.clipboardData || !e.clipboardData.items) return;
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeEl.type !== 'file') return;
+        if (document.querySelector('.modal-overlay.active') || document.getElementById('welcome-screen')?.classList.contains('active')) return;
+        const files = [];
+        for (const item of e.clipboardData.items) {
+            if (item.type.startsWith('image/')) {
+                const blob = item.getAsFile();
+                if (blob) files.push(new File([blob], `paste_${Date.now()}_${files.length}.png`, { type: blob.type, lastModified: Date.now() }));
+            }
+        }
+        if (files.length > 0) {
+            e.preventDefault();
+            window.switchToTab('upload');
+            processMultipleScreenshotUploads(files);
+        }
+    });
+
+    window.addEventListener('dragover', (e) => {
+        if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) e.preventDefault();
+    });
+    window.addEventListener('drop', (e) => {
+        if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+        if (dropZone.contains(e.target)) return;
+        e.preventDefault();
+        if (document.querySelector('.modal-overlay.active')) return;
+        const imageFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length > 0) {
+            window.switchToTab('upload');
+            processMultipleScreenshotUploads(imageFiles);
+        }
+    });
+
+    const btnWebCapture = document.getElementById('btn-web-capture');
+    if (btnWebCapture) {
+        btnWebCapture.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'window' }, audio: false });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.muted = true;
+                await video.play();
+                const capCanvas = document.createElement('canvas');
+                capCanvas.width = video.videoWidth;
+                capCanvas.height = video.videoHeight;
+                capCanvas.getContext('2d').drawImage(video, 0, 0, capCanvas.width, capCanvas.height);
+                stream.getTracks().forEach(t => t.stop());
+                capCanvas.toBlob((blob) => {
+                    if (blob) {
+                        processMultipleScreenshotUploads([new File([blob], `capture_${Date.now()}.png`, { type: 'image/png', lastModified: Date.now() })]);
+                    }
+                }, 'image/png');
+            } catch (err) {
+                if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+                    console.error('Screen capture error:', err);
+                    alert('画面キャプチャ中にエラーが発生しました: ' + (err.message || err));
+                }
+            }
+        });
+    }
+}
+
+function updateFastModeButton() {
+    const btn = document.getElementById('btn-fast-mode');
+    const label = document.getElementById('btn-fast-mode-label');
+    if (!btn) return;
+    if (label) label.innerText = isFastMode ? '高速モード ON' : '高速モード OFF';
+    btn.classList.toggle('is-on', isFastMode);
+    btn.setAttribute('aria-pressed', isFastMode ? 'true' : 'false');
+}
+
+function toggleFastMode() {
+    isFastMode = !isFastMode;
+    try {
+        localStorage.setItem('tactical_archive_fast_mode', isFastMode ? 'true' : 'false');
+    } catch (e) {}
+    updateFastModeButton();
+}
+
+// Returns the reason the screenshot needs a manual check, or null if it can be auto-registered
+function getFastModeStopReason(data) {
+    if (!data) return '認識結果がありません';
+    const allSlots = [...(data.attack || []), ...(data.defense || [])];
+    if (allSlots.length < 12 || allSlots.some(slot => !slot || !slot.studentId)) {
+        return '未登録の生徒がいるため確認が必要です';
+    }
+    const name = (data.opponentName || '').replace(/[\s　]+/g, '');
+    const rawName = (data.rawOcrOpponentName || '').replace(/[\s　]+/g, '');
+    if (!name) {
+        return '対戦相手の名前を読み取れなかったため確認が必要です';
+    }
+    if (data.battleType !== 'defense' && (name === '匿名' || rawName === '匿名')) {
+        return '匿名相手の攻撃のため、相手SPの固有を入力してください';
+    }
+    const hasFoughtBefore = currentHistory.some(h => (h.commander_name || '') === name);
+    if (!hasFoughtBefore) {
+        return '初めて対戦する相手のため確認が必要です';
+    }
+    return null;
+}
 
 // ==========================================
 // KEYBOARD UTILITY (Soft Keyboard Auto-Dismiss)
@@ -1085,14 +1633,43 @@ document.addEventListener('keydown', (e) => {
                 dismissKeyboard();
             }
         }
-        // 2. TEXTAREA elements (メモ欄: 改行ではなく確定してキーボードを閉じる)
+        // 2. TEXTAREA elements (メモ欄 / パレット: 改行ではなく確定してキーボードを閉じる)
         else if (target.tagName === 'TEXTAREA') {
+            if (target.id === 'notes-palette-textarea') {
+                if (!e.shiftKey) {
+                    e.preventDefault();
+                    if (typeof window.closeNotesPalette === 'function') {
+                        window.closeNotesPalette(true);
+                    }
+                }
+                return;
+            }
             e.preventDefault();
             target.blur();
             dismissKeyboard();
         }
     }
 });
+
+// Async click handler with re-entrancy guard (prevents duplicate saves on double tap)
+function addGuardedClickListener(btn, handler) {
+    if (!btn) return;
+    let running = false;
+    btn.addEventListener('click', async (e) => {
+        if (running) return;
+        running = true;
+        btn.disabled = true;
+        try {
+            await handler(e);
+        } catch (err) {
+            console.error('Save handler failed:', err);
+            alert('保存中にエラーが発生しました: ' + (err && err.message ? err.message : err));
+        } finally {
+            running = false;
+            btn.disabled = false;
+        }
+    });
+}
 
 // Enable instant :active state on touch devices
 document.addEventListener('touchstart', () => {}, { passive: true });
@@ -1179,36 +1756,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateRosterView();
         updateHistoryView();
 
-        // STEP 2: BACKGROUND FULL DATA LOADING (Non-blocking)
+        // STEP 2: BACKGROUND PROGRESSIVE LOADING (Non-blocking)
+        // Older records are loaded HISTORY_LOAD_CHUNK at a time (newest first) and merged into the
+        // visible list as they arrive, so recent battles and search results appear immediately.
         fullHistoryLoadPromise = (async () => {
             try {
-                const [fullHistory, opponents, renames] = await Promise.all([
-                    getHistory(),
-                    getOpponents(),
-                    getRenames()
-                ]);
-                currentHistory = fullHistory || [];
+                const [opponents, renames] = await Promise.all([getOpponents(), getRenames()]);
                 opponentDirectory = opponents || {};
                 opponentRenames = renames || [];
+                updateHistoryView(); // re-render so opponent avatars appear on the initial rows
+
+                await loadRemainingHistoryProgressively();
                 isFullHistoryLoaded = true;
-
-                // If user has already entered a search/filter, re-run filter on full dataset
-                const searchAtk = document.getElementById('search-commander-attack');
-                const searchDef = document.getElementById('search-commander-defense');
-                const hasSearch = (searchAtk?.value?.trim() || searchDef?.value?.trim() || activePositionFilter);
-
-                if (hasSearch) {
-                    updateHistoryView();
-                } else {
-                    // Otherwise silently update stats and pagination buffer without UI flicker
-                    updateHistoryAllFilteredSilently();
-                }
+                refreshHistoryEmptyStates();
 
                 // Background migration (non-blocking)
                 migrateOpponentAvatars();
                 backfillHistorySnapshots().catch(err => console.warn("Background backfill error:", err));
             } catch (err) {
                 console.error("Background full history load error:", err);
+                // Fallback: load everything at once so no data is missing
+                try {
+                    const all = await getHistory();
+                    const known = new Set(currentHistory.map(h => h.id));
+                    const missing = all.filter(h => !known.has(h.id));
+                    currentHistory.push(...missing);
+                    appendLoadedRecordsToView(missing);
+                } catch (e2) {
+                    console.error("Fallback full history load failed:", e2);
+                }
+                isFullHistoryLoaded = true;
+                refreshHistoryEmptyStates();
             }
         })();
     } catch (e) {
@@ -1228,22 +1806,111 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup History Infinite Scroll Listeners (30 items batch)
     setupHistoryScrollListeners();
 
-    // Setup Excel-style Column Width Resizer
-    initColumnResizer();
-
     // Prevent viewport displacement / scroll shifting on virtual keyboard events
     window.addEventListener('scroll', () => {
-        // 入力欄にフォーカスがある間はIMEやキャレット追従と競合してガクガク揺れるのを防ぐ
-        const active = document.activeElement;
-        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
-            return;
-        }
         if (window.scrollX !== 0 || window.scrollY !== 0) {
             window.scrollTo(0, 0);
         }
-    });
+    }, { passive: true });
+
+    // ==========================================
+    // NOTES INPUT PALETTE CONTROLLER (IME Jitter-Free Input Overlay)
+    // ==========================================
+    let activeNotesTargetId = null;
+
+    window.openNotesPalette = function(targetId) {
+        activeNotesTargetId = targetId;
+        const targetEl = document.getElementById(targetId);
+        const paletteModal = document.getElementById('notes-palette-modal');
+        const paletteTextarea = document.getElementById('notes-palette-textarea');
+        if (!paletteModal || !paletteTextarea) return;
+
+        paletteTextarea.value = targetEl ? targetEl.value : '';
+        paletteModal.classList.add('active');
+
+        // Autofocus on top-level palette textarea smoothly
+        setTimeout(() => {
+            paletteTextarea.focus();
+            try {
+                const len = paletteTextarea.value.length;
+                paletteTextarea.setSelectionRange(len, len);
+            } catch (err) {}
+            window.scrollTo(0, 0);
+        }, 50);
+    };
+
+    window.closeNotesPalette = function(shouldSave = false) {
+        const paletteModal = document.getElementById('notes-palette-modal');
+        const paletteTextarea = document.getElementById('notes-palette-textarea');
+
+        if (shouldSave && activeNotesTargetId && paletteTextarea) {
+            const targetEl = document.getElementById(activeNotesTargetId);
+            if (targetEl) {
+                targetEl.value = paletteTextarea.value.trim();
+                targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+                targetEl.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        if (paletteModal) {
+            paletteModal.classList.remove('active');
+        }
+        activeNotesTargetId = null;
+        dismissKeyboard();
+        window.scrollTo(0, 0);
+    };
+
+    function initNotesInputPalette() {
+        const noteIds = ['review-notes', 'detail-notes'];
+        noteIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            // Tap / Click opens the clean top palette, preventing modal layout shift
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                openNotesPalette(id);
+            });
+            el.addEventListener('focus', (e) => {
+                e.preventDefault();
+                el.blur();
+                openNotesPalette(id);
+            });
+        });
+
+        // Palette action buttons
+        const btnDone = document.getElementById('btn-palette-done');
+        const btnCancel = document.getElementById('btn-palette-cancel');
+        const paletteModal = document.getElementById('notes-palette-modal');
+        const paletteTextarea = document.getElementById('notes-palette-textarea');
+
+        if (btnDone) {
+            btnDone.addEventListener('click', () => closeNotesPalette(true));
+        }
+        if (btnCancel) {
+            btnCancel.addEventListener('click', () => closeNotesPalette(false));
+        }
+        if (paletteModal) {
+            paletteModal.addEventListener('click', (e) => {
+                if (e.target === paletteModal) {
+                    closeNotesPalette(false);
+                }
+            });
+        }
+        if (paletteTextarea) {
+            paletteTextarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    if (e.isComposing) return;
+                    if (!e.shiftKey) {
+                        e.preventDefault();
+                        closeNotesPalette(true);
+                    }
+                }
+            });
+        }
+    }
+    initNotesInputPalette();
+
     document.addEventListener('focusout', (e) => {
-        // フォーカスアウト時も次の要素への連続フォーカス移動を考慮
         setTimeout(() => {
             const currentActive = document.activeElement;
             if (!currentActive || (currentActive.tagName !== 'INPUT' && currentActive.tagName !== 'TEXTAREA')) {
@@ -1271,7 +1938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Check if defense feature popup should be shown on upload tab
         if (tabName === 'upload') {
-            const defenseNotified = localStorage.getItem('tactical_archive_defense_feature_notified') === 'true';
+            const defenseNotified = true; // Web v2: the old "defense feature added" notice is not shown
             if (!defenseNotified) {
                 localStorage.setItem('tactical_archive_defense_feature_notified', 'true');
                 setTimeout(() => {
@@ -1298,13 +1965,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isDone = localStorage.getItem('tactical_archive_first_launch_done') === 'true';
     const hasData = (currentHistory && currentHistory.length > 0) || (currentRoster && currentRoster.length > 0);
 
-    if (!isDone && !hasCalibration && !hasData) {
-        localStorage.setItem('tactical_archive_first_launch_done', 'true');
-        window.switchToTab('upload');
-        setTimeout(() => {
-            showTutorialPopup('戦術対抗戦の戦闘履歴のスクリーンショット（初回は攻撃のリザルト）を張り付けてください', '<i class="fa-solid fa-cloud-arrow-up"></i>', '初回セットアップ');
-        }, 150);
-    }
+    // Web v2: choose PC (4:3 / 16:9) or smartphone/tablet first; fresh installs then get the upload tutorial
+    initWebPlatformUI({ isFreshInstall: !isDone && !hasCalibration && !hasData });
 
     // Synchronized Search Inputs (Shared across Attack and Defense tabs)
     const searchAtk = document.getElementById('search-commander-attack');
@@ -1313,8 +1975,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnClearDef = document.getElementById('btn-clear-search-defense');
 
     if (searchAtk) {
-        searchAtk.addEventListener('input', () => {
-            syncSearchInput(searchAtk.value, false);
+        // 'input' fires per character; composition events cover IMEs that skip 'input' while converting
+        ['input', 'compositionupdate', 'compositionend'].forEach(evt => {
+            searchAtk.addEventListener(evt, () => scheduleSearchInput(searchAtk));
         });
     }
     if (btnClearAtk) {
@@ -1324,8 +1987,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (searchDef) {
-        searchDef.addEventListener('input', () => {
-            syncSearchInput(searchDef.value, false);
+        // 'input' fires per character; composition events cover IMEs that skip 'input' while converting
+        ['input', 'compositionupdate', 'compositionend'].forEach(evt => {
+            searchDef.addEventListener(evt, () => scheduleSearchInput(searchDef));
         });
     }
     if (btnClearDef) {
@@ -1353,10 +2017,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     dropZone.addEventListener('click', (e) => {
-        if (e.target.closest('button') || e.target.closest('input')) return;
+        if (e.target.closest('button:not(.dz-pick)') || e.target.closest('input')) return;
         fileInput.value = '';
         fileInput.click();
     });
+
+    const btnFastMode = document.getElementById('btn-fast-mode');
+    if (btnFastMode) btnFastMode.addEventListener('click', (e) => { e.stopPropagation(); toggleFastMode(); });
+    updateFastModeButton();
+    initWebInputSources();
 
     fileInput.addEventListener('change', () => {
         try {
@@ -1368,94 +2037,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert("画像読み込み中にエラーが発生しました: " + (err.message || err));
         }
     });
-
-    // Web Clipboard Paste (Ctrl+V) handler
-    window.addEventListener('paste', (e) => {
-        if (!e.clipboardData || !e.clipboardData.items) return;
-        const activeEl = document.activeElement;
-        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeEl.type !== 'file') {
-            return;
-        }
-        const files = [];
-        for (const item of e.clipboardData.items) {
-            if (item.type.startsWith('image/')) {
-                const blob = item.getAsFile();
-                if (blob) {
-                    files.push(new File([blob], `paste_${Date.now()}.png`, { type: blob.type }));
-                }
-            }
-        }
-        if (files.length > 0) {
-            e.preventDefault();
-            if (typeof window.switchToTab === 'function') {
-                window.switchToTab('upload');
-            }
-            processMultipleScreenshotUploads(files);
-        }
-    });
-
-    // Global Drag & Drop for Web
-    window.addEventListener('dragover', (e) => {
-        if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
-            e.preventDefault();
-        }
-    });
-    window.addEventListener('drop', (e) => {
-        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            if (!dropZone.contains(e.target)) {
-                const imageFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                if (imageFiles.length > 0) {
-                    e.preventDefault();
-                    if (typeof window.switchToTab === 'function') {
-                        window.switchToTab('upload');
-                    }
-                    processMultipleScreenshotUploads(imageFiles);
-                }
-            }
-        }
-    });
-
-    // Web Screen Capture API (PC browsers)
-    const btnWebCapture = document.getElementById('btn-web-capture');
-    if (btnWebCapture) {
-        if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
-            btnWebCapture.style.display = 'inline-flex';
-            btnWebCapture.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                try {
-                    const stream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { displaySurface: 'window' },
-                        audio: false
-                    });
-                    const video = document.createElement('video');
-                    video.srcObject = stream;
-                    await video.play();
-
-                    const capCanvas = document.createElement('canvas');
-                    capCanvas.width = video.videoWidth;
-                    capCanvas.height = video.videoHeight;
-                    const capCtx = capCanvas.getContext('2d');
-                    capCtx.drawImage(video, 0, 0, capCanvas.width, capCanvas.height);
-
-                    stream.getTracks().forEach(t => t.stop());
-
-                    capCanvas.toBlob((blob) => {
-                        if (blob) {
-                            const file = new File([blob], `capture_${Date.now()}.png`, { type: 'image/png' });
-                            processMultipleScreenshotUploads([file]);
-                        }
-                    }, 'image/png');
-                } catch (err) {
-                    if (err.name !== 'NotAllowedError') {
-                        console.error('Screen capture error:', err);
-                        alert('画面キャプチャ中にエラーが発生しました: ' + (err.message || err));
-                    }
-                }
-            });
-        } else {
-            btnWebCapture.style.display = 'none';
-        }
-    }
 
     // DB Backup / Restore / Delete handlers
     document.getElementById('btn-db-backup').addEventListener('click', openBackupModal);
@@ -1619,9 +2200,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Student Registration Modal events
     const studentIconInput = document.getElementById('student-icon-input');
-    let manualIconDataUrl = '';
 
-    document.getElementById('btn-student-cancel').addEventListener('click', () => studentModal.classList.remove('active'));
+    document.getElementById('btn-student-cancel').addEventListener('click', () => {
+        pendingBulkSlotSave = null;
+        studentModal.classList.remove('active');
+    });
 
     studentIconInput.addEventListener('change', () => {
         if (studentIconInput.files.length > 0) {
@@ -1640,10 +2223,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         reader.readAsDataURL(file);
     }
 
-    document.getElementById('btn-student-save').addEventListener('click', async () => {
+    addGuardedClickListener(document.getElementById('btn-student-save'), async () => {
         const name = document.getElementById('add-student-name').value.trim();
         if (!name) {
             alert('生徒名を入力してください。');
+            return;
+        }
+
+        // Bulk roster flow: delegate to the bulk registration callback only
+        if (pendingBulkSlotSave) {
+            const bulkSave = pendingBulkSlotSave;
+            pendingBulkSlotSave = null;
+            await bulkSave(name);
             return;
         }
         
@@ -1760,11 +2351,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         uploadQueue = []; // Clear queue when reset
     }
 
-    function processMultipleScreenshotUploads(files) {
+    // Web: also called from top-level code (queue skip / error paths, paste, drop, capture)
+    window.processMultipleScreenshotUploads = processMultipleScreenshotUploads;
+    window.processNextInUploadQueue = processNextInUploadQueue;
+
+    async function processMultipleScreenshotUploads(files) {
+        const fileList = Array.from(files); // Copy before awaiting (input may be reset meanwhile)
+        fastModeAutoSavedCount = 0;
+        pcSkippedCount = 0;
+        // Startup loads only the latest 15 records; make sure duplicate check sees the full history
+        // (no wait if the background full load has already finished)
+        if (!isFullHistoryLoaded) {
+            await ensureFullHistoryLoaded();
+        }
         const duplicateNames = [];
         const validFiles = [];
         
-        Array.from(files).forEach(file => {
+        fileList.forEach(file => {
             const isDuplicate = currentHistory.some(item => item.filename === file.name);
             if (isDuplicate) {
                 duplicateNames.push(file.name);
@@ -1794,6 +2397,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Queue is empty: reset UI and switch to Attack tab
             resetUploadUI();
             window.switchToTab('attack');
+            if (fastModeAutoSavedCount > 0) {
+                const count = fastModeAutoSavedCount;
+                fastModeAutoSavedCount = 0;
+                alert(`高速モードで ${count} 件の戦績を自動登録しました。`);
+            }
+            if (pcSkippedCount > 0) {
+                const skipped = pcSkippedCount;
+                pcSkippedCount = 0;
+                alert(`アスペクト比が ${getPcAspect()} ではないスクリーンショット ${skipped} 件をスキップしました。\n${getPcAspect()} のスクリーンショットを読み込んでください。`);
+            }
             return;
         }
         
@@ -1808,7 +2421,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         processNextInUploadQueue();
     });
 
-    document.getElementById('btn-review-save').addEventListener('click', async () => {
+    // Save the record currently shown in the Review Modal (used by the save button and by Fast Mode)
+    async function saveReviewFromModal() {
         if (!currentUploadData) return;
         
         const opponentName = document.getElementById('review-opponent-name').value.replace(/[\s\u3000]+/g, '');
@@ -1846,37 +2460,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             defenseNames.push(slot.studentName || '生徒');
         }
 
-            // Merge date input with exact time (hours, minutes, seconds)
-            let finalCreatedAt = currentUploadData.timestamp || Date.now();
-            if (dateInput) {
-                const parts = dateInput.split('-').map(Number);
-                if (parts.length === 3) {
-                    const base = new Date(finalCreatedAt);
-                    base.setFullYear(parts[0], parts[1] - 1, parts[2]);
-                    finalCreatedAt = base.getTime();
-                }
+        // Save Battle History Record
+        // Merge date input with exact time (hours, minutes, seconds)
+        let finalCreatedAt = currentUploadData.timestamp || Date.now();
+        if (dateInput) {
+            const parts = dateInput.split('-').map(Number);
+            if (parts.length === 3) {
+                const base = new Date(finalCreatedAt);
+                base.setFullYear(parts[0], parts[1] - 1, parts[2]);
+                finalCreatedAt = base.getTime();
             }
+        }
 
-            const record = {
-                result: result,
-                battle_type: battleType,
-                utility_level: utility,
-                commander_name: opponentName,
-                attack_team: attackTeam,
-                defense_team: defenseTeam,
-                attack_icons: attackIcons,
-                defense_icons: defenseIcons,
-                attack_names: attackNames,
-                defense_names: defenseNames,
-                opponent_avatar: null, // Stored cleanly in opponent_directory DB keyed by commander_name
-                notes: notes,
-                filename: currentUploadData.filename || '', // Save filename to prevent duplicate uploads
-                created_at: finalCreatedAt,
-                box1_color: currentUploadData.box1_color || null,
-                box1_value: currentUploadData.box1_value || null,
-                box2_color: currentUploadData.box2_color || null,
-                box2_value: currentUploadData.box2_value || null
-            };
+        const record = {
+            result: result,
+            battle_type: battleType,
+            utility_level: utility,
+            commander_name: opponentName,
+            attack_team: attackTeam,
+            defense_team: defenseTeam,
+            attack_icons: attackIcons,
+            defense_icons: defenseIcons,
+            attack_names: attackNames,
+            defense_names: defenseNames,
+            opponent_avatar: null, // Stored cleanly in opponent_directory DB keyed by commander_name
+            notes: notes,
+            filename: currentUploadData.filename || '', // Save filename to prevent duplicate uploads
+            created_at: finalCreatedAt,
+            box1_color: currentUploadData.box1_color || null,
+            box1_value: currentUploadData.box1_value || null,
+            box2_color: currentUploadData.box2_color || null,
+            box2_value: currentUploadData.box2_value || null
+        };
 
         // Save Opponent Profile Avatar to Opponent Directory (only if first time)
         if (opponentName && currentUploadData.opponentAvatar) {
@@ -1941,7 +2556,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         reviewModal.classList.remove('active');
         uploadQueue.shift();
         processNextInUploadQueue();
-    });
+    }
+    window.saveReviewFromModal = saveReviewFromModal;
+    addGuardedClickListener(document.getElementById('btn-review-save'), saveReviewFromModal);
 
     // Student Selector Modal handlers
     document.getElementById('btn-selector-close').addEventListener('click', () => {
@@ -2032,29 +2649,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    const detailTypeAtkBtn = document.getElementById('detail-type-attack-btn');
-    const detailTypeDefBtn = document.getElementById('detail-type-defense-btn');
-    if (detailTypeAtkBtn && detailTypeDefBtn) {
-        detailTypeAtkBtn.addEventListener('click', () => {
-            if (detailEditedData) detailEditedData.battleType = 'attack';
-            detailTypeAtkBtn.classList.add('active');
-            detailTypeDefBtn.classList.remove('active');
-        });
-        detailTypeDefBtn.addEventListener('click', () => {
-            if (detailEditedData) detailEditedData.battleType = 'defense';
-            detailTypeDefBtn.classList.add('active');
-            detailTypeAtkBtn.classList.remove('active');
-        });
-    }
-
-    btnDetailSave.addEventListener('click', async () => {
+    addGuardedClickListener(btnDetailSave, async () => {
         if (!editingRecord || !detailEditedData) return;
 
         const opponentName = document.getElementById('detail-opponent-name').value.replace(/[\s\u3000]+/g, '');
         const dateInput = document.getElementById('detail-date-input').value;
         const notes = document.getElementById('detail-notes').value.trim();
         const result = detailWinBtn.classList.contains('active') ? 'WIN' : 'LOSE';
-        const battleType = (detailTypeDefBtn && detailTypeDefBtn.classList.contains('active')) ? 'defense' : 'attack';
+        const battleType = editingRecord.battle_type || 'attack';
 
         let utility = '高';
         const checkedUtility = document.querySelector('input[name="detail-utility"]:checked');
@@ -2177,6 +2779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     studentModal.addEventListener('click', (e) => {
         if (e.target === studentModal) {
+            pendingBulkSlotSave = null;
             studentModal.classList.remove('active');
         }
     });
@@ -2308,17 +2911,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeTagBoxContext = { modalType, boxIndex };
         customTagPopup.style.display = 'block';
 
-        const rect = boxEl.getBoundingClientRect();
+        const rect = appRect(boxEl);
+        const vp = appViewport();
         const popupWidth = customTagPopup.offsetWidth || 220;
         const popupHeight = customTagPopup.offsetHeight || 90;
 
         let left = rect.left + window.scrollX;
         let top = rect.bottom + window.scrollY + 4;
 
-        if (left + popupWidth > window.innerWidth) {
-            left = window.innerWidth - popupWidth - 10;
+        if (left + popupWidth > vp.w) {
+            left = vp.w - popupWidth - 10;
         }
-        if (top + popupHeight > window.innerHeight) {
+        if (top + popupHeight > vp.h) {
             top = rect.top + window.scrollY - popupHeight - 4;
         }
         if (left < 10) left = 10;
@@ -2416,7 +3020,7 @@ async function initOCRWorker() {
 // Calibration Profile Manager for Dynamic Multi-Aspect-Ratio Support
 function getOrComputeCalibrationProfile(img, scanStatusText) {
     const rawAspect = img.width / img.height;
-    const aspectKey = rawAspect.toFixed(3);
+    const aspectKey = getCalibrationKeyForImage(img); // Web: 'pc-4:3' / 'pc-16:9' in PC mode
     
     // Check localStorage cache
     let cachedProfiles = {};
@@ -2634,15 +3238,8 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
         cardSize
     };
 
-    // Save to persistent cache
-    try {
-        cachedProfiles[aspectKey] = profile;
-        localStorage.setItem('tactical_archive_calibration_profiles', JSON.stringify(cachedProfiles));
-        console.log(`[Calibration] Successfully cached universal calibration profile for aspect ratio ${aspectKey}!`);
-    } catch (e) {
-        console.warn("[Calibration] Failed to persist calibration profile:", e);
-    }
-
+    // NOTE: Not persisted here. The profile is saved only when the user completes the Crop Inspector
+    // (applyCropInspector), so cancelling the first-time calibration shows the wizard again next time.
     return { profile, isCached: false };
 }
 
@@ -2653,7 +3250,6 @@ function extractDateFromFile(file) {
 
     if (file && file.name) {
         // Pattern 1: YYYY-MM-DD or YYYY_MM_DD with optional time HH-MM-SS / HH_MM_SS / HHMMSS
-        // e.g. Screenshot_2026-09-19-18-57-00.png, 2026_09_19_185700.jpg, 2026.09.19 18:57:00
         const mDelim = file.name.match(/(?:^|[^0-9])(20\d{2})[-_. /](0[1-9]|1[0-2])[-_. /](0[1-9]|[12]\d|3[01])(?:[-_. T/]?([01]\d|2[0-3])[-_.:]?([0-5]\d)[-_.:]?([0-5]\d)?)?(?:[^0-9]|$)/);
         if (mDelim) {
             const y = parseInt(mDelim[1], 10);
@@ -2756,7 +3352,7 @@ async function handleScreenshotUpload(file) {
     const extractedTimestamp = dateInfo.timestamp;
 
     try {
-        const img = new Image();
+        let img = new Image();
         const loadPromise = new Promise((resolve, reject) => {
             img.onload = () => resolve(img);
             img.onerror = (err) => reject(err);
@@ -2770,6 +3366,24 @@ async function handleScreenshotUpload(file) {
         img.src = reader.result;
         await loadPromise;
         if (isScanCancelled) return;
+
+        // Web PC mode: only the chosen aspect ratio is accepted; other sizes of it are resized
+        if (isPcMode()) {
+            const pcAspect = getPcAspect();
+            const detected = classifyPcAspect(img.width, img.height);
+            if (detected !== pcAspect) {
+                pcSkippedCount++;
+                const what = detected ? `${detected} の画像` : `${img.width}×${img.height} の画像`;
+                showToast(`${pcAspect} のスクリーンショットを読み込んでください（${what}をスキップしました）`, 'warn', 5000);
+                scannerScreen.style.display = 'none';
+                dropZone.style.display = 'flex';
+                uploadQueue.shift();
+                processNextInUploadQueue();
+                return;
+            }
+            img = await normalizePcScreenshot(img, pcAspect);
+            if (isScanCancelled) return;
+        }
 
         lastUploadedImage = img;
         currentUploadFile = file;
@@ -2896,6 +3510,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
             console.error("Opponent OCR failed:", ocrErr);
         }
     }
+    if (isScanCancelled) return;
 
     // 3. Crop Opponent profile avatar
     const oppAvatarCanvas = cropImage(
@@ -2923,6 +3538,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
     } catch (e) {
         console.warn('Battle type detection error:', e);
     }
+    if (isScanCancelled) return;
 
     const reviewData = {
         result: battleResult,
@@ -3000,9 +3616,30 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
         reviewData.defense.push(slotData);
     }
 
+    if (isScanCancelled) return;
+
     // Populate Review UI
     currentUploadData = reviewData;
     populateReviewModal(reviewData);
+
+    // Fast Mode: auto-register when no manual check is needed, then continue with the next screenshot
+    const fastModeStopReason = isFastMode ? getFastModeStopReason(reviewData) : null;
+    if (isFastMode && !fastModeStopReason && typeof window.saveReviewFromModal === 'function') {
+        if (isScanCancelled) return;
+        scanStatusText.innerText = '高速モード: 自動登録しています...';
+        // Count before saving: the save advances the queue and the batch-end summary may run inside it
+        fastModeAutoSavedCount++;
+        try {
+            await window.saveReviewFromModal();
+            return;
+        } catch (err) {
+            fastModeAutoSavedCount = Math.max(0, fastModeAutoSavedCount - 1);
+            console.error('Fast mode auto-save failed:', err);
+            scannerScreen.style.display = 'none';
+            reviewModal.classList.add('active');
+            return;
+        }
+    }
 
     // Hide scanner and open Review Modal
     scannerScreen.style.display = 'none';
@@ -3444,7 +4081,7 @@ function renderCropInspectorCanvas() {
     const ctx = cropInspectorCanvas.getContext('2d');
     
     // Match CSS canvas display size
-    const rect = cropInspectorCanvas.getBoundingClientRect();
+    const rect = appRect(cropInspectorCanvas);
     if (cropInspectorCanvas.width !== rect.width || cropInspectorCanvas.height !== rect.height) {
         cropInspectorCanvas.width = rect.width;
         cropInspectorCanvas.height = rect.height;
@@ -3708,13 +4345,13 @@ function handleInspectorPointerDown(e) {
     if (e.touches && e.touches.length >= 2) {
         const t1 = e.touches[0];
         const t2 = e.touches[1];
-        const rect = cropInspectorCanvas.getBoundingClientRect();
+        const rect = appRect(cropInspectorCanvas);
         lastTouchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-        lastTouchMidX = (t1.clientX + t2.clientX) / 2 - rect.left;
-        lastTouchMidY = (t1.clientY + t2.clientY) / 2 - rect.top;
+        lastTouchMidX = (evAppX(t1) + evAppX(t2)) / 2 - rect.left;
+        lastTouchMidY = (evAppY(t1) + evAppY(t2)) / 2 - rect.top;
     } else {
-        startPointerX = e.clientX || (e.touches && e.touches[0].clientX);
-        startPointerY = e.clientY || (e.touches && e.touches[0].clientY);
+        startPointerX = evAppX(pointerSource(e));
+        startPointerY = evAppY(pointerSource(e));
     }
 }
 
@@ -3725,10 +4362,10 @@ function handleInspectorPointerMove(e) {
         // Pinch to Zoom centered at finger midpoint
         const t1 = e.touches[0];
         const t2 = e.touches[1];
-        const rect = cropInspectorCanvas.getBoundingClientRect();
+        const rect = appRect(cropInspectorCanvas);
         const curDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-        const curMidX = (t1.clientX + t2.clientX) / 2 - rect.left;
-        const curMidY = (t1.clientY + t2.clientY) / 2 - rect.top;
+        const curMidX = (evAppX(t1) + evAppX(t2)) / 2 - rect.left;
+        const curMidY = (evAppY(t1) + evAppY(t2)) / 2 - rect.top;
 
         if (lastTouchDist > 0) {
             const factor = curDist / lastTouchDist;
@@ -3759,8 +4396,8 @@ function handleInspectorPointerMove(e) {
         return;
     }
 
-    const curX = e.clientX || (e.touches && e.touches[0].clientX);
-    const curY = e.clientY || (e.touches && e.touches[0].clientY);
+    const curX = evAppX(pointerSource(e));
+    const curY = evAppY(pointerSource(e));
     const dx = curX - startPointerX;
     const dy = curY - startPointerY;
 
@@ -3780,9 +4417,9 @@ function handleInspectorPointerUp() {
 function handleInspectorWheel(e) {
     e.preventDefault();
     if (!cropInspectorCanvas) return;
-    const rect = cropInspectorCanvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    const rect = appRect(cropInspectorCanvas);
+    const mx = evAppX(e) - rect.left;
+    const my = evAppY(e) - rect.top;
 
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
     const oldZoom = wizardZoom;
@@ -3852,7 +4489,7 @@ async function applyCropInspector() {
     if (!currentUploadData) {
         if (cropInspectorModal) cropInspectorModal.classList.remove('active');
         localStorage.setItem('tactical_archive_first_launch_done', 'true');
-        if (currentUploadFile && currentUploadExtractedDate) {
+        if (currentUploadFile && currentUploadExtractedDate && !isScanCancelled) {
             await runRecognitionPipeline(lastUploadedImage, currentActiveProfile, currentUploadFile, currentUploadExtractedDate, currentUploadExtractedTimestamp);
         }
         return;
@@ -4073,8 +4710,10 @@ function selectStudentForEditingSlot(student) {
         slot.studentName = student.name;
         slot.icon_path = student.icon_path || slot.icon_path;
         slot.userSelected = true; // Mark as user corrected
-        if (student.features && student.features.length > 0) {
-            slot.faceFeatures = student.features[0];
+        // Review Modal: keep the face features cropped from the screenshot so they are learned as a new pattern on save.
+        // Detail Modal: slots hold no crop features (only the previously shown student's), so use the selected student's.
+        if (modal === 'detail' || !slot.faceFeatures) {
+            slot.faceFeatures = (student.features && student.features.length > 0) ? student.features[0] : null;
         }
     } else {
         slot.studentId = null;
@@ -4144,27 +4783,20 @@ function openBattleDetailModal(item) {
         winBtn.classList.remove('active');
     }
 
-    // Populate Battle Type toggle (Attack / Defense)
-    const detailTypeAtkBtn = document.getElementById('detail-type-attack-btn');
-    const detailTypeDefBtn = document.getElementById('detail-type-defense-btn');
-    const currentBattleType = item.battle_type || 'attack';
-    detailEditedData.battleType = currentBattleType;
-    if (detailTypeAtkBtn && detailTypeDefBtn) {
-        if (currentBattleType === 'defense') {
-            detailTypeDefBtn.classList.add('active');
-            detailTypeAtkBtn.classList.remove('active');
-        } else {
-            detailTypeAtkBtn.classList.add('active');
-            detailTypeDefBtn.classList.remove('active');
-        }
-    }
+    detailEditedData.battleType = 'attack';
 
     // Populate opponent name & Date
     document.getElementById('detail-opponent-name').value = item.commander_name || '';
     
-    const formattedDate = new Date(item.created_at).toISOString().split('T')[0];
+    // Use LOCAL date (toISOString() is UTC and shifts JST 0:00-8:59 records to the previous day)
+    const createdDate = new Date(item.created_at);
+    const isValidDate = !isNaN(createdDate.getTime());
+    const padDate = (n) => String(n).padStart(2, '0');
+    const formattedDate = isValidDate
+        ? `${createdDate.getFullYear()}-${padDate(createdDate.getMonth() + 1)}-${padDate(createdDate.getDate())}`
+        : '';
     document.getElementById('detail-date-input').value = formattedDate;
-    document.getElementById('detail-date-str').innerText = new Date(item.created_at).toLocaleDateString('ja-JP');
+    document.getElementById('detail-date-str').innerText = isValidDate ? createdDate.toLocaleDateString('ja-JP') : '';
     
     // Notes
     document.getElementById('detail-notes').value = item.notes || '';
@@ -4188,7 +4820,7 @@ function openBattleDetailModal(item) {
         avWrapper.appendChild(img);
     } else {
         // Fallback: use first defender student icon
-        const firstDefStudent = currentRoster.find(s => s.id === item.defense_team[0]);
+        const firstDefStudent = currentRoster.find(s => s.id === (item.defense_team && item.defense_team[0]));
         if (firstDefStudent && firstDefStudent.icon_path) {
             const img = document.createElement('img');
             img.src = firstDefStudent.icon_path;
@@ -4319,138 +4951,181 @@ function createDetailSlotElement(slotData, team, index) {
     return slotEl;
 }
 
-// Filter and render History items
-async function filterHistory(type = 'attack') {
+// ---- History search (fast) ----
+// Per-record cache of normalized strings (WeakMap: not stored into IndexedDB).
+// Signature check keeps it valid when a record is edited in place.
+const _historySearchKeyCache = new WeakMap();
+
+function getHistorySearchKeys(item) {
+    const atk = item.attack_names || [];
+    const def = item.defense_names || [];
+    const sig = (item.commander_name || '') + '\u0001' + atk.join('\u0002') + '\u0001' + def.join('\u0002');
+    const cached = _historySearchKeyCache.get(item);
+    if (cached && cached.sig === sig) return cached;
+    const names = [...atk, ...def].filter(Boolean);
+    const keys = {
+        sig,
+        cmdLower: (item.commander_name || '').toLowerCase(),
+        cmdHira: toHiragana(item.commander_name || ''),
+        namesLower: names.map(n => n.toLowerCase()),
+        namesHira: names.map(n => toHiragana(n))
+    };
+    _historySearchKeyCache.set(item, keys);
+    return keys;
+}
+
+// Build the search criteria once per search (terms, normalized forms, matching roster IDs)
+function buildHistorySearchCriteria(type) {
     const searchEl = document.getElementById(`search-commander-${type}`);
     const searchVal = (searchEl?.value || '').toLowerCase().trim();
-    const effectiveFilter = getEffectivePositionFilter(type);
+    const terms = searchVal === '' ? [] : searchVal.split(/[\s,，、]+/).filter(t => t.length > 0).map(term => {
+        const lowerTerm = term.toLowerCase();
+        const hiraTerm = toHiragana(term);
+        const studentIds = new Set(
+            currentRoster
+                .filter(s => s.name && (s.name.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(s.name).includes(hiraTerm))))
+                .map(s => s.id)
+        );
+        return { lowerTerm, hiraTerm, studentIds };
+    });
+    return {
+        type,
+        searchVal,
+        terms,
+        positionFilter: getEffectivePositionFilter(type)
+    };
+}
 
-    // If searching or filtering, guarantee that the complete history dataset is loaded!
-    if ((searchVal !== '' || effectiveFilter) && !isFullHistoryLoaded) {
-        await ensureFullHistoryLoaded();
+function historyMatchesCriteria(item, criteria) {
+    // Tab (battle type)
+    if (criteria.type === 'defense') {
+        if (item.battle_type !== 'defense') return false;
+    } else if (item.battle_type === 'defense') {
+        return false;
     }
 
-    const baseList = currentHistory.filter(item => {
-        if (type === 'defense') {
-            return item.battle_type === 'defense';
-        } else {
-            return item.battle_type !== 'defense';
+    // Position Filter (D1 Eimi, D5/D6 Special order-independent, etc.)
+    const pf = criteria.positionFilter;
+    if (pf) {
+        const { team, index, studentName } = pf;
+        const namesArray = (team === 'attack') ? item.attack_names : item.defense_names;
+        const matchSlot = (i) => {
+            if (!studentName || studentName === '生徒' || studentName === '未登録') return false;
+            return (namesArray && namesArray[i]) === studentName;
+        };
+        if (index >= 4) {
+            if (!matchSlot(4) && !matchSlot(5)) return false;
+        } else if (!matchSlot(index)) {
+            return false;
         }
-    });
+    }
 
-    const filtered = baseList.filter(item => {
-        // Position Filter (D1 Eimi, D5/D6 Special order-independent, etc.)
-        if (effectiveFilter) {
-            const { team, index, studentName } = effectiveFilter;
-            const namesArray = (team === 'attack') ? item.attack_names : item.defense_names;
-            
-            const matchSlot = (i) => {
-                if (!studentName || studentName === '生徒' || studentName === '未登録') return false;
-                const slotName = namesArray && namesArray[i];
-                return slotName === studentName;
-            };
-
-            if (index >= 4) {
-                if (!matchSlot(4) && !matchSlot(5)) return false;
-            } else {
-                if (!matchSlot(index)) return false;
-            }
-        }
-        
-        // Search commander name / student name / team composition
-        if (searchVal !== '') {
-            const terms = searchVal.split(/[\s,，、]+/).filter(t => t.length > 0);
-            
-            for (const term of terms) {
-                let termMatched = false;
-                const lowerTerm = term.toLowerCase();
-                const hiraTerm = toHiragana(term);
-                
-                // 1. Match commander name (Hiragana / Katakana bidirectional match)
-                if (item.commander_name) {
-                    const cmdLower = item.commander_name.toLowerCase();
-                    const cmdHira = toHiragana(item.commander_name);
-                    if (cmdLower.includes(lowerTerm) || (hiraTerm && cmdHira.includes(hiraTerm))) {
-                        termMatched = true;
-                    }
+    // Search commander name / student name / team composition (all terms must match)
+    if (criteria.terms.length > 0) {
+        const keys = getHistorySearchKeys(item);
+        for (const t of criteria.terms) {
+            // 1. Commander name (Hiragana / Katakana bidirectional match)
+            if (keys.cmdLower.includes(t.lowerTerm) || (t.hiraTerm && keys.cmdHira.includes(t.hiraTerm))) continue;
+            // 2. Student names saved in the record
+            let matched = false;
+            for (let i = 0; i < keys.namesLower.length; i++) {
+                if (keys.namesLower[i].includes(t.lowerTerm) || (t.hiraTerm && keys.namesHira[i].includes(t.hiraTerm))) {
+                    matched = true;
+                    break;
                 }
-                
-                // 2. Match student name (Hiragana / Katakana bidirectional match)
-                if (!termMatched) {
-                    const matchName = n => n && (n.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(n).includes(hiraTerm)));
-                    const hasAtkName = item.attack_names && item.attack_names.some(matchName);
-                    const hasDefName = item.defense_names && item.defense_names.some(matchName);
-                    if (hasAtkName || hasDefName) {
-                        termMatched = true;
-                    } else {
-                        const matchingStudentIds = currentRoster
-                            .filter(s => s.name && (s.name.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(s.name).includes(hiraTerm))))
-                            .map(s => s.id);
-                        
-                        if (matchingStudentIds.length > 0) {
-                            const atkStrikers = (item.attack_team || []).slice(0, 4);
-                            const defStrikers = (item.defense_team || []).slice(0, 4);
-                            const atkSpecials = (item.attack_team || []).slice(4);
-                            const defSpecials = (item.defense_team || []).slice(4);
-                            
-                            const hasAtkStriker = atkStrikers.some(id => matchingStudentIds.includes(id));
-                            const hasDefStriker = defStrikers.some(id => matchingStudentIds.includes(id));
-                            const hasAtkSpecial = atkSpecials.some(id => matchingStudentIds.includes(id));
-                            const hasDefSpecial = defSpecials.some(id => matchingStudentIds.includes(id));
-                            
-                            if (hasAtkStriker || hasDefStriker || hasAtkSpecial || hasDefSpecial) {
-                                termMatched = true;
-                            }
-                        }
-                    }
-                }
-                
-                if (!termMatched) return false;
             }
+            // 3. Student IDs (records whose snapshot names are missing)
+            if (!matched && t.studentIds.size > 0) {
+                matched = (item.attack_team || []).some(id => t.studentIds.has(id)) ||
+                          (item.defense_team || []).some(id => t.studentIds.has(id));
+            }
+            if (!matched) return false;
         }
-        
-        return true;
-    });
-
-    renderHistoryItems(filtered, type);
+    }
+    return true;
 }
 
-// Render History View
+function compareHistoryDesc(a, b) {
+    return (b.created_at - a.created_at) || ((b.id || 0) - (a.id || 0));
+}
+
+function isHistoryTab(type) {
+    return type === 'attack' || type === 'defense';
+}
+
+// Filter and render History items (only the requested tab)
+async function filterHistory(type = 'attack') {
+    const criteria = buildHistorySearchCriteria(type);
+    const filtered = currentHistory.filter(item => historyMatchesCriteria(item, criteria));
+    renderHistoryItems(filtered, type, criteria);
+}
+
+// Render History View: only the visible history tab is searched.
+// The other tab is re-filtered when it is opened (switchToTab calls filterHistory).
 async function updateHistoryView() {
-    await filterHistory('attack');
-    await filterHistory('defense');
+    if (isHistoryTab(activeTab)) {
+        await filterHistory(activeTab);
+    }
 }
 
-// Silently update statistics and full scroll buffer after background load without UI flicker
-function updateHistoryAllFilteredSilently() {
-    ['attack', 'defense'].forEach(type => {
-        const baseList = currentHistory.filter(item => {
-            return type === 'defense' ? item.battle_type === 'defense' : item.battle_type !== 'defense';
-        });
-        const sorted = [...baseList].sort((a, b) => b.created_at - a.created_at || (b.id || 0) - (a.id || 0));
+// Merge newly loaded (older) records into the visible tab without re-rendering everything
+function appendLoadedRecordsToView(newItems) {
+    if (!newItems || newItems.length === 0) return;
+    const type = activeTab;
+    if (!isHistoryTab(type)) return;
+    const state = historyRenderState[type];
+    if (!state || !state.criteria) return;
 
-        // Update statistics with full dataset numbers
-        const total = sorted.length;
-        let wins = 0;
-        sorted.forEach(h => { if (h.result === 'WIN') wins++; });
-        const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+    const matched = newItems.filter(item => historyMatchesCriteria(item, state.criteria));
+    if (matched.length === 0) return;
 
-        const statTotalEl = document.getElementById(`stat-total-battles-${type}`);
-        const statWinRateEl = document.getElementById(`stat-win-rate-${type}`);
-        const statRatioEl = document.getElementById(`stat-win-lose-ratio-${type}`);
-        if (statTotalEl) statTotalEl.innerText = total;
-        if (statWinRateEl) statWinRateEl.innerText = `${winRate}%`;
-        if (statRatioEl) statRatioEl.innerText = `${wins} / ${total - wins}`;
+    const tbody = document.getElementById(`${type}-history-items`);
+    if (!tbody) return;
+    if (state.allFiltered.length === 0) {
+        tbody.innerHTML = ''; // remove the empty-state row
+    }
 
-        // Silently update allFiltered list so subsequent scroll loads records 16+ from full history!
-        if (historyRenderState[type]) {
-            historyRenderState[type].allFiltered = sorted;
+    // Keep the number of rendered rows (first page, or how far the user has scrolled)
+    const renderLimit = Math.max(HISTORY_PAGE_SIZE, state.renderedCount);
+
+    matched.sort(compareHistoryDesc);
+    for (const item of matched) {
+        // Binary search for the insertion point in the date-descending list
+        let lo = 0, hi = state.allFiltered.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (compareHistoryDesc(state.allFiltered[mid], item) <= 0) lo = mid + 1;
+            else hi = mid;
         }
-    });
+        state.allFiltered.splice(lo, 0, item);
+        if (lo < state.renderedCount) {
+            // Falls inside the already-rendered range: insert the row at its place
+            tbody.insertBefore(createHistoryRowElement(item, type), tbody.children[lo] || null);
+            state.renderedCount++;
+            // Rows pushed past the limit are removed; they stay in allFiltered and render again on scroll
+            while (state.renderedCount > renderLimit && tbody.lastElementChild) {
+                tbody.removeChild(tbody.lastElementChild);
+                state.renderedCount--;
+            }
+        }
+        state.total++;
+        if (item.result === 'WIN') state.wins++;
+    }
+    updateHistoryStats(type, state.total, state.wins);
+
+    // Fill the first page if it is not full yet
+    if (state.renderedCount < HISTORY_PAGE_SIZE) {
+        renderNextHistoryBatch(type, HISTORY_PAGE_SIZE - state.renderedCount);
+    }
 }
 
 // Synchronized Search Input handler (Shared across Attack and Defense tabs, callable from any scope)
 async function syncSearchInput(value, clearPositionFilter = false) {
+    // A direct call (clear button, commander tap, etc.) supersedes any pending typed search
+    if (_searchInputTimer) {
+        clearTimeout(_searchInputTimer);
+        _searchInputTimer = null;
+    }
     if (clearPositionFilter) {
         activePositionFilter = null;
     }
@@ -4465,38 +5140,70 @@ async function syncSearchInput(value, clearPositionFilter = false) {
     if (btnClearAtk) btnClearAtk.style.display = hasValue ? 'block' : 'none';
     if (btnClearDef) btnClearDef.style.display = hasValue ? 'block' : 'none';
 
-    // Searching must always query the full dataset!
-    if (hasValue && !isFullHistoryLoaded) {
-        await ensureFullHistoryLoaded();
-    }
+    // Search what is loaded now; older records are merged in as they finish loading
     await updateHistoryView();
 }
 window.syncSearchInput = syncSearchInput;
+
+// Typing: search on every character, including uncommitted IME text (no need to confirm conversion).
+// Events in the same tick are coalesced into one search, and the value is read when the search runs
+// so it always reflects the latest composing text.
+let _searchInputTimer = null;
+function scheduleSearchInput(inputEl) {
+    if (_searchInputTimer) return;
+    _searchInputTimer = setTimeout(() => {
+        _searchInputTimer = null;
+        syncSearchInput(inputEl.value, false);
+    }, 0);
+}
 
 const HISTORY_PAGE_SIZE = 30;
 
 // Pagination state for incremental rendering
 const historyRenderState = {
-    attack: {
-        allFiltered: [],
-        renderedCount: 0
-    },
-    defense: {
-        allFiltered: [],
-        renderedCount: 0
-    }
+    attack: { allFiltered: [], renderedCount: 0, total: 0, wins: 0, criteria: null },
+    defense: { allFiltered: [], renderedCount: 0, total: 0, wins: 0, criteria: null }
 };
+
+function updateHistoryStats(type, total, wins) {
+    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+    const statTotalEl = document.getElementById(`stat-total-battles-${type}`);
+    const statWinRateEl = document.getElementById(`stat-win-rate-${type}`);
+    const statRatioEl = document.getElementById(`stat-win-lose-ratio-${type}`);
+    if (statTotalEl) statTotalEl.innerText = total;
+    if (statWinRateEl) statWinRateEl.innerText = `${winRate}%`;
+    if (statRatioEl) statRatioEl.innerText = `${wins} / ${total - wins}`;
+}
+
+function getHistoryEmptyStateHtml() {
+    const msg = isFullHistoryLoaded
+        ? '対戦履歴が見つかりません。スクショをアップロードしてください。'
+        : '対戦履歴を読み込み中です...';
+    const icon = isFullHistoryLoaded ? 'fa-box-open' : 'fa-circle-notch fa-spin';
+    return `
+            <tr>
+                <td colspan="8" class="empty-state">
+                    <i class="fa-solid ${icon}"></i>
+                    <p>${msg}</p>
+                </td>
+            </tr>
+        `;
+}
+
+// After loading finishes, replace "loading" placeholders with the normal empty message
+function refreshHistoryEmptyStates() {
+    ['attack', 'defense'].forEach(type => {
+        const state = historyRenderState[type];
+        const tbody = document.getElementById(`${type}-history-items`);
+        if (state && tbody && state.allFiltered.length === 0) {
+            tbody.innerHTML = getHistoryEmptyStateHtml();
+        }
+    });
+}
 
 async function renderNextHistoryBatch(type = 'attack', count = HISTORY_PAGE_SIZE) {
     const state = historyRenderState[type];
     if (!state) return;
-
-    // If user scrolled to the end of the initial batch and full history is still loading, wait for it!
-    if (state.renderedCount >= state.allFiltered.length && !isFullHistoryLoaded) {
-        await ensureFullHistoryLoaded();
-        updateHistoryAllFilteredSilently();
-    }
-
     if (state.renderedCount >= state.allFiltered.length) return;
 
     const tbody = document.getElementById(`${type}-history-items`);
@@ -4514,48 +5221,35 @@ async function renderNextHistoryBatch(type = 'attack', count = HISTORY_PAGE_SIZE
     state.renderedCount += nextBatch.length;
 }
 
-function renderHistoryItems(historyArray, type = 'attack') {
-    // 1. Calculate stats on the FULL filtered dataset (All matched data!)
+function renderHistoryItems(historyArray, type = 'attack', criteria = null) {
+    // 1. Calculate stats on the filtered dataset (grows as older records finish loading)
     const total = historyArray.length;
     let wins = 0;
     historyArray.forEach(h => {
         if (h.result === 'WIN') wins++;
     });
-    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
-    
-    const statTotalEl = document.getElementById(`stat-total-battles-${type}`);
-    const statWinRateEl = document.getElementById(`stat-win-rate-${type}`);
-    const statRatioEl = document.getElementById(`stat-win-lose-ratio-${type}`);
+    updateHistoryStats(type, total, wins);
+
     const tbody = document.getElementById(`${type}-history-items`);
-
-    if (statTotalEl) statTotalEl.innerText = total;
-    if (statWinRateEl) statWinRateEl.innerText = `${winRate}%`;
-    if (statRatioEl) statRatioEl.innerText = `${wins} / ${total - wins}`;
-
     if (!tbody) return;
     tbody.innerHTML = '';
-    
-    if (historyArray.length === 0) {
-        historyRenderState[type] = { allFiltered: [], renderedCount: 0 };
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty-state">
-                    <i class="fa-solid fa-box-open"></i>
-                    <p>対戦履歴が見つかりません。スクショをアップロードしてください。</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
+
     // Sort all matched data by Date descending (fall back to ID descending for same-day items)
-    const sorted = [...historyArray].sort((a, b) => b.created_at - a.created_at || (b.id || 0) - (a.id || 0));
-    
-    // Set pagination state
+    const sorted = [...historyArray].sort(compareHistoryDesc);
+
+    // Set pagination state (criteria is kept so progressively loaded records use the same filter)
     historyRenderState[type] = {
         allFiltered: sorted,
-        renderedCount: 0
+        renderedCount: 0,
+        total,
+        wins,
+        criteria: criteria || buildHistorySearchCriteria(type)
     };
+
+    if (sorted.length === 0) {
+        tbody.innerHTML = getHistoryEmptyStateHtml();
+        return;
+    }
 
     // Reset scroll position to top
     const wrapper = document.querySelector(`#tab-${type} .history-list-wrapper`);
@@ -4567,6 +5261,11 @@ function renderHistoryItems(historyArray, type = 'attack') {
 
 function createHistoryRowElement(item, type = 'attack') {
     const row = document.createElement('tr');
+    // Web v2: which side won (for the phone card colors) and which team is the user's own
+    const recType = item.battle_type === 'defense' ? 'defense' : 'attack';
+    row.className = `history-row ${item.result === 'WIN' ? 'row-win' : 'row-lose'}`;
+    row.dataset.mine = recType;
+    row.dataset.winner = ((item.result === 'WIN') === (recType === 'attack')) ? 'attack' : 'defense';
     
     // Click on the row opens Detail/Edit Modal
     row.addEventListener('click', (e) => {
@@ -4580,7 +5279,7 @@ function createHistoryRowElement(item, type = 'attack') {
     // 1. Result
     const tdResult = document.createElement('td');
     const resBadge = document.createElement('span');
-    resBadge.className = `result-badge ${item.result.toLowerCase()}`;
+    resBadge.className = `result-badge ${(item.result || 'lose').toLowerCase()}`;
     resBadge.innerText = item.result === 'WIN' ? 'W' : 'L';
     tdResult.appendChild(resBadge);
     
@@ -4596,11 +5295,7 @@ function createHistoryRowElement(item, type = 'attack') {
     
     // 2b. Date
     const tdDate = document.createElement('td');
-    tdDate.className = 'history-date-cell';
-    tdDate.style.fontSize = '11px';
-    tdDate.style.fontWeight = '700';
-    tdDate.style.color = 'var(--text-primary)';
-    tdDate.style.textAlign = 'center';
+    tdDate.className = 'history-date-cell td-date';
     if (item.created_at) {
         const dateObj = new Date(item.created_at);
         if (!isNaN(dateObj.getTime())) {
@@ -4629,7 +5324,7 @@ function createHistoryRowElement(item, type = 'attack') {
         commEl.appendChild(avImg);
     } else {
         // Fallback: first defender slot student icon
-        const firstDefStudent = currentRoster.find(s => s.id === item.defense_team[0]);
+        const firstDefStudent = currentRoster.find(s => s.id === (item.defense_team && item.defense_team[0]));
         if (firstDefStudent && firstDefStudent.icon_path) {
             const avImg = document.createElement('img');
             avImg.className = 'commander-avatar';
@@ -4680,7 +5375,7 @@ function createHistoryRowElement(item, type = 'attack') {
     const attackRow = document.createElement('div');
     attackRow.className = 'team-icons-row';
     for (let i = 0; i < 6; i++) {
-        const studentId = item.attack_team[i];
+        const studentId = item.attack_team ? item.attack_team[i] : null;
         const el = createStudentIconRowElement(studentId, i, 'attack', item, type);
         attackRow.appendChild(el);
     }
@@ -4698,7 +5393,7 @@ function createHistoryRowElement(item, type = 'attack') {
     const defenseRow = document.createElement('div');
     defenseRow.className = 'team-icons-row';
     for (let i = 0; i < 6; i++) {
-        const studentId = item.defense_team[i];
+        const studentId = item.defense_team ? item.defense_team[i] : null;
         const el = createStudentIconRowElement(studentId, i, 'defense', item, type);
         defenseRow.appendChild(el);
     }
@@ -4752,6 +5447,13 @@ function createHistoryRowElement(item, type = 'attack') {
     
     tdTags.appendChild(tagsWrapper);
     
+    tdResult.className = 'td-result';
+    tdUtility.className = 'td-utility';
+    tdComm.className = 'td-commander';
+    tdAttack.className = 'td-team td-attack';
+    tdVs.className = 'td-vs';
+    tdDefense.className = 'td-team td-defense';
+    tdTags.className = 'td-tags';
     row.appendChild(tdResult);
     row.appendChild(tdUtility);
     row.appendChild(tdDate);
@@ -4771,227 +5473,6 @@ function setupHistoryScrollListeners() {
         wrapper.addEventListener('scroll', () => {
             if (wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight < 200) {
                 renderNextHistoryBatch(type, HISTORY_PAGE_SIZE);
-            }
-        }, { passive: true });
-    });
-}
-
-// ========================================================
-// EXCEL-STYLE COLUMN WIDTH RESIZER CONTROLLER
-// ========================================================
-const DEFAULT_COL_WIDTHS = [42, 42, 60, 120, 200, 36, 200, 56];
-const COL_CONFIGS = [
-    { label: '勝敗', min: 26, max: 100 },
-    { label: '区分', min: 26, max: 100 },
-    { label: '日付', min: 35, max: 130 },
-    { label: '対戦相手', min: 60, max: 260 },
-    { label: '攻撃編成', min: 100, max: 360 },
-    { label: 'VS', min: 20, max: 80 },
-    { label: '防衛編成', min: 100, max: 360 },
-    { label: 'タグ', min: 30, max: 140 }
-];
-
-const PRESETS_COL_WIDTHS = {
-    default: [42, 42, 60, 120, 200, 36, 200, 56],
-    wide: [50, 50, 80, 160, 240, 42, 240, 70],
-    compact: [32, 32, 45, 95, 160, 26, 160, 45]
-};
-
-function getStoredColumnWidths() {
-    try {
-        const stored = localStorage.getItem('tactical_archive_col_widths');
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length === DEFAULT_COL_WIDTHS.length) {
-                return parsed;
-            }
-        }
-    } catch (e) {
-        console.warn('Failed to parse stored column widths:', e);
-    }
-    return [...DEFAULT_COL_WIDTHS];
-}
-
-function applyColumnWidths(widths) {
-    if (!widths || widths.length !== 8) return;
-
-    // 1. Update CSS Variables directly on root for instantaneous reactive styling across all cells
-    for (let i = 0; i < 8; i++) {
-        document.documentElement.style.setProperty(`--col-${i}-w`, `${widths[i]}px`);
-    }
-
-    // 2. Also update colgroup col and table header th inline styles for cross-browser fallback
-    const tables = document.querySelectorAll('.history-table');
-    tables.forEach(table => {
-        for (let i = 0; i < 8; i++) {
-            const col = table.querySelector(`col.col-${i}`);
-            if (col) {
-                col.style.width = `${widths[i]}px`;
-            }
-            const th = table.querySelector(`th[data-col="${i}"]`);
-            if (th) {
-                th.style.width = `${widths[i]}px`;
-            }
-        }
-    });
-}
-
-function initColumnResizer() {
-    const btnOpen = document.getElementById('btn-open-col-resize') || document.getElementById('btn-toggle-col-resize');
-    const btnReset = document.getElementById('btn-reset-col-widths');
-    const modal = document.getElementById('col-width-modal');
-    const btnModalClose = document.getElementById('btn-col-width-modal-close');
-    const btnModalDone = document.getElementById('btn-col-width-modal-done');
-    const btnModalReset = document.getElementById('btn-col-width-modal-reset');
-    const slidersContainer = document.getElementById('col-width-sliders');
-
-    let currentWidths = getStoredColumnWidths();
-
-    // Apply initial column widths on startup
-    applyColumnWidths(currentWidths);
-
-    // Sync modal sliders with current widths
-    function updateModalSliders() {
-        if (!slidersContainer) return;
-        slidersContainer.innerHTML = '';
-        COL_CONFIGS.forEach((cfg, idx) => {
-            const row = document.createElement('div');
-            row.className = 'col-width-slider-row';
-
-            const lbl = document.createElement('span');
-            lbl.className = 'col-width-slider-label';
-            lbl.textContent = cfg.label;
-
-            const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.className = 'col-width-slider-input';
-            slider.min = cfg.min;
-            slider.max = cfg.max;
-            slider.value = currentWidths[idx] || DEFAULT_COL_WIDTHS[idx];
-
-            const val = document.createElement('span');
-            val.className = 'col-width-slider-val';
-            val.textContent = `${slider.value}px`;
-
-            slider.addEventListener('input', () => {
-                const newW = parseInt(slider.value, 10);
-                val.textContent = `${newW}px`;
-                currentWidths[idx] = newW;
-                applyColumnWidths(currentWidths);
-                localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
-            });
-
-            row.appendChild(lbl);
-            row.appendChild(slider);
-            row.appendChild(val);
-            slidersContainer.appendChild(row);
-        });
-    }
-
-    // Modal Open button
-    if (btnOpen) {
-        btnOpen.addEventListener('click', () => {
-            updateModalSliders();
-            if (modal) {
-                modal.classList.add('active');
-            }
-        });
-    }
-
-    // Modal Close
-    const closeModal = () => {
-        if (modal) modal.classList.remove('active');
-    };
-    if (btnModalClose) btnModalClose.addEventListener('click', closeModal);
-    if (btnModalDone) btnModalDone.addEventListener('click', closeModal);
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
-    }
-
-    // Modal Presets
-    document.querySelectorAll('.preset-col-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const pKey = btn.dataset.preset;
-            if (PRESETS_COL_WIDTHS[pKey]) {
-                currentWidths = [...PRESETS_COL_WIDTHS[pKey]];
-                applyColumnWidths(currentWidths);
-                localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
-                updateModalSliders();
-            }
-        });
-    });
-
-    // Reset buttons (Header & Modal)
-    const handleReset = () => {
-        currentWidths = [...DEFAULT_COL_WIDTHS];
-        localStorage.removeItem('tactical_archive_col_widths');
-        applyColumnWidths(currentWidths);
-        updateModalSliders();
-    };
-
-    if (btnReset) btnReset.addEventListener('click', handleReset);
-    if (btnModalReset) btnModalReset.addEventListener('click', handleReset);
-
-    // Setup Direct Resizer Drag Handlers on Headers (Always Active Excel-style)
-    document.querySelectorAll('.col-resizer').forEach(resizer => {
-        const colIndex = parseInt(resizer.dataset.col, 10);
-        if (isNaN(colIndex)) return;
-
-        const onStart = (clientX) => {
-            const startX = clientX;
-            const startWidth = currentWidths[colIndex] || DEFAULT_COL_WIDTHS[colIndex];
-            resizer.classList.add('is-resizing');
-            document.body.classList.add('is-col-resizing');
-
-            const onMove = (moveX) => {
-                const diff = moveX - startX;
-                const min = COL_CONFIGS[colIndex] ? COL_CONFIGS[colIndex].min : 26;
-                const newWidth = Math.max(min, Math.round(startWidth + diff));
-                currentWidths[colIndex] = newWidth;
-                applyColumnWidths(currentWidths);
-            };
-
-            const onEnd = () => {
-                resizer.classList.remove('is-resizing');
-                document.body.classList.remove('is-col-resizing');
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
-                window.removeEventListener('touchmove', onTouchMove);
-                window.removeEventListener('touchend', onTouchEnd);
-                localStorage.setItem('tactical_archive_col_widths', JSON.stringify(currentWidths));
-                updateModalSliders();
-            };
-
-            const onMouseMove = (e) => {
-                e.preventDefault();
-                onMove(e.pageX);
-            };
-            const onMouseUp = () => onEnd();
-
-            const onTouchMove = (e) => {
-                if (e.touches && e.touches.length > 0) {
-                    onMove(e.touches[0].pageX);
-                }
-            };
-            const onTouchEnd = () => onEnd();
-
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-            window.addEventListener('touchmove', onTouchMove, { passive: true });
-            window.addEventListener('touchend', onTouchEnd, { passive: true });
-        };
-
-        resizer.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            onStart(e.pageX);
-        });
-
-        resizer.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-            if (e.touches && e.touches.length > 0) {
-                onStart(e.touches[0].pageX);
             }
         }, { passive: true });
     });
@@ -5084,17 +5565,31 @@ function createStudentIconRowElement(studentId, index, team, item, type = 'attac
 
 // Backfill historical battle records to guarantee independent snapshot preservation
 async function backfillHistorySnapshots() {
-    if (!currentHistory || currentHistory.length === 0) return;
+    if (!currentHistory || currentHistory.length === 0) {
+        // 履歴が空 = 旧データなし。移行済みとしてマークしないと、後から登録した防衛記録が次回起動時に攻撃へ上書きされる
+        localStorage.setItem('tactical_archive_migrated_all_to_attack_v1124', 'true');
+        return;
+    }
     const db = await openDB();
     const itemsToUpdate = [];
+
+    const isAllMigrated = localStorage.getItem('tactical_archive_migrated_all_to_attack_v1124');
 
     for (const item of currentHistory) {
         let itemUpdated = false;
         
-        // 未設定の旧データのみデフォルトで攻撃編成とする（防衛編成を上書きしない）
-        if (!item.battle_type) {
-            item.battle_type = 'attack';
-            itemUpdated = true;
+        // ユーザー指示: 既存の戦績データは全て攻撃編成とする
+        // ※ 防衛機能追加後に登録された 'defense' は正しい値なので保持する（攻撃への上書きでデータが消えるのを防止）
+        if (!isAllMigrated) {
+            if (item.battle_type !== 'attack' && item.battle_type !== 'defense') {
+                item.battle_type = 'attack';
+                itemUpdated = true;
+            }
+        } else {
+            if (!item.battle_type) {
+                item.battle_type = 'attack';
+                itemUpdated = true;
+            }
         }
 
         if (!item.attack_names || item.attack_names.length < 6) {
@@ -5130,14 +5625,14 @@ async function backfillHistorySnapshots() {
 
         // Restore missing icon snapshots from current roster whenever student exists in roster
         for (let i = 0; i < 6; i++) {
-            if (!item.attack_icons[i] && item.attack_names && item.attack_names[i]) {
+            if (item.attack_icons && !item.attack_icons[i] && item.attack_names && item.attack_names[i]) {
                 const s = currentRoster.find(r => r.name === item.attack_names[i]);
                 if (s && s.icon_path) {
                     item.attack_icons[i] = s.icon_path;
                     itemUpdated = true;
                 }
             }
-            if (!item.defense_icons[i] && item.defense_names && item.defense_names[i]) {
+            if (item.defense_icons && !item.defense_icons[i] && item.defense_names && item.defense_names[i]) {
                 const s = currentRoster.find(r => r.name === item.defense_names[i]);
                 if (s && s.icon_path) {
                     item.defense_icons[i] = s.icon_path;
@@ -5506,12 +6001,76 @@ async function executeRestore() {
         });
     };
 
+    // Merge mode for auto-increment stores: never reuse backup IDs (they may belong to different local records)
+    const mergeHistoryStore = (items) => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('battle_history', 'readwrite');
+            const store = tx.objectStore('battle_history');
+            const historyKey = (h) => `${h.filename || ''}|${h.created_at || ''}|${h.commander_name || ''}`;
+            const getAllReq = store.getAll();
+            getAllReq.onsuccess = () => {
+                const existingKeys = new Set((getAllReq.result || []).map(historyKey));
+                (items || []).forEach(item => {
+                    const key = historyKey(item);
+                    if (existingKeys.has(key)) return; // already registered
+                    existingKeys.add(key);
+                    const copy = { ...item };
+                    delete copy.id;
+                    store.add(copy);
+                });
+            };
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    };
+
+    const mergeRosterStore = (items) => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('roster_students', 'readwrite');
+            const store = tx.objectStore('roster_students');
+            const nameIndex = store.index('name');
+            (items || []).forEach(item => {
+                if (!item || !item.name) return;
+                const getReq = nameIndex.get(item.name);
+                getReq.onsuccess = () => {
+                    const existing = getReq.result;
+                    if (existing) {
+                        // Same student name: merge feature patterns, keep local ID
+                        const features = [...(existing.features || [])];
+                        (item.features || []).forEach(f => {
+                            if (f && !features.some(ef => arraysEqual(ef, f))) features.push(f);
+                        });
+                        existing.features = features;
+                        if (!existing.icon_path && item.icon_path) existing.icon_path = item.icon_path;
+                        store.put(existing);
+                    } else {
+                        const copy = { ...item };
+                        delete copy.id;
+                        store.add(copy);
+                    }
+                };
+            });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    };
+
     try {
         if (doHistory) {
-            await restoreStore('battle_history', pendingRestoreData.battle_history, mode === 'overwrite');
+            if (mode === 'overwrite') {
+                await restoreStore('battle_history', pendingRestoreData.battle_history, true);
+            } else {
+                await mergeHistoryStore(pendingRestoreData.battle_history);
+            }
         }
         if (doRoster) {
-            await restoreStore('roster_students', pendingRestoreData.roster_students, mode === 'overwrite');
+            if (mode === 'overwrite') {
+                await restoreStore('roster_students', pendingRestoreData.roster_students, true);
+            } else {
+                await mergeRosterStore(pendingRestoreData.roster_students);
+            }
         }
         if (doOpponents) {
             if (pendingRestoreData.opponent_directory) {
@@ -5547,7 +6106,8 @@ async function executeRestore() {
         alert('選択した項目の復元が正常に完了しました！');
     } catch (e) {
         console.error('Restore execution failed:', e);
-        alert('復元中にエラーが発生しました: ' + e.message);
+        const errMsg = (e && (e.message || (e.target && e.target.error && e.target.error.message) || e.name)) || String(e);
+        alert('復元中にエラーが発生しました: ' + errMsg);
     }
 }
 
@@ -5788,7 +6348,7 @@ function setupStudentAutocomplete() {
             chip.innerText = m.name;
             chip.addEventListener('click', () => {
                 nameInput.value = m.name;
-                listEl.innerHTML = `<span style="font-size: 11px; color: #00e676; padding: 4px;"><i class="fa-solid fa-check"></i> 「${m.name}」を選択しました</span>`;
+                listEl.innerHTML = `<span style="font-size: 11px; color: #00e676; padding: 4px;"><i class="fa-solid fa-check"></i> 「${escapeHtml(m.name)}」を選択しました</span>`;
                 if (hintEl) hintEl.innerText = '';
             });
             listEl.appendChild(chip);
@@ -5862,6 +6422,7 @@ function initBulkFeatures() {
                     currentRoster = (await getStudents()) || [];
                 }
 
+                let hasUncalibratedImage = false;
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     const loadingText = document.getElementById('bulk-roster-loading-text');
@@ -5870,8 +6431,9 @@ function initBulkFeatures() {
                     }
 
                     const img = await loadImageFromFile(file);
-                    const { profile } = getOrComputeCalibrationProfile(img, null);
+                    const { profile, isCached } = getOrComputeCalibrationProfile(img, null);
                     if (!profile || !profile.modalBox) continue;
+                    if (!isCached) hasUncalibratedImage = true;
 
                     const normW = profile.normalizedWidth || 2400;
                     const normH = profile.normalizedHeight || 1040;
@@ -5939,6 +6501,10 @@ function initBulkFeatures() {
                     if (bulkRosterModal) bulkRosterModal.classList.remove('active');
                     alert('スロット画像を抽出できませんでした。画像を確認してください。');
                     return;
+                }
+
+                if (hasUncalibratedImage) {
+                    alert('トリミング領域が未設定の画像サイズ（縦横比）が含まれています。\n推定位置で切り抜いているため、アイコンがずれている場合は先に戦績のアップロードからトリミング領域を設定してください。');
                 }
 
                 // Start interactive step-by-step review
@@ -6073,8 +6639,8 @@ function initBulkFeatures() {
             leftCol.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px;';
             leftCol.innerHTML = `
                 <span style="font-size: 10px; font-weight: bold; color: #0077ff;">${slot.slotName} (${slot.slotDesc}) 新規</span>
-                <img src="${slot.iconDataUrl}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid #00a3ff; object-fit: cover;">
-                <span style="font-size: 8.5px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${slot.filename}</span>
+                <img src="${escapeHtml(slot.iconDataUrl)}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid #00a3ff; object-fit: cover;">
+                <span style="font-size: 8.5px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${escapeHtml(slot.filename)}</span>
             `;
 
             // Arrow
@@ -6090,8 +6656,8 @@ function initBulkFeatures() {
             rightCol.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px;';
             rightCol.innerHTML = `
                 <span style="font-size: 10px; font-weight: bold; color: var(--text-primary);">辞書登録中の生徒</span>
-                <img src="${activeMatchStudent.icon_path || ''}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid var(--border-color); object-fit: cover; background: #e2e8f0;">
-                <span style="font-size: 11px; font-weight: 800; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${activeMatchStudent.name}</span>
+                <img src="${escapeHtml(activeMatchStudent.icon_path || '')}" style="width: 52px; height: 52px; border-radius: 6px; border: 1.5px solid var(--border-color); object-fit: cover; background: #e2e8f0;">
+                <span style="font-size: 11px; font-weight: 800; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 115px;">${escapeHtml(activeMatchStudent.name)}</span>
             `;
 
             compBox.appendChild(leftCol);
@@ -6293,21 +6859,13 @@ function initBulkFeatures() {
         document.getElementById('add-student-icon-preview').style.display = 'block';
         document.getElementById('add-student-placeholder').style.display = 'none';
 
-        // Override save once for this bulk flow
-        const origSaveBtn = document.getElementById('btn-student-save');
-        const customSave = async () => {
-            const name = document.getElementById('add-student-name').value.trim();
-            if (!name) {
-                alert('生徒名を入力してください。');
-                return;
-            }
+        // Route the next save of the Student Add modal to this bulk slot (handled in btn-student-save)
+        pendingBulkSlotSave = async (name) => {
             await registerStudentInBulk(name, slot);
             studentModal.classList.remove('active');
             currentBulkRosterIndex++;
             showNextBulkRosterStep();
-            origSaveBtn.removeEventListener('click', customSave);
         };
-        origSaveBtn.addEventListener('click', customSave, { once: true });
 
         studentModal.classList.add('active');
     }
