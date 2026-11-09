@@ -61,6 +61,7 @@
 .ta-summary-list b { font-variant-numeric: tabular-nums; }
 
 /* ===== Analysis tab ===== */
+#tab-analysis.active { display: block; overflow-y: auto; }
 .analysis-wrap { max-width: 1280px; }
 .analysis-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); }
