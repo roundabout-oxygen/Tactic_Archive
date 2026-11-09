@@ -1343,16 +1343,6 @@ body.compact .inspector-panel { transform: scale(0.85); transform-origin: bottom
 .orp-sp-cell img, .orp-sp-cell .orp-ph { width: 100%; max-width: 60px; aspect-ratio: 1 / 1; border-radius: 9px; object-fit: cover; background: #e9eef5; }
 .orp-sp-cell .orp-ph { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #536377; }
 .orp-count.sp { background: #1a8cff; }
-.orp-chooser {
-    position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 6;
-    display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: #fff;
-    border: 1px solid #cdd6e3; box-shadow: 0 8px 24px rgba(16, 32, 56, 0.2); white-space: nowrap;
-}
-.orp-chooser button {
-    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; cursor: pointer;
-    border: 1.5px solid var(--slot-color); background: #fff; color: #18273a; font-size: 11.5px; font-weight: 700; font-family: inherit;
-}
-.orp-chooser button b { color: var(--slot-color); }
 .orp-filterbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-radius: 12px; background: #f0f7ff; border: 1px solid #c8e1ff; }
 .orp-filterbar-label { font-size: 12px; font-weight: 800; color: #0a6fdb; margin-right: 2px; }
 .orp-chip {
@@ -1385,3 +1375,34 @@ body.compact .inspector-panel { transform: scale(0.85); transform-origin: bottom
 }
 .tfb-chip b { padding: 1px 7px; border-radius: 999px; background: var(--slot-color, #1a8cff); color: #fff; font-size: 11px; }
 .tfb-clear { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #c8e1ff; background: #fff; color: #0a6fdb; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* Roster popup: a student used in several slots is armed, then the slot is picked from the D1-D4 boxes */
+.orp-pick-hint {
+    position: absolute; left: 50%; top: 50px; transform: translateX(-50%); z-index: 3;
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+    padding: 6px 8px 6px 12px; border-radius: 999px; background: #18273a; color: #fff;
+    font-size: 12px; font-weight: 600; box-shadow: 0 6px 18px rgba(16, 32, 56, 0.25);
+}
+.orp-pick-hint[hidden] { display: none; }
+.orp-pick-hint b { font-weight: 800; }
+.orp-pick-hint i { color: #8cc8ff; }
+.orp-pick-cancel { margin-left: 4px; border: 0; border-radius: 999px; padding: 3px 10px; background: rgba(255, 255, 255, 0.16); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.orp-pick-cancel:hover { background: rgba(255, 255, 255, 0.28); }
+.orp-arming .orp-slot { position: relative; transition: opacity .15s, transform .15s, box-shadow .15s; }
+.orp-arming .orp-slot.pick {
+    cursor: pointer; opacity: 1; transform: translateY(-2px);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--slot-color) 35%, transparent), 0 6px 14px rgba(16, 32, 56, 0.12);
+    animation: orp-pick-pulse 1.4s ease-in-out infinite;
+}
+.orp-arming .orp-slot.pick:hover { background: var(--slot-color); color: #fff; animation: none; transform: translateY(-3px); }
+.orp-arming .orp-slot.pick:hover span, .orp-arming .orp-slot.pick:hover .orp-pick-count { color: #fff; background: rgba(255, 255, 255, 0.22); }
+.orp-arming .orp-slot.nopick { opacity: 0.3; cursor: not-allowed; }
+.orp-pick-count {
+    font-style: normal; font-size: 11.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px;
+    background: color-mix(in srgb, var(--slot-color) 16%, #fff); color: var(--slot-color);
+}
+@keyframes orp-pick-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--slot-color) 35%, transparent), 0 6px 14px rgba(16, 32, 56, 0.12); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--slot-color) 18%, transparent), 0 6px 14px rgba(16, 32, 56, 0.12); }
+}
+.orp-student.armed { border: 2px dashed #1a8cff; box-shadow: 0 0 0 3px rgba(26, 140, 255, 0.18); opacity: 1 !important; }
