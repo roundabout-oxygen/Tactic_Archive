@@ -10,6 +10,7 @@ What it does:
         (both live on the same origin: roundabout-oxygen.github.io)
       - the app starts only after demo-loader.js has loaded demo-data.json into the demo DB
       - upload / settings / editing are hidden (read-only)
+      - adds the analysis tab (demo-analysis.js / demo-extras.css, ported from the PC version)
   * Writes an anonymized docs/demo/demo-data.json:
       - opponent names -> random fictional katakana names, 4-5 chars (CSPRNG,
         same opponent -> same name, "匿名" kept). The mapping is never written anywhere.
@@ -57,6 +58,83 @@ def replace_once(text, old, new, label):
     return text.replace(old, new)
 
 
+# Added to the demo's app.js (module scope, before historyMatchesCriteria). Ported from the PC version
+# (pc-app/renderer/app.js: window.taApp / analysisIdFilter); read-only parts only.
+DEMO_ANALYSIS_JS = r"""// ==== DEMO: analysis tab support (added by tools/build_demo.py, ported from the PC version) ====
+// Records chosen on the analysis tab ({ ids: Set, label }) - shown with a banner on the history tabs
+let analysisIdFilter = null;
+function updateAnalysisFilterBanner() {
+    ['attack', 'defense'].forEach(type => {
+        const pane = document.getElementById(`tab-${type}`);
+        if (!pane) return;
+        let bar = pane.querySelector('.analysis-filter-bar');
+        if (!analysisIdFilter) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'analysis-filter-bar';
+            bar.innerHTML = '<i class="fa-solid fa-chart-simple"></i><span class="afb-label"></span><button type="button" class="afb-clear"><i class="fa-solid fa-xmark"></i> 解除</button>';
+            bar.querySelector('.afb-clear').addEventListener('click', () => clearAnalysisFilter());
+            const wrapper = pane.querySelector('.history-list-wrapper');
+            if (wrapper) wrapper.parentNode.insertBefore(bar, wrapper); else pane.prepend(bar);
+        }
+        bar.querySelector('.afb-label').textContent = `分析から絞り込み中：${analysisIdFilter.label}`;
+    });
+}
+function clearAnalysisFilter(refresh = true) {
+    if (!analysisIdFilter) return;
+    analysisIdFilter = null;
+    updateAnalysisFilterBanner();
+    if (refresh) updateHistoryView();
+}
+// Read-only access to the app state for demo-analysis.js
+window.taApp = {
+    async getHistory() {
+        if (!isFullHistoryLoaded) await ensureFullHistoryLoaded();
+        return currentHistory;
+    },
+    getOpponentAvatar: (name) => (opponentDirectory && opponentDirectory[name]) || null,
+    resolveSlot: (item, team, index) => resolveHistorySlotStudent(item, team, index),
+    showOpponentRosterPopup: (name) => showOpponentRosterPopup(name),
+    // Show the given records on the attack / defense tab (banner with a clear button)
+    showHistoryByIds(ids, label, type) {
+        analysisIdFilter = { ids: new Set(ids), label: label || `${ids.length}件` };
+        activePositionFilter = null;
+        activeTeamFilter = null;
+        ['attack', 'defense'].forEach(t => renderTeamFilterBanner(t));
+        syncSearchInput('', false);
+        updateAnalysisFilterBanner();
+        window.switchToTab(type === 'defense' ? 'defense' : 'attack');
+    }
+};
+// ==== /DEMO ====
+
+"""
+
+
+DEMO_ANALYSIS_PANE = """        <!-- ===== Analysis (DEMO: ported from the PC version, see demo-analysis.js) ===== -->
+        <section id="tab-analysis" class="tab-pane">
+            <div class="page-wrap analysis-wrap">
+                <div class="analysis-controls">
+                    <div class="seg" id="an-type" role="group" aria-label="攻撃・防衛">
+                        <button type="button" class="seg-btn active" data-val="attack"><i class="fa-solid fa-bolt"></i> 攻撃</button>
+                        <button type="button" class="seg-btn" data-val="defense"><i class="fa-solid fa-shield-halved"></i> 防衛</button>
+                    </div>
+                    <div class="seg" id="an-period" role="group" aria-label="期間">
+                        <button type="button" class="seg-btn active" data-val="all">全期間</button>
+                        <button type="button" class="seg-btn" data-val="30">直近30日</button>
+                        <button type="button" class="seg-btn" data-val="custom">任意期間</button>
+                    </div>
+                    <div class="an-range" id="an-range" hidden>
+                        <input type="date" id="an-from" aria-label="開始日"> <span>〜</span> <input type="date" id="an-to" aria-label="終了日">
+                    </div>
+                </div>
+                <div id="analysis-body" class="analysis-body"></div>
+            </div>
+        </section>
+
+"""
+
+
 def build_app_js():
     js = read_text(ASSETS / 'app.js')
     js = replace_once(js, "const DB_NAME = 'TacticalArchiveDB';",
@@ -73,6 +151,18 @@ def build_app_js():
     js = replace_once(js, "document.addEventListener('DOMContentLoaded', async () => {",
                       "(window.__taDemoReady || Promise.resolve()).then(async () => { // DEMO: start after demo data is loaded",
                       'DOMContentLoaded')
+    # Analysis tab (demo-analysis.js, ported from the PC version): app state API + "narrowed from analysis"
+    js = replace_once(js, "function historyMatchesCriteria(item, criteria) {\n",
+                      DEMO_ANALYSIS_JS + "function historyMatchesCriteria(item, criteria) {\n"
+                      "    if (analysisIdFilter && !analysisIdFilter.ids.has(item.id)) return false; // DEMO: narrowed from the analysis tab\n",
+                      'historyMatchesCriteria')
+    js = replace_once(js, "    if (clearPositionFilter) {\n        activePositionFilter = null;\n    }\n",
+                      "    if (clearPositionFilter) {\n        activePositionFilter = null;\n"
+                      "        clearAnalysisFilter(false); // DEMO: analysis tab narrowing\n    }\n", 'syncSearchInput')
+    js = replace_once(js, "        if (tabName === 'attack' || tabName === 'defense') {\n            filterHistory(tabName);\n        }\n",
+                      "        if (tabName === 'attack' || tabName === 'defense') {\n            filterHistory(tabName);\n        }\n"
+                      "        if (tabName === 'analysis' && window.taAnalysis) window.taAnalysis.render(); // DEMO: analysis tab\n",
+                      'switchToTab analysis')
     header = '// ==== GENERATED by tools/build_demo.py from docs/app.js — do not edit ====\n'
     write_text(OUT / 'app.js', header + js)
     return keys
@@ -87,6 +177,17 @@ def build_index_html(period_label):
                         '<link rel="stylesheet" href="index.css">\n    <link rel="stylesheet" href="demo.css">', 'demo.css')
     html = replace_once(html, '<script src="app.js" type="module"></script>',
                         '<script src="demo-loader.js"></script>\n    <script src="app.js" type="module"></script>', 'demo-loader')
+    # Analysis tab (ported from the PC version) + extra viewing styles
+    html = replace_once(html, '<link rel="stylesheet" href="demo.css">',
+                        '<link rel="stylesheet" href="demo.css">\n    <link rel="stylesheet" href="demo-extras.css">', 'demo-extras.css')
+    html = replace_once(html, '<script src="app.js" type="module"></script>',
+                        '<script src="app.js" type="module"></script>\n<script src="demo-analysis.js" type="module"></script>', 'demo-analysis')
+    defense_tab = '<span class="tab-label">防衛</span></button>\n'
+    html = replace_once(html, defense_tab,
+                        defense_tab + '            <button class="tab-btn" data-tab="analysis"><i class="fa-solid fa-chart-simple"></i><span class="tab-label">分析</span></button>\n',
+                        'analysis tab button')
+    html = replace_once(html, '        <section id="tab-upload" class="tab-pane">',
+                        DEMO_ANALYSIS_PANE + '        <section id="tab-upload" class="tab-pane">', 'analysis pane')
     html = replace_once(html, '<h2>履歴詳細・編集</h2>', '<h2>履歴詳細</h2>', 'detail title')
     html = html.replace('<title>', '<title>【デモ】', 1)
     html = replace_once(html, '<body ', f'<body data-demo-period="{period_label}" ', '<body>')
