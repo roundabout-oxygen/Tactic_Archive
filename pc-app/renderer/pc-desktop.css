@@ -201,3 +201,5 @@
 .orp-focus .orp-lines path.on { stroke-opacity: 0.95; }
 .orp-focus .orp-student:not(.on), .orp-focus .orp-slot:not(.on) { opacity: 0.35; }
 .orp-focus .orp-student.on { border-color: var(--border-strong); }
+.orp-mode { flex-shrink: 0; }
+.orp-mode .seg-btn { padding: 6px 14px; }

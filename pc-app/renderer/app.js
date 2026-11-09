@@ -6071,7 +6071,10 @@ async function showOpponentRosterPopup(opponentName) {
     if (!isFullHistoryLoaded) {
         try { await ensureFullHistoryLoaded(); } catch (e) {}
     }
-    const records = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
+    const allRecords = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
+    // mode: 'defense' = the opponent's defense team (my attack records), 'attack' = the opponent's attack team (my defense records), 'both'
+    const aggregate = (mode) => {
+    const records = allRecords.filter(h => mode === 'both' || (mode === 'attack' ? h.battle_type === 'defense' : h.battle_type !== 'defense'));
     const strikers = new Map();
     const specials = new Map();
     records.forEach(item => {
@@ -6088,6 +6091,11 @@ async function showOpponentRosterPopup(opponentName) {
             map.set(s.name, entry);
         }
     });
+    return { records, strikers, specials };
+    };
+    const SLOT_PREFIX = { defense: 'D', attack: 'A', both: '' };
+    const MODE_LABEL = { both: '両方', defense: '防衛', attack: '攻撃' };
+    let mode = 'defense';
 
     overlay.innerHTML = '';
     overlay.dataset.name = opponentName;
@@ -6111,11 +6119,31 @@ async function showOpponentRosterPopup(opponentName) {
     title.textContent = opponentName;
     title.style.cssText = 'font-size:16px;font-weight:800;color:#18273a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     const sub = document.createElement('div');
-    sub.textContent = `手持ち生徒（${records.length}戦の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
-    sub.style.cssText = 'font-size:11.5px;color:#8a97a8;font-weight:600;';
+    sub.style.cssText = 'font-size:11.5px;color:#8a97a8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     titleBox.appendChild(title);
     titleBox.appendChild(sub);
     header.appendChild(titleBox);
+    // Which of the opponent's teams to show (default: defense = the team I attacked)
+    const seg = document.createElement('div');
+    seg.className = 'seg orp-mode';
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', '相手の編成');
+    ['both', 'defense', 'attack'].forEach(m => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'seg-btn' + (m === mode ? ' active' : '');
+        b.dataset.val = m;
+        b.textContent = MODE_LABEL[m];
+        b.title = m === 'defense' ? '相手の防衛編成（こちらが攻撃した戦績）' : m === 'attack' ? '相手の攻撃編成（こちらが防衛した戦績）' : '攻撃・防衛の両方';
+        b.addEventListener('click', () => {
+            if (mode === m) return;
+            mode = m;
+            seg.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x.dataset.val === m));
+            renderBody();
+        });
+        seg.appendChild(b);
+    });
+    header.appendChild(seg);
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
@@ -6170,28 +6198,32 @@ async function showOpponentRosterPopup(opponentName) {
         wrap.appendChild(grid);
         return wrap;
     };
-    // Strikers: slot map (which position 1-4 each student was placed in)
-    const strikerFlow = buildStrikerSlotFlow(strikers);
-    if (strikerFlow) {
-        // Widen the card so every striker fits on one row
-        card.style.width = `min(${Math.max(560, strikers.size * 78 + 60)}px, 94vw)`;
-        card.style.maxWidth = '94vw';
-        body.appendChild(strikerFlow);
-    } else {
-        body.appendChild(section('ストライカー', '#e5484d', strikers));
-    }
-    body.appendChild(section('スペシャル', '#1a8cff', specials));
+    // Widen the card so every striker fits on one row (sized for "both" so switching does not resize it)
+    const maxStrikers = aggregate('both').strikers.size;
+    card.style.width = `min(${Math.max(560, maxStrikers * 78 + 60)}px, 94vw)`;
+    card.style.maxWidth = '94vw';
     card.appendChild(body);
+
+    const renderBody = () => {
+        const { records, strikers, specials } = aggregate(mode);
+        sub.textContent = `手持ち生徒・${MODE_LABEL[mode]}（${records.length}戦の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
+        body.innerHTML = '';
+        // Strikers: slot map (which position each student was placed in)
+        const strikerFlow = buildStrikerSlotFlow(strikers, SLOT_PREFIX[mode]);
+        body.appendChild(strikerFlow || section('ストライカー', '#e5484d', strikers));
+        body.appendChild(section('スペシャル', '#1a8cff', specials));
+        if (strikerFlow && strikerFlow._draw) requestAnimationFrame(strikerFlow._draw);
+    };
 
     overlay.appendChild(card);
     overlay.classList.add('active');
-    if (strikerFlow && strikerFlow._draw) requestAnimationFrame(strikerFlow._draw);
+    renderBody();
 }
 
 // Slot colors for positions 1-4 (lines use the color of the slot they lead to)
 const ROSTER_SLOT_COLORS = ['#f08c00', '#0ca678', '#228be6', '#7048e8'];
 
-function buildStrikerSlotFlow(strikers) {
+function buildStrikerSlotFlow(strikers, slotPrefix = '') {
     if (!strikers || strikers.size === 0) return null;
     const list = [...strikers.values()].map(st => {
         const placed = st.slots.reduce((a, b) => a + b, 0) || 1;
@@ -6219,7 +6251,7 @@ function buildStrikerSlotFlow(strikers) {
         el.className = 'orp-slot';
         el.dataset.slot = i;
         el.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[i]);
-        el.innerHTML = `<b>${i + 1}</b><span>${slotTotals[i]}人</span>`;
+        el.innerHTML = `<b>${slotPrefix}${i + 1}</b><span>${slotTotals[i]}人</span>`;
         slotsRow.appendChild(el);
         return el;
     });
@@ -6237,7 +6269,7 @@ function buildStrikerSlotFlow(strikers) {
         const cell = document.createElement('div');
         cell.className = 'orp-student';
         cell.dataset.st = idx;
-        cell.title = `${st.name}（${st.count}回）\n` + st.slots.map((c, i) => `${i + 1}番：${c}回`).join('　');
+        cell.title = `${st.name}（${st.count}回）\n` + st.slots.map((c, i) => slotPrefix ? `${slotPrefix}${i + 1}：${c}回` : `${i + 1}番：${c}回`).join('　');
         const img = st.icon ? `<img src="${escapeHtml(st.icon)}" alt="">` : `<div class="orp-ph">${escapeHtml(st.name.slice(0, 2))}</div>`;
         const bar = st.slots.map((c, i) => c ? `<i style="flex:${c};background:${ROSTER_SLOT_COLORS[i]}"></i>` : '').join('');
         cell.innerHTML = `${img}<span class="orp-count">×${st.count}</span><div class="orp-name">${escapeHtml(st.name)}</div><div class="orp-bar">${bar}</div>`;
