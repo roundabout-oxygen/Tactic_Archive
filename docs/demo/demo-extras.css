@@ -1,0 +1,112 @@
+/* Tactical Archive DEMO: extra viewing features (copied into docs/demo/ by tools/build_demo.py)
+   Ported from the PC version (pc-app/renderer/pc-desktop.css / index.css):
+   analysis tab, "narrowed from analysis" banner, VS between the teams, round W/L badges. */
+
+/* ===== History list: VS between the teams and round W/L badges (same look as the Android / PC apps) ===== */
+.history-table .td-vs { width: 32px; padding: 0; text-align: center; }
+.history-table td.td-vs .vs-text { display: inline-block; font-style: italic; font-weight: 800; font-size: 14px; color: #ff6097; margin: 0 4px; }
+.history-table .td-left { border-right: none !important; }
+.result-badge { width: 32px; height: 32px; border-radius: 50%; font-size: 14px; font-weight: 800; }
+.result-badge.win { background: rgba(242, 169, 0, 0.12); color: #f2a900; border: 1.5px solid #f2a900; box-shadow: none; }
+.result-badge.lose { background: rgba(142, 159, 174, 0.12); color: #5a728d; border: 1.5px solid #5a728d; box-shadow: none; }
+/* Phones / tablets: the VS column stays hidden (index.css), so keep the divider line there */
+body.narrow .history-table .td-left { border-right: 2px solid #9fb0c5 !important; }
+
+/* ===== Analysis tab ===== */
+#tab-analysis.active { display: block; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.analysis-wrap { max-width: 1280px; }
+.analysis-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+#tab-analysis .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); }
+#tab-analysis .seg-btn {
+    border: 0; background: transparent; padding: 7px 14px; border-radius: 9px; cursor: pointer;
+    font-size: 13px; font-weight: 700; color: var(--text-2); font-family: inherit; white-space: nowrap;
+}
+#tab-analysis .seg-btn:hover { color: var(--text); }
+#tab-analysis .seg-btn.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
+#tab-analysis .seg-sm .seg-btn { padding: 4px 10px; font-size: 12px; }
+.an-range { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.an-range[hidden] { display: none; }
+.an-range input { padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-family: inherit; }
+.an-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.an-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.an-stat span { font-size: 12px; font-weight: 600; color: var(--text-3); }
+.an-stat b { font-size: 20px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.an-stat-main b { color: var(--primary); }
+.an-stat-wide b { font-size: 15px; }
+.an-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 12px; min-width: 0; }
+.an-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.an-card-head .an-card-title { margin: 0; }
+.an-card-title { margin: 0 0 10px; font-size: 14px; font-weight: 800; color: var(--text); }
+.an-card-title i { color: var(--primary); margin-right: 4px; }
+.an-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr)); gap: 0 12px; }
+.an-table-wrap { overflow-x: auto; }
+.an-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.an-table th { text-align: left; font-size: 11.5px; font-weight: 700; color: var(--text-3); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.an-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.an-table tr:last-child td { border-bottom: none; }
+.an-table .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.an-table .rate { width: 150px; }
+.an-table .act { width: 1%; white-space: nowrap; }
+.an-row { cursor: pointer; }
+.an-row:hover td { background: var(--surface-2); }
+.an-empty { color: var(--text-3); text-align: center; padding: 18px 8px; font-size: 13px; }
+.an-team { display: flex; align-items: center; gap: 3px; flex-wrap: nowrap; }
+.an-sep { width: 1px; height: 26px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.an-icon { border-radius: 7px; object-fit: cover; background: #e9eef5; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text-2); width: 34px; height: 34px; }
+.an-icon.an-icon-sm { width: 30px; height: 30px; }
+.an-icon.an-round { border-radius: 50%; width: 30px; height: 30px; }
+.an-student { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.an-student span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.an-rate { display: flex; align-items: center; gap: 8px; }
+.an-rate-bar { flex: 1; height: 7px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; min-width: 40px; }
+.an-rate-bar span { display: block; height: 100%; background: var(--primary); }
+.an-rate b { font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+.an-more { margin-top: 8px; border: 0; background: transparent; color: var(--primary); font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 4px 0; font-family: inherit; }
+.an-roster-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
+.an-roster-btn:hover { color: var(--primary); border-color: var(--primary); }
+.an-trend-scroll { overflow-x: auto; padding-bottom: 4px; }
+.an-trend { display: block; }
+.an-bar { fill: rgba(26, 140, 255, 0.28); cursor: pointer; }
+.an-bar:hover { fill: rgba(26, 140, 255, 0.5); }
+.an-line { fill: none; stroke: var(--primary); stroke-width: 2; }
+.an-dot { fill: var(--surface); stroke: var(--primary); stroke-width: 2; pointer-events: none; }
+.an-grid { stroke: var(--border); stroke-dasharray: 3 3; }
+.an-axis { font-size: 10px; fill: var(--text-3); }
+.an-legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.an-legend i { display: inline-block; vertical-align: middle; margin-right: 5px; }
+.an-lg-bar { width: 12px; height: 10px; background: rgba(26, 140, 255, 0.28); border-radius: 2px; }
+.an-lg-line { width: 16px; height: 2px; background: var(--primary); }
+.an-note { font-size: 12px; color: var(--text-3); margin: 4px 0 20px; }
+
+/* Phones / tablets (body.narrow < 1024px wide, body.compact <= 520px tall; set by app.js, also when rotated) */
+body.narrow .analysis-wrap { padding: 12px 10px 28px; }
+body.narrow .analysis-controls { gap: 6px; margin-bottom: 10px; }
+body.narrow #tab-analysis .seg-btn { padding: 6px 10px; font-size: 12px; }
+body.narrow .an-card { padding: 10px; border-radius: var(--radius); }
+body.narrow .an-table th, body.narrow .an-table td { padding: 5px; }
+body.narrow .an-table .rate { width: 110px; }
+body.narrow .an-icon { width: 28px; height: 28px; border-radius: 6px; }
+body.narrow .an-icon.an-icon-sm, body.narrow .an-icon.an-round { width: 26px; height: 26px; }
+body.narrow .an-sep { height: 22px; margin: 0 2px; }
+body.narrow .an-team { gap: 2px; }
+body.compact .an-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+body.compact .an-stat { padding: 6px 10px; }
+body.compact .an-stat b { font-size: 16px; }
+body.compact .an-stat-wide b { font-size: 12px; }
+body.compact .an-card-title { font-size: 13px; margin-bottom: 6px; }
+@media (max-width: 560px) {
+    /* very narrow windows on a PC (phones are shown rotated, see index.css) */
+    .an-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .an-table .rate { width: 90px; }
+    .an-rate b { min-width: 40px; }
+}
+
+/* Banner on the history tabs while narrowed from the analysis tab */
+.analysis-filter-bar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    width: 100%; max-width: 1440px; margin: 0 auto 8px; padding: 8px 12px; box-sizing: border-box;
+    background: #eaf4ff; border: 1px solid #b9dcff; border-radius: var(--radius); font-size: 13px; color: #0f4c8a; font-weight: 600;
+}
+.analysis-filter-bar .afb-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.analysis-filter-bar .afb-clear { flex-shrink: 0; border: 1px solid #b9dcff; background: #fff; color: #0f4c8a; border-radius: 8px; padding: 4px 10px; font-weight: 700; cursor: pointer; font-family: inherit; }
+body.narrow .analysis-filter-bar { padding: 6px 10px; font-size: 12px; margin-bottom: 4px; }

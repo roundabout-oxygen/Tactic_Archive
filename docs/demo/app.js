@@ -2183,6 +2183,7 @@ async function ensureFullHistoryLoaded() {
         if (tabName === 'attack' || tabName === 'defense') {
             filterHistory(tabName);
         }
+        if (tabName === 'analysis' && window.taAnalysis) window.taAnalysis.render(); // DEMO: analysis tab
 
         // Check if defense feature popup should be shown on upload tab
         if (tabName === 'upload') {
@@ -5265,7 +5266,56 @@ function buildHistorySearchCriteria(type) {
     };
 }
 
+// ==== DEMO: analysis tab support (added by tools/build_demo.py, ported from the PC version) ====
+// Records chosen on the analysis tab ({ ids: Set, label }) - shown with a banner on the history tabs
+let analysisIdFilter = null;
+function updateAnalysisFilterBanner() {
+    ['attack', 'defense'].forEach(type => {
+        const pane = document.getElementById(`tab-${type}`);
+        if (!pane) return;
+        let bar = pane.querySelector('.analysis-filter-bar');
+        if (!analysisIdFilter) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'analysis-filter-bar';
+            bar.innerHTML = '<i class="fa-solid fa-chart-simple"></i><span class="afb-label"></span><button type="button" class="afb-clear"><i class="fa-solid fa-xmark"></i> 解除</button>';
+            bar.querySelector('.afb-clear').addEventListener('click', () => clearAnalysisFilter());
+            const wrapper = pane.querySelector('.history-list-wrapper');
+            if (wrapper) wrapper.parentNode.insertBefore(bar, wrapper); else pane.prepend(bar);
+        }
+        bar.querySelector('.afb-label').textContent = `分析から絞り込み中：${analysisIdFilter.label}`;
+    });
+}
+function clearAnalysisFilter(refresh = true) {
+    if (!analysisIdFilter) return;
+    analysisIdFilter = null;
+    updateAnalysisFilterBanner();
+    if (refresh) updateHistoryView();
+}
+// Read-only access to the app state for demo-analysis.js
+window.taApp = {
+    async getHistory() {
+        if (!isFullHistoryLoaded) await ensureFullHistoryLoaded();
+        return currentHistory;
+    },
+    getOpponentAvatar: (name) => (opponentDirectory && opponentDirectory[name]) || null,
+    resolveSlot: (item, team, index) => resolveHistorySlotStudent(item, team, index),
+    showOpponentRosterPopup: (name) => showOpponentRosterPopup(name),
+    // Show the given records on the attack / defense tab (banner with a clear button)
+    showHistoryByIds(ids, label, type) {
+        analysisIdFilter = { ids: new Set(ids), label: label || `${ids.length}件` };
+        activePositionFilter = null;
+        activeTeamFilter = null;
+        ['attack', 'defense'].forEach(t => renderTeamFilterBanner(t));
+        syncSearchInput('', false);
+        updateAnalysisFilterBanner();
+        window.switchToTab(type === 'defense' ? 'defense' : 'attack');
+    }
+};
+// ==== /DEMO ====
+
 function historyMatchesCriteria(item, criteria) {
+    if (analysisIdFilter && !analysisIdFilter.ids.has(item.id)) return false; // DEMO: narrowed from the analysis tab
     // Tab (battle type)
     if (criteria.type === 'defense') {
         if (item.battle_type !== 'defense') return false;
@@ -5406,6 +5456,7 @@ async function syncSearchInput(value, clearPositionFilter = false) {
     }
     if (clearPositionFilter) {
         activePositionFilter = null;
+        clearAnalysisFilter(false); // DEMO: analysis tab narrowing
     }
     const searchAtk = document.getElementById('search-commander-attack');
     const btnClearAtk = document.getElementById('btn-clear-search-attack');

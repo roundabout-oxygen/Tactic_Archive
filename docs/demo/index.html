@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="demo.css">
+    <link rel="stylesheet" href="demo-extras.css">
 </head>
 <body data-demo-period="2026/07/24〜2026/11/08" data-platform="unset">
 <div id="app">
@@ -33,6 +34,7 @@
         <nav class="nav-tabs" aria-label="メニュー">
             <button class="tab-btn active" data-tab="attack"><i class="fa-solid fa-bolt"></i><span class="tab-label">攻撃</span></button>
             <button class="tab-btn" data-tab="defense"><i class="fa-solid fa-shield-halved"></i><span class="tab-label">防衛</span></button>
+            <button class="tab-btn" data-tab="analysis"><i class="fa-solid fa-chart-simple"></i><span class="tab-label">分析</span></button>
             <button class="tab-btn" data-tab="upload"><i class="fa-solid fa-circle-plus"></i><span class="tab-label">取り込み</span></button>
             <button class="tab-btn" data-tab="roster"><i class="fa-solid fa-address-book"></i><span class="tab-label">生徒</span></button>
             <button class="tab-btn" data-tab="settings"><i class="fa-solid fa-gear"></i><span class="tab-label">設定</span></button>
@@ -108,6 +110,27 @@
         </section>
 
         <!-- ===== Upload ===== -->
+        <!-- ===== Analysis (DEMO: ported from the PC version, see demo-analysis.js) ===== -->
+        <section id="tab-analysis" class="tab-pane">
+            <div class="page-wrap analysis-wrap">
+                <div class="analysis-controls">
+                    <div class="seg" id="an-type" role="group" aria-label="攻撃・防衛">
+                        <button type="button" class="seg-btn active" data-val="attack"><i class="fa-solid fa-bolt"></i> 攻撃</button>
+                        <button type="button" class="seg-btn" data-val="defense"><i class="fa-solid fa-shield-halved"></i> 防衛</button>
+                    </div>
+                    <div class="seg" id="an-period" role="group" aria-label="期間">
+                        <button type="button" class="seg-btn active" data-val="all">全期間</button>
+                        <button type="button" class="seg-btn" data-val="30">直近30日</button>
+                        <button type="button" class="seg-btn" data-val="custom">任意期間</button>
+                    </div>
+                    <div class="an-range" id="an-range" hidden>
+                        <input type="date" id="an-from" aria-label="開始日"> <span>〜</span> <input type="date" id="an-to" aria-label="終了日">
+                    </div>
+                </div>
+                <div id="analysis-body" class="analysis-body"></div>
+            </div>
+        </section>
+
         <section id="tab-upload" class="tab-pane">
             <div class="page-wrap upload-wrap">
                 <div class="upload-head">
@@ -811,5 +834,6 @@
 <script src="students_data.js"></script>
 <script src="demo-loader.js"></script>
     <script src="app.js" type="module"></script>
+<script src="demo-analysis.js" type="module"></script>
 </body>
 </html>
