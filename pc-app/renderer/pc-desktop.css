@@ -203,3 +203,32 @@
 .orp-focus .orp-student.on { border-color: var(--border-strong); }
 .orp-mode { flex-shrink: 0; }
 .orp-mode .seg-btn { padding: 6px 14px; }
+
+/* ===== Settings layout ===== */
+.settings-list [hidden] { display: none !important; }
+.settings-tile.sub-tile { padding: 11px 16px 11px 70px; background: #fbfcfe; }
+.settings-tile.sub-tile:hover { background: var(--surface-2); }
+.settings-tile.sub-tile .tile-title { font-size: 13.5px; }
+.settings-tile.sub-tile .tile-desc { font-size: 12px; }
+div.settings-tile, div.settings-tile:hover { cursor: default; }
+.sub-actions { gap: 8px; }
+.tile-chips { display: inline-flex; gap: 6px; flex-shrink: 0; }
+.tile-chip { position: relative; cursor: pointer; }
+.tile-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.tile-chip span {
+    display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px;
+    border: 1px solid var(--border-strong); border-radius: 999px; background: #fff;
+    font-size: 12.5px; font-weight: 700; color: var(--text-2); transition: background .12s, color .12s, border-color .12s;
+}
+.tile-chip span::before { content: "\f00c"; font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 10px; opacity: 0; width: 0; transition: opacity .12s, width .12s; }
+.tile-chip input:checked + span { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
+.tile-chip input:checked + span::before { opacity: 1; width: 10px; }
+.tile-chip input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+#backup-status-label { display: block; margin-top: 2px; }
+#backup-folder-label { word-break: break-all; }
+.settings-advanced { margin-top: 4px; }
+.settings-advanced > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; }
+.settings-advanced > summary::-webkit-details-marker { display: none; }
+.settings-advanced > summary i { font-size: 10px; transition: transform .15s; }
+.settings-advanced[open] > summary i { transform: rotate(90deg); }
+.settings-advanced > summary:hover { color: var(--primary); }

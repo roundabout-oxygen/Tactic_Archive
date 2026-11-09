@@ -110,6 +110,13 @@ function updateBackupLabels() {
     if (chkP) chkP.checked = !!c.backupAfterPatrol;
     const num = document.getElementById('num-backup-keep');
     if (num && document.activeElement !== num) num.value = String(c.backupKeep || 10);
+    // Sub-options only make sense once a backup folder is set
+    showSubOptions('backup', !!c.backupFolder);
+    const hint = document.getElementById('backup-folder-hint');
+    if (hint) hint.hidden = !!c.backupFolder;
+}
+function showSubOptions(group, on) {
+    document.querySelectorAll(`[data-sub-of="${group}"]`).forEach(el => { el.hidden = !on; });
 }
 function notifyBackupFailure(message) {
     toast('自動バックアップに失敗しました：' + message, 'warn', 8000);
@@ -155,6 +162,7 @@ function updateOrganizeLabels() {
     if (o) o.checked = !!cachedCfg.organizeEnabled;
     const r = document.getElementById('chk-organize-rename');
     if (r) r.checked = !!cachedCfg.organizeRename;
+    showSubOptions('organize', !!cachedCfg.organizeEnabled);
 }
 async function setCfg(partial) {
     cachedCfg = await desk.setConfig(partial);
@@ -193,6 +201,14 @@ function initOrganizeAndBackupSettings() {
     if (num) num.addEventListener('change', () => setCfg({ backupKeep: Number(num.value) || 10 }));
     const btnNow = document.getElementById('btn-backup-now');
     if (btnNow) btnNow.addEventListener('click', () => runAutoBackup('手動'));
+    const btnClear = document.getElementById('btn-clear-backup-folder');
+    if (btnClear) btnClear.addEventListener('click', async () => {
+        if (!confirm('自動バックアップをやめますか？\n保存先フォルダの登録を解除します（保存済みのバックアップファイルは消しません）。')) return;
+        await desk.clearBackupFolder();
+        cachedCfg = await desk.getConfig();
+        updateBackupLabels();
+        toast('自動バックアップをやめました', 'info');
+    });
     const btnPre = document.getElementById('btn-open-preedit');
     if (btnPre) btnPre.addEventListener('click', () => desk.openFolder('pre-edit'));
 }

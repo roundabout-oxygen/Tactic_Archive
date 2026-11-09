@@ -200,13 +200,13 @@
                     <div class="roster-summary"><i class="fa-solid fa-users"></i> 登録生徒数 <b id="roster-count">0</b> 人</div>
                 </div>
 
-                <h3 class="settings-section">スクリーンショットフォルダ（巡回）</h3>
+                <h3 class="settings-section">取り込み</h3>
                 <div class="settings-list">
                     <button class="settings-tile" id="btn-pick-folder" type="button">
                         <span class="tile-icon primary"><i class="fa-solid fa-folder-open"></i></span>
                         <span class="tile-content">
-                            <span class="tile-title">フォルダを選択</span>
-                            <span class="tile-desc">現在：<b id="settings-folder-label">未登録</b></span>
+                            <span class="tile-title">スクリーンショットフォルダ</span>
+                            <span class="tile-desc">巡回するフォルダ：<b id="settings-folder-label">未登録</b></span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
@@ -222,130 +222,10 @@
                         <span class="tile-icon success"><i class="fa-solid fa-filter"></i></span>
                         <span class="tile-content">
                             <span class="tile-title">対戦履歴以外を自動スキップ</span>
-                            <span class="tile-desc">戦闘履歴（リザルト）画面ではない画像を、確認画面を出さずに飛ばします。</span>
+                            <span class="tile-desc">リザルト画面ではない画像を、確認画面を出さずに飛ばします。</span>
                         </span>
                         <input type="checkbox" class="tile-switch" id="chk-auto-skip-nonresult">
                     </label>
-                    <button class="settings-tile" id="btn-reset-processed" type="button">
-                        <span class="tile-icon warning"><i class="fa-solid fa-eraser"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">処理済みの記録をリセット</span>
-                            <span class="tile-desc">巡回で読み込んだ・スキップしたファイルの記録（<b id="processed-count">0</b> 件）を消します。次の巡回で全ファイルを見直します（登録済みの戦績はファイル名で除外されます）。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <button class="settings-tile" id="btn-open-detection-log" type="button">
-                        <span class="tile-icon info"><i class="fa-solid fa-file-lines"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">リザルト判定ログを開く</span>
-                            <span class="tile-desc">画像ごとの判定値（白枠・WIN/LOSE・アイコンなど）を記録したファイルを開きます。誤判定の調整に使います。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                </div>
-
-                <h3 class="settings-section">取り込み済みスクショの整理</h3>
-                <div class="settings-list">
-                    <label class="settings-tile toggle-tile" for="chk-organize">
-                        <span class="tile-icon primary"><i class="fa-solid fa-box-archive"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">取り込んだ画像を移動する</span>
-                            <span class="tile-desc">巡回で取り込んだ画像を、登録フォルダ内の「<b id="organize-folder-label">取り込み済み</b>」フォルダへ移動します。対戦履歴以外・アスペクト比違いの画像は動かしません。</span>
-                        </span>
-                        <input type="checkbox" class="tile-switch" id="chk-organize">
-                    </label>
-                    <button class="settings-tile" id="btn-organize-folder-name" type="button">
-                        <span class="tile-icon info"><i class="fa-solid fa-folder-tree"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">移動先フォルダの名前</span>
-                            <span class="tile-desc">現在：<b id="organize-folder-label2">取り込み済み</b></span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <label class="settings-tile toggle-tile" for="chk-organize-rename">
-                        <span class="tile-icon info"><i class="fa-solid fa-i-cursor"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">ファイル名を変える</span>
-                            <span class="tile-desc">「日付_相手名_WIN/LOSE_攻撃/防衛.png」の形にします（例：2026-11-01_相手名_WIN_攻撃.png）。同じ名前があるときは _2, _3 … を付けます。</span>
-                        </span>
-                        <input type="checkbox" class="tile-switch" id="chk-organize-rename">
-                    </label>
-                </div>
-
-                <h3 class="settings-section">自動バックアップ</h3>
-                <div class="settings-list">
-                    <button class="settings-tile" id="btn-pick-backup-folder" type="button">
-                        <span class="tile-icon success"><i class="fa-solid fa-cloud-arrow-up"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">バックアップ先フォルダ</span>
-                            <span class="tile-desc">現在：<b id="backup-folder-label">未設定（自動バックアップしません）</b><br>OneDrive などの同期フォルダを選ぶと、別のパソコンにも残せます。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <label class="settings-tile toggle-tile" for="chk-backup-startup">
-                        <span class="tile-icon info"><i class="fa-solid fa-power-off"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">起動時にバックアップ</span>
-                            <span class="tile-desc">アプリを起動したときに保存します。</span>
-                        </span>
-                        <input type="checkbox" class="tile-switch" id="chk-backup-startup">
-                    </label>
-                    <label class="settings-tile toggle-tile" for="chk-backup-patrol">
-                        <span class="tile-icon info"><i class="fa-solid fa-arrows-rotate"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">巡回後にバックアップ</span>
-                            <span class="tile-desc">巡回で1件以上取り込んだあとに保存します。</span>
-                        </span>
-                        <input type="checkbox" class="tile-switch" id="chk-backup-patrol">
-                    </label>
-                    <div class="settings-tile">
-                        <span class="tile-icon warning"><i class="fa-solid fa-layer-group"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">残す世代数</span>
-                            <span class="tile-desc">古いものから自動で削除します（このアプリが作った <code>TacticalArchive_Full_日付_時刻.json</code> だけが対象）。</span>
-                        </span>
-                        <input type="number" class="tile-number" id="num-backup-keep" min="1" max="999" step="1" value="10" aria-label="残す世代数">
-                    </div>
-                    <button class="settings-tile" id="btn-backup-now" type="button">
-                        <span class="tile-icon success"><i class="fa-solid fa-floppy-disk"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">今すぐバックアップ</span>
-                            <span class="tile-desc" id="backup-status-label">まだバックアップしていません</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                </div>
-
-                <h3 class="settings-section">一括修正</h3>
-                <div class="settings-list">
-                    <button class="settings-tile" id="btn-bulk-opponent" type="button">
-                        <span class="tile-icon warning"><i class="fa-solid fa-user-pen"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">対戦相手名の一括置換</span>
-                            <span class="tile-desc">旧名の戦績をまとめて新名に変えます。件数を確認してから実行できます。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <button class="settings-tile" id="btn-bulk-student" type="button">
-                        <span class="tile-icon warning"><i class="fa-solid fa-people-arrows"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">生徒の一括置換（統合）</span>
-                            <span class="tile-desc">同じ生徒が二重に登録されたときなどに、ある生徒を別の生徒へまとめて置き換えます。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <button class="settings-tile" id="btn-open-preedit" type="button">
-                        <span class="tile-icon info"><i class="fa-solid fa-clock-rotate-left"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">一括修正前のバックアップを開く</span>
-                            <span class="tile-desc">一括修正の直前に自動で保存したJSONのフォルダを開きます。元に戻すときは「リストア」でこのファイルを選びます。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                </div>
-
-                <h3 class="settings-section">読み取り</h3>
-                <div class="settings-list">
                     <button class="settings-tile" id="btn-web-platform" type="button">
                         <span class="tile-icon primary"><i class="fa-solid fa-display"></i></span>
                         <span class="tile-content">
@@ -354,47 +234,126 @@
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
-                    <button class="settings-tile" id="btn-recalibrate" type="button">
-                        <span class="tile-icon primary"><i class="fa-solid fa-crop-simple"></i></span>
+                    <label class="settings-tile toggle-tile" for="chk-organize">
+                        <span class="tile-icon primary"><i class="fa-solid fa-box-archive"></i></span>
                         <span class="tile-content">
-                            <span class="tile-title">トリミング範囲の再設定</span>
-                            <span class="tile-desc">スクショを1枚選んで、生徒アイコンや相手の名前を読み取る位置を調整し直します（戦績には登録されません）。</span>
+                            <span class="tile-title">取り込んだ画像を整理する</span>
+                            <span class="tile-desc">巡回で取り込んだ画像を、登録フォルダ内の「<b id="organize-folder-label">取り込み済み</b>」フォルダへ移動します。</span>
+                        </span>
+                        <input type="checkbox" class="tile-switch" id="chk-organize">
+                    </label>
+                    <button class="settings-tile sub-tile" data-sub-of="organize" id="btn-organize-folder-name" type="button">
+                        <span class="tile-content">
+                            <span class="tile-title">移動先フォルダの名前</span>
+                            <span class="tile-desc">現在：<b id="organize-folder-label2">取り込み済み</b></span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
-                    <button class="settings-tile" id="btn-reset-calibration" type="button">
-                        <span class="tile-icon warning"><i class="fa-solid fa-rotate-left"></i></span>
+                    <label class="settings-tile toggle-tile sub-tile" data-sub-of="organize" for="chk-organize-rename">
                         <span class="tile-content">
-                            <span class="tile-title">トリミング範囲を初期値に戻す</span>
-                            <span class="tile-desc">調整した位置を消して、最初の設定に戻します。</span>
+                            <span class="tile-title">ファイル名を変える</span>
+                            <span class="tile-desc">例：2026-11-01_相手名_WIN_攻撃.png（同じ名前があれば _2, _3 … を付けます）</span>
+                        </span>
+                        <input type="checkbox" class="tile-switch" id="chk-organize-rename">
+                    </label>
+                </div>
+
+                <h3 class="settings-section">バックアップ・復元</h3>
+                <div class="settings-list">
+                    <button class="settings-tile" id="btn-pick-backup-folder" type="button">
+                        <span class="tile-icon success"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">自動バックアップ</span>
+                            <span class="tile-desc">保存先：<b id="backup-folder-label">未設定（自動バックアップしません）</b><br><span id="backup-folder-hint">OneDrive などの同期フォルダを選ぶと、別のパソコンにも残せます。</span><span id="backup-status-label" data-sub-of="backup"></span></span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <div class="settings-tile sub-tile" data-sub-of="backup">
+                        <span class="tile-content">
+                            <span class="tile-title">保存するタイミング</span>
+                            <span class="tile-desc">「巡回後」は1件以上取り込んだときだけ保存します。</span>
+                        </span>
+                        <span class="tile-chips">
+                            <label class="tile-chip"><input type="checkbox" id="chk-backup-startup"><span>起動時</span></label>
+                            <label class="tile-chip"><input type="checkbox" id="chk-backup-patrol"><span>巡回後</span></label>
+                        </span>
+                    </div>
+                    <div class="settings-tile sub-tile" data-sub-of="backup">
+                        <span class="tile-content">
+                            <span class="tile-title">残す世代数</span>
+                            <span class="tile-desc">古いものから削除します（<code>TacticalArchive_Full_日付_時刻.json</code> だけが対象）。</span>
+                        </span>
+                        <input type="number" class="tile-number" id="num-backup-keep" min="1" max="999" step="1" value="10" aria-label="残す世代数">
+                    </div>
+                    <div class="settings-tile sub-tile sub-actions" data-sub-of="backup">
+                        <button type="button" class="btn-secondary btn-sm" id="btn-backup-now"><i class="fa-solid fa-floppy-disk"></i> 今すぐ保存</button>
+                        <button type="button" class="btn-ghost btn-sm" id="btn-clear-backup-folder"><i class="fa-solid fa-ban"></i> 自動バックアップをやめる</button>
+                    </div>
+                    <button class="settings-tile" id="btn-db-backup" type="button">
+                        <span class="tile-icon success"><i class="fa-solid fa-database"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">手動でバックアップ</span>
+                            <span class="tile-desc">項目と保存先を選んで JSON で保存します（Web版・Android版と共通の形式）。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-db-restore" type="button">
+                        <span class="tile-icon primary"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">リストア</span>
+                            <span class="tile-desc">バックアップ JSON から項目を選んで復元します。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-open-preedit" type="button">
+                        <span class="tile-icon info"><i class="fa-solid fa-folder-open"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">一括修正前のバックアップを開く</span>
+                            <span class="tile-desc">一括置換・統合の直前に自動保存したファイルのフォルダです。元に戻すときは「リストア」で選びます。</span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
                 </div>
 
-                <h3 class="settings-section">辞書・生徒</h3>
+                <h3 class="settings-section">生徒・対戦相手</h3>
                 <div class="settings-list">
+                    <button class="settings-tile" id="btn-bulk-roster" type="button">
+                        <span class="tile-icon success"><i class="fa-solid fa-folder-plus"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">生徒図鑑 一括登録</span>
+                            <span class="tile-desc">スクショから生徒だけをまとめて登録します（戦績には追加されません）。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
                     <button class="settings-tile" id="btn-load-default-roster" type="button">
                         <span class="tile-icon success"><i class="fa-solid fa-users-viewfinder"></i></span>
                         <span class="tile-content">
                             <span class="tile-title">初期の生徒辞書を読み込む</span>
-                            <span class="tile-desc">あらかじめ用意した生徒の顔データを追加します。登録済みの生徒は、顔パターンだけが追加されます。</span>
+                            <span class="tile-desc">同梱の生徒データを追加します。登録済みの生徒には顔パターンだけを足します。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-bulk-student" type="button">
+                        <span class="tile-icon warning"><i class="fa-solid fa-people-arrows"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">生徒の統合（一括置換）</span>
+                            <span class="tile-desc">二重に登録された生徒などを、別の生徒へまとめて置き換えます。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-bulk-opponent" type="button">
+                        <span class="tile-icon warning"><i class="fa-solid fa-user-pen"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">対戦相手名の一括置換</span>
+                            <span class="tile-desc">旧名の戦績をまとめて新名に変えます。修正辞書への登録もできます。</span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
                     <button class="settings-tile" id="btn-manage-renames" type="button">
                         <span class="tile-icon warning"><i class="fa-solid fa-book-bookmark"></i></span>
                         <span class="tile-content">
-                            <span class="tile-title">対戦相手名 修正辞書</span>
-                            <span class="tile-desc">OCRで名前を読み間違えたときに正しい名前へ直すと登録され、次回から自動で修正されます。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <button class="settings-tile" id="btn-bulk-roster" type="button">
-                        <span class="tile-icon success"><i class="fa-solid fa-folder-plus"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">生徒図鑑 一括登録</span>
-                            <span class="tile-desc">スクショから生徒図鑑だけをまとめて登録します（戦績には追加されません）。</span>
+                            <span class="tile-title">対戦相手名の修正辞書</span>
+                            <span class="tile-desc">読み間違えた名前を自動で直すルールの一覧です。</span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
@@ -405,24 +364,8 @@
                     <button class="settings-tile" id="btn-csv-export" type="button">
                         <span class="tile-icon info"><i class="fa-solid fa-file-csv"></i></span>
                         <span class="tile-content">
-                            <span class="tile-title">戦績データ CSV出力</span>
-                            <span class="tile-desc">勝敗・実用度・日付・編成・相手SP固有・メモをCSVで保存します。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <button class="settings-tile" id="btn-db-backup" type="button">
-                        <span class="tile-icon success"><i class="fa-solid fa-database"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">バックアップ</span>
-                            <span class="tile-desc">項目を選んでJSON形式で保存します。Android版とも共通の形式です。</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
-                    </button>
-                    <button class="settings-tile" id="btn-db-restore" type="button">
-                        <span class="tile-icon primary"><i class="fa-solid fa-clock-rotate-left"></i></span>
-                        <span class="tile-content">
-                            <span class="tile-title">リストア</span>
-                            <span class="tile-desc">バックアップJSONから項目を選んで復元します。</span>
+                            <span class="tile-title">CSV で出力</span>
+                            <span class="tile-desc">勝敗・実用度・日付・編成・相手SP固有・メモを CSV で保存します。</span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
@@ -436,7 +379,53 @@
                     </button>
                 </div>
 
-                <p class="settings-foot">データはこのパソコン内（アプリの保存領域）にだけ保存され、戦績データを外部に送信することはありません。<br>Tactical Archive PC v1.1.0 ・ 非公式ツール ・ <a href="#" id="link-open-data-folder">保存フォルダを開く</a></p>
+                <details class="settings-advanced">
+                    <summary class="settings-section"><i class="fa-solid fa-chevron-right"></i> 詳細・トラブル対応</summary>
+                    <div class="settings-list">
+                        <button class="settings-tile" id="btn-recalibrate" type="button">
+                            <span class="tile-icon primary"><i class="fa-solid fa-crop-simple"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">トリミング範囲の再設定</span>
+                                <span class="tile-desc">スクショを1枚選んで、読み取る位置を調整し直します（戦績には登録されません）。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
+                        <button class="settings-tile" id="btn-reset-calibration" type="button">
+                            <span class="tile-icon warning"><i class="fa-solid fa-rotate-left"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">トリミング範囲を初期値に戻す</span>
+                                <span class="tile-desc">調整した位置を消して、組み込みの設定に戻します。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
+                        <button class="settings-tile" id="btn-reset-processed" type="button">
+                            <span class="tile-icon warning"><i class="fa-solid fa-eraser"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">処理済みの記録をリセット</span>
+                                <span class="tile-desc">巡回で処理したファイルの記録（<b id="processed-count">0</b> 件）を消し、次の巡回で全ファイルを見直します（登録済みの戦績は除外されます）。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
+                        <button class="settings-tile" id="btn-open-detection-log" type="button">
+                            <span class="tile-icon info"><i class="fa-solid fa-file-lines"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">リザルト判定ログを開く</span>
+                                <span class="tile-desc">画像ごとの判定値を記録したファイルです。誤判定の調整に使います。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
+                        <button class="settings-tile" id="link-open-data-folder" type="button">
+                            <span class="tile-icon info"><i class="fa-solid fa-folder-tree"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">保存フォルダを開く</span>
+                                <span class="tile-desc">設定・処理済みの記録・ログがあるフォルダ（%APPDATA%\Tactical Archive PC）を開きます。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
+                    </div>
+                </details>
+
+                <p class="settings-foot">データはこのパソコン内にだけ保存され、戦績データを外部に送信することはありません。<br>Tactical Archive PC v1.1.0 ・ 非公式ツール</p>
 
                 <input type="file" id="db-restore-input" accept=".json,application/json,text/plain,*/*" hidden>
                 <input type="file" id="bulk-roster-input" accept="image/*" multiple hidden>
