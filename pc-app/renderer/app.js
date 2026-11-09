@@ -6081,8 +6081,9 @@ async function showOpponentRosterPopup(opponentName) {
             const s = resolveHistorySlotStudent(item, oppTeam, i);
             if (!s) continue;
             const map = i >= 4 ? specials : strikers;
-            const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0 };
+            const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0, slots: [0, 0, 0, 0] };
             entry.count++;
+            if (i < 4) entry.slots[i]++;
             if (!entry.icon && s.icon) entry.icon = s.icon;
             map.set(s.name, entry);
         }
@@ -6169,12 +6170,144 @@ async function showOpponentRosterPopup(opponentName) {
         wrap.appendChild(grid);
         return wrap;
     };
-    body.appendChild(section('ストライカー', '#e5484d', strikers));
+    // Strikers: slot map (which position 1-4 each student was placed in)
+    const strikerFlow = buildStrikerSlotFlow(strikers);
+    if (strikerFlow) {
+        // Widen the card so every striker fits on one row
+        card.style.width = `min(${Math.max(560, strikers.size * 78 + 60)}px, 94vw)`;
+        card.style.maxWidth = '94vw';
+        body.appendChild(strikerFlow);
+    } else {
+        body.appendChild(section('ストライカー', '#e5484d', strikers));
+    }
     body.appendChild(section('スペシャル', '#1a8cff', specials));
     card.appendChild(body);
 
     overlay.appendChild(card);
     overlay.classList.add('active');
+    if (strikerFlow && strikerFlow._draw) requestAnimationFrame(strikerFlow._draw);
+}
+
+// Slot colors for positions 1-4 (lines use the color of the slot they lead to)
+const ROSTER_SLOT_COLORS = ['#f08c00', '#0ca678', '#228be6', '#7048e8'];
+
+function buildStrikerSlotFlow(strikers) {
+    if (!strikers || strikers.size === 0) return null;
+    const list = [...strikers.values()].map(st => {
+        const placed = st.slots.reduce((a, b) => a + b, 0) || 1;
+        const mean = st.slots.reduce((a, c, i) => a + c * i, 0) / placed;
+        return Object.assign({}, st, { placed, mean });
+    });
+    // Order by the average slot so each student sits near the slot it is used in most
+    list.sort((a, b) => a.mean - b.mean || b.count - a.count || a.name.localeCompare(b.name, 'ja'));
+    const maxPair = Math.max(1, ...list.map(st => Math.max(...st.slots)));
+    const slotTotals = [0, 1, 2, 3].map(i => list.filter(st => st.slots[i] > 0).length);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'orp-flow';
+    const head = document.createElement('div');
+    head.className = 'orp-section-head';
+    head.innerHTML = `ストライカー（${list.length}人）<span>線の太さ ＝ その位置で使われた回数</span>`;
+    wrap.appendChild(head);
+
+    const stage = document.createElement('div');
+    stage.className = 'orp-stage';
+    const slotsRow = document.createElement('div');
+    slotsRow.className = 'orp-slots';
+    const slotEls = [0, 1, 2, 3].map(i => {
+        const el = document.createElement('div');
+        el.className = 'orp-slot';
+        el.dataset.slot = i;
+        el.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[i]);
+        el.innerHTML = `<b>${i + 1}</b><span>${slotTotals[i]}人</span>`;
+        slotsRow.appendChild(el);
+        return el;
+    });
+    stage.appendChild(slotsRow);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'orp-lines');
+    svg.setAttribute('aria-hidden', 'true');
+    stage.appendChild(svg);
+
+    const row = document.createElement('div');
+    row.className = 'orp-students';
+    const cellEls = list.map((st, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'orp-student';
+        cell.dataset.st = idx;
+        cell.title = `${st.name}（${st.count}回）\n` + st.slots.map((c, i) => `${i + 1}番：${c}回`).join('　');
+        const img = st.icon ? `<img src="${escapeHtml(st.icon)}" alt="">` : `<div class="orp-ph">${escapeHtml(st.name.slice(0, 2))}</div>`;
+        const bar = st.slots.map((c, i) => c ? `<i style="flex:${c};background:${ROSTER_SLOT_COLORS[i]}"></i>` : '').join('');
+        cell.innerHTML = `${img}<span class="orp-count">×${st.count}</span><div class="orp-name">${escapeHtml(st.name)}</div><div class="orp-bar">${bar}</div>`;
+        row.appendChild(cell);
+        return cell;
+    });
+    stage.appendChild(row);
+    wrap.appendChild(stage);
+
+    const draw = () => {
+        if (!stage.isConnected) return;
+        const base = stage.getBoundingClientRect();
+        if (!base.width) return;
+        svg.setAttribute('width', base.width);
+        svg.setAttribute('height', base.height);
+        svg.setAttribute('viewBox', `0 0 ${base.width} ${base.height}`);
+        svg.innerHTML = '';
+        const slotRects = slotEls.map(el => el.getBoundingClientRect());
+        const cellRects = cellEls.map(el => el.getBoundingClientRect());
+        // Spread the line ends along each slot's bottom edge, in the order of the students below
+        const slotUsers = [0, 1, 2, 3].map(i => list.map((st, idx) => st.slots[i] ? idx : -1).filter(idx => idx >= 0));
+        const paths = [];
+        list.forEach((st, idx) => {
+            st.slots.forEach((c, i) => {
+                if (!c) return;
+                const sr = slotRects[i];
+                const users = slotUsers[i];
+                const pos = users.indexOf(idx);
+                const pad = Math.min(18, sr.width * 0.18);
+                const x1 = sr.left - base.left + pad + (sr.width - pad * 2) * (users.length > 1 ? pos / (users.length - 1) : 0.5);
+                const y1 = sr.bottom - base.top;
+                const cr = cellRects[idx];
+                const used = st.slots.map((v, k) => v ? k : -1).filter(k => k >= 0);
+                const off = used.length > 1 ? (used.indexOf(i) - (used.length - 1) / 2) * Math.min(9, cr.width / (used.length + 1)) : 0;
+                const x2 = cr.left - base.left + cr.width / 2 + off;
+                const y2 = cr.top - base.top + 1;
+                const midY = (y1 + y2) / 2;
+                const ratio = c / maxPair;
+                const p = document.createElementNS(svgNS, 'path');
+                p.setAttribute('d', `M${x1.toFixed(1)},${y1.toFixed(1)} C${x1.toFixed(1)},${midY.toFixed(1)} ${x2.toFixed(1)},${midY.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`);
+                p.setAttribute('stroke', ROSTER_SLOT_COLORS[i]);
+                p.setAttribute('stroke-width', (1.25 + ratio * 5.5).toFixed(2));
+                p.setAttribute('stroke-opacity', (0.28 + ratio * 0.62).toFixed(2));
+                p.dataset.st = idx;
+                p.dataset.slot = i;
+                paths.push({ p, c });
+            });
+        });
+        // Thin lines underneath, thick ones on top
+        paths.sort((a, b) => a.c - b.c).forEach(({ p }) => svg.appendChild(p));
+    };
+    wrap._draw = draw;
+    if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
+
+    // Hover: highlight one student's or one slot's lines
+    const focus = (attr, val) => {
+        stage.classList.toggle('orp-focus', val != null);
+        svg.querySelectorAll('path').forEach(p => p.classList.toggle('on', val != null && p.dataset[attr] === String(val)));
+        cellEls.forEach((el, idx) => el.classList.toggle('on', val != null && (attr === 'st' ? String(idx) === String(val) : list[idx].slots[val] > 0)));
+        slotEls.forEach((el, i) => el.classList.toggle('on', val != null && (attr === 'slot' ? String(i) === String(val) : list[val].slots[i] > 0)));
+    };
+    cellEls.forEach((el, idx) => {
+        el.addEventListener('mouseenter', () => focus('st', idx));
+        el.addEventListener('mouseleave', () => focus(null, null));
+    });
+    slotEls.forEach((el, i) => {
+        el.addEventListener('mouseenter', () => focus('slot', i));
+        el.addEventListener('mouseleave', () => focus(null, null));
+    });
+    return wrap;
 }
 
 function setupHistoryScrollListeners() {
