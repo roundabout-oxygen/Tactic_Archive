@@ -147,7 +147,9 @@
                 <ul class="upload-tips">
                     <li><i class="fa-solid fa-layer-group"></i> 複数枚をまとめて読み込めます。1枚ずつ確認画面が開きます。</li>
                     <li><i class="fa-solid fa-forward-fast"></i> 高速モードでは、未登録の生徒・匿名相手の攻撃・初対戦の相手・名前が読めない場合だけ確認画面で止まります。</li>
-                    <li><i class="fa-solid fa-crop-simple"></i> 初回だけ、アイコン枠の位置合わせ（トリミング調整）を行います。</li>
+                    <li class="mobile-only"><i class="fa-solid fa-crop-simple"></i> 初回だけ、アイコン枠の位置合わせ（トリミング調整）を行います。</li>
+                    <li class="pc-only"><i class="fa-solid fa-crop-simple"></i> トリミング位置は設定済みです。ずれる場合は「設定 → トリミング範囲の再設定」で調整できます。</li>
+                    <li><i class="fa-solid fa-user-check"></i> 生徒の認識が間違っていたら、確認画面でアイコンをタップして正しい生徒を選んでください。登録時に辞書へ学習されます。</li>
                 </ul>
             </div>
         </section>
@@ -182,10 +184,34 @@
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
+                    <button class="settings-tile" id="btn-recalibrate" type="button">
+                        <span class="tile-icon primary"><i class="fa-solid fa-crop-simple"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">トリミング範囲の再設定</span>
+                            <span class="tile-desc">スクショを1枚選んで、生徒アイコンや相手の名前を読み取る位置を調整し直します（戦績には登録されません）。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-reset-calibration" type="button">
+                        <span class="tile-icon warning"><i class="fa-solid fa-rotate-left"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">トリミング範囲を初期値に戻す</span>
+                            <span class="tile-desc">調整した位置を消して、最初の設定に戻します。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
                 </div>
 
                 <h3 class="settings-section">辞書・生徒</h3>
                 <div class="settings-list">
+                    <button class="settings-tile" id="btn-load-default-roster" type="button">
+                        <span class="tile-icon success"><i class="fa-solid fa-users-viewfinder"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">初期の生徒辞書を読み込む</span>
+                            <span class="tile-desc">あらかじめ用意した生徒の顔データを追加します。登録済みの生徒は、顔パターンだけが追加されます。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
                     <button class="settings-tile" id="btn-manage-renames" type="button">
                         <span class="tile-icon warning"><i class="fa-solid fa-book-bookmark"></i></span>
                         <span class="tile-content">
@@ -244,6 +270,7 @@
 
                 <input type="file" id="db-restore-input" accept=".json,application/json,text/plain,*/*" hidden>
                 <input type="file" id="bulk-roster-input" accept="image/*" multiple hidden>
+                <input type="file" id="recalib-input" accept="image/*" hidden>
             </div>
         </section>
     </main>
@@ -273,8 +300,14 @@
                 <button class="aspect-option" type="button" data-aspect-choice="16:9"><span class="aspect-shape r169"></span><b>16:9</b></button>
                 <button class="aspect-option" type="button" data-aspect-choice="4:3"><span class="aspect-shape r43"></span><b>4:3</b></button>
             </div>
-            <p class="aspect-note"><i class="fa-solid fa-triangle-exclamation"></i><span>今後も<b>選んだアスペクト比のスクリーンショット</b>を読み込んでください。違う比率の画像は警告を出してスキップします。サイズが違っても比率が同じなら、自動でリサイズして同じ位置を読み取ります。</span></p>
         </div>
+        <label class="preset-option" id="welcome-preset-row">
+            <input type="checkbox" id="welcome-use-preset" checked>
+            <span class="preset-text">
+                <b>プリセットアイコンを使用</b>
+                <small>あらかじめ用意した生徒のアイコンと顔データを生徒辞書に登録します（あとから設定でも読み込めます）</small>
+            </span>
+        </label>
         <div class="welcome-actions">
             <button class="btn-secondary" id="btn-welcome-cancel" type="button" hidden>キャンセル</button>
             <button class="btn-primary" id="btn-welcome-start" type="button">はじめる</button>
@@ -326,6 +359,7 @@
                         <div class="opponent-input-group">
                             <div class="slot-icon-wrapper mini" id="review-opponent-avatar-wrapper"><div class="slot-placeholder mini">?</div></div>
                             <input type="text" id="review-opponent-name" enterkeyhint="done" placeholder="対戦相手のプレイヤー名">
+                            <span class="name-check-badge" title="過去の対戦履歴にない名前です。読み取りが正しいか確認してください">←要確認→</span>
                         </div>
                         <div class="opp-ocr-preview-box" id="review-opp-ocr-crop-wrapper" style="display: none;" title="スクリーンショットの対戦相手名（OCRの元画像）">
                             <img id="review-opp-ocr-crop-img" alt="OCR元画像">
@@ -389,6 +423,13 @@
                     <input type="search" id="search-selector" enterkeyhint="search" placeholder="生徒名で検索" autocomplete="off">
                 </div>
                 <button class="btn-primary" id="btn-selector-add-student" type="button"><i class="fa-solid fa-plus"></i><span class="btn-text"> 新規生徒追加</span></button>
+            </div>
+            <div class="selector-crop" id="selector-crop" hidden>
+                <img id="selector-crop-img" alt="スクショから切り出した画像">
+                <div class="selector-crop-text">
+                    <b>スクショから読み取った画像</b>
+                    <span>この画像の生徒を選んでください。登録すると辞書に学習され、次からは自動で認識されます。</span>
+                </div>
             </div>
             <div class="selector-grid" id="selector-roster-items"></div>
         </div>

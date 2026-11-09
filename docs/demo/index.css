@@ -673,6 +673,17 @@ body:not([data-platform="mobile"]) .mobile-only { display: none; }
     background: #fff8e6; border: 1px solid #ffe2a3; border-radius: 10px; padding: 10px 12px;
 }
 .aspect-note i { margin-top: 4px; }
+.preset-option {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-top: 12px; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--surface-2);
+    text-align: left; cursor: pointer;
+}
+.preset-option input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--primary); flex-shrink: 0; }
+.preset-text { display: flex; flex-direction: column; gap: 2px; }
+.preset-text b { font-size: 13.5px; }
+.preset-text small { font-size: 12px; color: var(--text-2); line-height: 1.55; }
 .welcome-actions { display: flex; justify-content: center; gap: 10px; margin-top: 22px; }
 .welcome-actions .btn-primary, .welcome-actions .btn-secondary { height: 46px; min-width: 160px; font-size: 15px; border-radius: 12px; }
 
@@ -838,6 +849,22 @@ body:not([data-platform="mobile"]) .mobile-only { display: none; }
     border: none; outline: none; background: transparent;
     font-size: 15px; font-weight: 700;
 }
+/* Review: opponent name not found in the history */
+.opponent-input-group.needs-check {
+    border-color: var(--lose);
+    background: #fff5f5;
+    box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+}
+.name-check-badge {
+    display: none;
+    flex-shrink: 0;
+    padding-right: 10px;
+    color: var(--lose);
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.opponent-input-group.needs-check .name-check-badge { display: inline; }
 .opp-ocr-preview-box {
     height: 46px; max-width: 260px;
     display: flex; align-items: center; justify-content: center;
@@ -896,6 +923,16 @@ body:not([data-platform="mobile"]) .mobile-only { display: none; }
     transition: transform 0.1s;
 }
 .custom-tag-box:hover { transform: translateY(-1px); }
+
+/* Selector: the face cropped from the screenshot */
+.selector-crop {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 12px;
+    background: #fff8e6; border: 1px solid #ffe2a3;
+}
+.selector-crop img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #e9eef5; }
+.selector-crop-text { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: #6b4e00; line-height: 1.55; }
+.selector-crop-text b { font-size: 13px; color: #4a3500; }
 
 /* Selector / student */
 .selector-controls { display: flex; gap: 10px; align-items: center; }

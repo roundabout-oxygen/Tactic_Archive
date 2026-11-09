@@ -1496,6 +1496,11 @@ function openWelcomeScreen({ isFreshInstall = false, isChange = false } = {}) {
     const aspectBtns = screen.querySelectorAll('[data-aspect-choice]');
     const startBtn = document.getElementById('btn-welcome-start');
     const cancelBtn = document.getElementById('btn-welcome-cancel');
+    const presetRow = document.getElementById('welcome-preset-row');
+    const presetChk = document.getElementById('welcome-use-preset');
+    // Preset student icons: offered on the first choice only (Settings has its own button)
+    if (presetRow) presetRow.hidden = isChange;
+    if (presetChk) presetChk.checked = true;
 
     const render = () => {
         cards.forEach(c => c.classList.toggle('selected', c.dataset.platformChoice === platform));
@@ -1518,15 +1523,26 @@ function openWelcomeScreen({ isFreshInstall = false, isChange = false } = {}) {
             if (platform === 'pc') lsSet(WEB_PC_ASPECT_KEY, aspect);
             screen.classList.remove('active');
             updatePlatformUI();
+            if (!isChange && presetChk) {
+                if (presetChk.checked) {
+                    loadDefaultRoster()
+                        .then(r => { if (r.added > 0) showToast(`プリセットアイコン: 生徒辞書に ${r.added} 人を登録しました`, 'success'); })
+                        .catch(e => console.warn('[DefaultRoster] not loaded:', e));
+                } else {
+                    lsSet(DEFAULT_ROSTER_FLAG, 'true'); // the user chose not to use the presets
+                }
+            }
             if (isFreshInstall) {
                 lsSet('tactical_archive_first_launch_done', 'true');
                 window.switchToTab('upload');
                 const msg = platform === 'pc'
-                    ? `戦術対抗戦の戦闘履歴のスクリーンショット（初回は攻撃のリザルト）を読み込んでください。<br><br>今後も <b>${aspect}</b> のスクリーンショットを読み込んでください（サイズが違っても同じ比率なら自動でリサイズします）。`
+                    ? `戦術対抗戦の戦闘履歴のスクリーンショットを読み込んでください。トリミング位置は設定済みなので、そのまま読み取れます。<br><br>今後も <b>${aspect}</b> のスクリーンショットを読み込んでください（サイズが違っても同じ比率なら自動でリサイズします）。<br>位置がずれる場合は「設定 → トリミング範囲の再設定」で調整できます。`
                     : '戦術対抗戦の戦闘履歴のスクリーンショット（初回は攻撃のリザルト）を読み込んでください。';
                 setTimeout(() => showTutorialPopup(msg, '<i class="fa-solid fa-cloud-arrow-up"></i>', '初回セットアップ'), 150);
             } else if (changed) {
-                showToast(`使用環境を「${getPlatformLabel()}」に設定しました。この環境で初めて読み込むときはトリミング位置の調整画面が開きます`, 'success', 6000);
+                showToast(platform === 'pc'
+                    ? `使用環境を「${getPlatformLabel()}」に設定しました`
+                    : `使用環境を「${getPlatformLabel()}」に設定しました。この環境で初めて読み込むときはトリミング位置の調整画面が開きます`, 'success', 6000);
             }
         };
     }
@@ -1540,6 +1556,134 @@ function initWebPlatformUI({ isFreshInstall = false } = {}) {
     if (btn) btn.addEventListener('click', () => openWelcomeScreen({ isChange: true }));
     if (!getWebPlatform()) {
         openWelcomeScreen({ isFreshInstall });
+    }
+}
+
+// ---- Default student dictionary (docs/default_roster.json) ----
+const DEFAULT_ROSTER_FLAG = 'tactical_archive_default_roster_loaded';
+async function loadDefaultRoster() {
+    const res = await fetch('default_roster.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const list = (data && Array.isArray(data.students)) ? data.students : [];
+    let added = 0, merged = 0;
+    for (const s of list) {
+        if (!s || !s.name) continue;
+        const exists = currentRoster.some(r => r.name === s.name);
+        // Existing students keep their own icon; only the face patterns are added
+        await addOrUpdateStudent({
+            name: s.name,
+            icon_path: exists ? undefined : s.icon_path,
+            features: Array.isArray(s.features) ? s.features : [],
+            created_at: Date.now()
+        });
+        if (exists) merged++; else added++;
+    }
+    lsSet(DEFAULT_ROSTER_FLAG, 'true');
+    currentRoster = await getStudents();
+    updateRosterView();
+    return { added, merged };
+}
+async function seedDefaultRosterIfEmpty() {
+    if (lsGet(DEFAULT_ROSTER_FLAG) === 'true' || currentRoster.length > 0) return;
+    if (!getWebPlatform()) return; // first launch: decided by the "プリセットアイコンを使用" option
+    try {
+        const r = await loadDefaultRoster();
+        if (r.added > 0) showToast(`生徒辞書に ${r.added} 人を初期登録しました`, 'success');
+    } catch (e) {
+        console.warn('[DefaultRoster] not loaded:', e);
+    }
+}
+
+// Review: flag an opponent name that never appeared in the history (likely an OCR misread or a new opponent)
+function updateReviewNameCheck() {
+    const input = document.getElementById('review-opponent-name');
+    const group = input && input.closest('.opponent-input-group');
+    if (!group) return;
+    const norm = (v) => (v || '').replace(/[\s　]+/g, '');
+    const name = norm(input.value);
+    const known = !!name && currentHistory.some(h => norm(h.commander_name) === name);
+    group.classList.toggle('needs-check', !known);
+}
+
+// Student selector: show the face cropped from the screenshot, so a wrong match is easy to fix
+function showSelectorCrop(slot) {
+    const box = document.getElementById('selector-crop');
+    if (!box) return;
+    const src = slot && slot.cropIcon;
+    box.hidden = !src;
+    const img = document.getElementById('selector-crop-img');
+    if (src && img) img.src = src;
+}
+
+// Settings: re-adjust / reset the crop layout, load the default student dictionary
+function initWebSettingsExtras() {
+    const reviewNameInput = document.getElementById('review-opponent-name');
+    if (reviewNameInput) reviewNameInput.addEventListener('input', updateReviewNameCheck);
+
+    const recalibInput = document.getElementById('recalib-input');
+    const btnRecalib = document.getElementById('btn-recalibrate');
+    if (btnRecalib && recalibInput) {
+        btnRecalib.addEventListener('click', () => { recalibInput.value = ''; recalibInput.click(); });
+        recalibInput.addEventListener('change', async () => {
+            const file = recalibInput.files && recalibInput.files[0];
+            if (!file) return;
+            try {
+                let img = await loadImageFromFile(file);
+                if (isPcMode()) {
+                    const pcAspect = getPcAspect();
+                    const detected = classifyPcAspect(img.width, img.height);
+                    if (detected !== pcAspect) {
+                        showToast(`${pcAspect} のスクリーンショットを選んでください（${detected || img.width + '×' + img.height} の画像です）`, 'warn', 5000);
+                        return;
+                    }
+                    img = await normalizePcScreenshot(img, pcAspect);
+                }
+                const { profile } = getOrComputeCalibrationProfile(img, null);
+                lastUploadedImage = img;
+                currentActiveProfile = profile;
+                currentUploadData = null;   // calibration only: nothing is registered
+                currentUploadFile = null;
+                currentUploadExtractedDate = null;
+                openCropInspector();
+            } catch (e) {
+                console.error('[Recalibrate]', e);
+                alert('画像を読み込めませんでした: ' + (e && e.message ? e.message : e));
+            }
+        });
+    }
+
+    const btnReset = document.getElementById('btn-reset-calibration');
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            const pc = isPcMode();
+            const msg = pc
+                ? `${getPcAspect()} のトリミング範囲を初期値に戻しますか？`
+                : 'トリミング範囲の設定を消しますか？次に読み込むスクショで調整画面が開きます。';
+            if (!confirm(msg)) return;
+            let profiles = {};
+            try { profiles = JSON.parse(lsGet('tactical_archive_calibration_profiles') || '{}'); } catch (e) {}
+            if (pc) {
+                delete profiles['pc-' + getPcAspect()];
+            } else {
+                Object.keys(profiles).filter(k => !k.startsWith('pc-')).forEach(k => delete profiles[k]);
+            }
+            lsSet('tactical_archive_calibration_profiles', JSON.stringify(profiles));
+            showToast(pc ? 'トリミング範囲を初期値に戻しました' : 'トリミング範囲の設定を消しました', 'success');
+        });
+    }
+
+    const btnDefaultRoster = document.getElementById('btn-load-default-roster');
+    if (btnDefaultRoster) {
+        btnDefaultRoster.addEventListener('click', async () => {
+            if (!confirm('初期の生徒辞書を読み込みますか？\n未登録の生徒は追加され、登録済みの生徒には顔パターンだけが追加されます。')) return;
+            try {
+                const r = await loadDefaultRoster();
+                showToast(`生徒辞書: ${r.added} 人を追加、${r.merged} 人に顔パターンを追加しました`, 'success', 5000);
+            } catch (e) {
+                alert('初期の生徒辞書を読み込めませんでした: ' + (e && e.message ? e.message : e));
+            }
+        });
     }
 }
 
@@ -2016,6 +2160,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Web v2: choose PC (4:3 / 16:9) or smartphone/tablet first; fresh installs then get the upload tutorial
     initWebPlatformUI({ isFreshInstall: !isDone && !hasCalibration && !hasData });
+    initWebSettingsExtras();
+    seedDefaultRosterIfEmpty();
 
     // Synchronized Search Inputs (Shared across Attack and Defense tabs)
     const searchAtk = document.getElementById('search-commander-attack');
@@ -3287,6 +3433,15 @@ function getOrComputeCalibrationProfile(img, scanStatusText) {
         cardSize
     };
 
+    // Web PC mode: the built-in layout of the chosen aspect ratio is used as is (no first-time calibration).
+    // It can be re-adjusted later from Settings (トリミング範囲の再設定).
+    if (isPcMode() && BUILTIN_CALIBRATION_PROFILES[aspectKey]) {
+        try {
+            cachedProfiles[aspectKey] = profile;
+            localStorage.setItem('tactical_archive_calibration_profiles', JSON.stringify(cachedProfiles));
+        } catch (e) {}
+        return { profile, isCached: true };
+    }
     // NOTE: Not persisted here. The profile is saved only when the user completes the Crop Inspector
     // (applyCropInspector), so cancelling the first-time calibration shows the wizard again next time.
     return { profile, isCached: false };
@@ -3624,6 +3779,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
             studentId: 0,
             studentName: '未登録',
             icon_path: iconDataUrl,
+            cropIcon: iconDataUrl, // raw crop from the screenshot (shown in the student selector)
             faceFeatures: faceFeatures,
             userSelected: false,
             isSp: i >= 4
@@ -3652,6 +3808,7 @@ async function runRecognitionPipeline(img, profile, file, extractedDate, extract
             studentId: 0,
             studentName: '未登録',
             icon_path: iconDataUrl,
+            cropIcon: iconDataUrl, // raw crop from the screenshot (shown in the student selector)
             faceFeatures: faceFeatures,
             userSelected: false,
             isSp: i >= 4
@@ -3723,6 +3880,7 @@ function populateReviewModal(data) {
 
     // Opponent name & Date
     document.getElementById('review-opponent-name').value = data.opponentName || '';
+    updateReviewNameCheck();
     document.getElementById('review-date-input').value = data.date;
     document.getElementById('review-date-str').innerText = data.date;
     document.getElementById('review-notes').value = '';
@@ -3831,6 +3989,7 @@ function createReviewSlotElement(slotData, team, index) {
         editingSlot = { team, index };
         searchSelectorInput.value = '';
         renderSelectorRoster();
+        showSelectorCrop(slotData);
         selectorModal.classList.add('active');
     });
 
@@ -4540,6 +4699,8 @@ async function applyCropInspector() {
         localStorage.setItem('tactical_archive_first_launch_done', 'true');
         if (currentUploadFile && currentUploadExtractedDate && !isScanCancelled) {
             await runRecognitionPipeline(lastUploadedImage, currentActiveProfile, currentUploadFile, currentUploadExtractedDate, currentUploadExtractedTimestamp);
+        } else if (!currentUploadFile) {
+            showToast('トリミング範囲を保存しました。次に読み込むスクショから反映されます', 'success');
         }
         return;
     }
@@ -4566,6 +4727,7 @@ async function applyCropInspector() {
         const slotData = currentUploadData.attack[i];
         slotData.icon_path = (match.student && match.similarity >= 0.85) ? (match.student.icon_path || iconDataUrl) : iconDataUrl;
         slotData.faceFeatures = faceFeatures;
+        slotData.cropIcon = iconDataUrl;
         slotData.confidence = match.similarity;
         if (match.student && match.similarity >= 0.85) {
             slotData.studentId = match.student.id;
@@ -4585,6 +4747,7 @@ async function applyCropInspector() {
         const slotData = currentUploadData.defense[i];
         slotData.icon_path = (match.student && match.similarity >= 0.85) ? (match.student.icon_path || iconDataUrl) : iconDataUrl;
         slotData.faceFeatures = faceFeatures;
+        slotData.cropIcon = iconDataUrl;
         slotData.confidence = match.similarity;
         if (match.student && match.similarity >= 0.85) {
             slotData.studentId = match.student.id;
@@ -4992,6 +5155,7 @@ function createDetailSlotElement(slotData, team, index) {
     
     slotEl.addEventListener('click', () => {
         editingSlot = { team, index, modal: 'detail' };
+        showSelectorCrop(null);
         searchSelectorInput.value = '';
         renderSelectorRoster();
         selectorModal.classList.add('active');
