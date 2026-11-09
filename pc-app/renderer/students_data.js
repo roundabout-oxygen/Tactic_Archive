@@ -1091,5 +1091,33 @@ const STUDENT_MASTER_LIST = [
   {
     "reading": "さてんるいこ",
     "name": "佐天涙子"
+  },
+  {
+    "reading": "ひふみ（れーしんぐ）",
+    "name": "ヒフミ（レーシング）"
+  },
+  {
+    "reading": "あずさ（れーしんぐ）",
+    "name": "アズサ（レーシング）"
+  },
+  {
+    "reading": "らな",
+    "name": "ラナ"
+  },
+  {
+    "reading": "つむぎ",
+    "name": "ツムギ"
+  },
+  {
+    "reading": "あんな",
+    "name": "アンナ"
+  },
+  {
+    "reading": "えりな",
+    "name": "エリナ"
+  },
+  {
+    "reading": "かすみ（みずぎ）",
+    "name": "カスミ（水着）"
   }
 ];

@@ -23,12 +23,13 @@
             <img src="icon.png" alt="" class="brand-icon">
             <div class="brand-text">
                 <span class="brand-name">Tactical Archive</span>
-                <span class="brand-version">PC v1.0.0</span>
+                <span class="brand-version">PC v1.1.0</span>
             </div>
         </div>
         <nav class="nav-tabs" aria-label="メニュー">
             <button class="tab-btn active" data-tab="attack"><i class="fa-solid fa-bolt"></i><span class="tab-label">攻撃</span></button>
             <button class="tab-btn" data-tab="defense"><i class="fa-solid fa-shield-halved"></i><span class="tab-label">防衛</span></button>
+            <button class="tab-btn" data-tab="analysis"><i class="fa-solid fa-chart-simple"></i><span class="tab-label">分析</span></button>
             <button class="tab-btn" data-tab="upload"><i class="fa-solid fa-circle-plus"></i><span class="tab-label">取り込み</span></button>
             <button class="tab-btn" data-tab="roster"><i class="fa-solid fa-address-book"></i><span class="tab-label">生徒</span></button>
             <button class="tab-btn" data-tab="settings"><i class="fa-solid fa-gear"></i><span class="tab-label">設定</span></button>
@@ -100,6 +101,27 @@
                     </thead>
                     <tbody id="defense-history-items"></tbody>
                 </table>
+            </div>
+        </section>
+
+        <!-- ===== Analysis (PC desktop) ===== -->
+        <section id="tab-analysis" class="tab-pane">
+            <div class="page-wrap analysis-wrap">
+                <div class="analysis-controls">
+                    <div class="seg" id="an-type" role="group" aria-label="攻撃・防衛">
+                        <button type="button" class="seg-btn active" data-val="attack"><i class="fa-solid fa-bolt"></i> 攻撃</button>
+                        <button type="button" class="seg-btn" data-val="defense"><i class="fa-solid fa-shield-halved"></i> 防衛</button>
+                    </div>
+                    <div class="seg" id="an-period" role="group" aria-label="期間">
+                        <button type="button" class="seg-btn active" data-val="all">全期間</button>
+                        <button type="button" class="seg-btn" data-val="30">直近30日</button>
+                        <button type="button" class="seg-btn" data-val="custom">任意期間</button>
+                    </div>
+                    <div class="an-range" id="an-range" hidden>
+                        <input type="date" id="an-from" aria-label="開始日"> <span>〜</span> <input type="date" id="an-to" aria-label="終了日">
+                    </div>
+                </div>
+                <div id="analysis-body" class="analysis-body"></div>
             </div>
         </section>
 
@@ -222,6 +244,106 @@
                     </button>
                 </div>
 
+                <h3 class="settings-section">取り込み済みスクショの整理</h3>
+                <div class="settings-list">
+                    <label class="settings-tile toggle-tile" for="chk-organize">
+                        <span class="tile-icon primary"><i class="fa-solid fa-box-archive"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">取り込んだ画像を移動する</span>
+                            <span class="tile-desc">巡回で取り込んだ画像を、登録フォルダ内の「<b id="organize-folder-label">取り込み済み</b>」フォルダへ移動します。対戦履歴以外・アスペクト比違いの画像は動かしません。</span>
+                        </span>
+                        <input type="checkbox" class="tile-switch" id="chk-organize">
+                    </label>
+                    <button class="settings-tile" id="btn-organize-folder-name" type="button">
+                        <span class="tile-icon info"><i class="fa-solid fa-folder-tree"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">移動先フォルダの名前</span>
+                            <span class="tile-desc">現在：<b id="organize-folder-label2">取り込み済み</b></span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <label class="settings-tile toggle-tile" for="chk-organize-rename">
+                        <span class="tile-icon info"><i class="fa-solid fa-i-cursor"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">ファイル名を変える</span>
+                            <span class="tile-desc">「日付_相手名_WIN/LOSE_攻撃/防衛.png」の形にします（例：2026-11-01_相手名_WIN_攻撃.png）。同じ名前があるときは _2, _3 … を付けます。</span>
+                        </span>
+                        <input type="checkbox" class="tile-switch" id="chk-organize-rename">
+                    </label>
+                </div>
+
+                <h3 class="settings-section">自動バックアップ</h3>
+                <div class="settings-list">
+                    <button class="settings-tile" id="btn-pick-backup-folder" type="button">
+                        <span class="tile-icon success"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">バックアップ先フォルダ</span>
+                            <span class="tile-desc">現在：<b id="backup-folder-label">未設定（自動バックアップしません）</b><br>OneDrive などの同期フォルダを選ぶと、別のパソコンにも残せます。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <label class="settings-tile toggle-tile" for="chk-backup-startup">
+                        <span class="tile-icon info"><i class="fa-solid fa-power-off"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">起動時にバックアップ</span>
+                            <span class="tile-desc">アプリを起動したときに保存します。</span>
+                        </span>
+                        <input type="checkbox" class="tile-switch" id="chk-backup-startup">
+                    </label>
+                    <label class="settings-tile toggle-tile" for="chk-backup-patrol">
+                        <span class="tile-icon info"><i class="fa-solid fa-arrows-rotate"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">巡回後にバックアップ</span>
+                            <span class="tile-desc">巡回で1件以上取り込んだあとに保存します。</span>
+                        </span>
+                        <input type="checkbox" class="tile-switch" id="chk-backup-patrol">
+                    </label>
+                    <div class="settings-tile">
+                        <span class="tile-icon warning"><i class="fa-solid fa-layer-group"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">残す世代数</span>
+                            <span class="tile-desc">古いものから自動で削除します（このアプリが作った <code>TacticalArchive_Full_日付_時刻.json</code> だけが対象）。</span>
+                        </span>
+                        <input type="number" class="tile-number" id="num-backup-keep" min="1" max="999" step="1" value="10" aria-label="残す世代数">
+                    </div>
+                    <button class="settings-tile" id="btn-backup-now" type="button">
+                        <span class="tile-icon success"><i class="fa-solid fa-floppy-disk"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">今すぐバックアップ</span>
+                            <span class="tile-desc" id="backup-status-label">まだバックアップしていません</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                </div>
+
+                <h3 class="settings-section">一括修正</h3>
+                <div class="settings-list">
+                    <button class="settings-tile" id="btn-bulk-opponent" type="button">
+                        <span class="tile-icon warning"><i class="fa-solid fa-user-pen"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">対戦相手名の一括置換</span>
+                            <span class="tile-desc">旧名の戦績をまとめて新名に変えます。件数を確認してから実行できます。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-bulk-student" type="button">
+                        <span class="tile-icon warning"><i class="fa-solid fa-people-arrows"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">生徒の一括置換（統合）</span>
+                            <span class="tile-desc">同じ生徒が二重に登録されたときなどに、ある生徒を別の生徒へまとめて置き換えます。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                    <button class="settings-tile" id="btn-open-preedit" type="button">
+                        <span class="tile-icon info"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                        <span class="tile-content">
+                            <span class="tile-title">一括修正前のバックアップを開く</span>
+                            <span class="tile-desc">一括修正の直前に自動で保存したJSONのフォルダを開きます。元に戻すときは「リストア」でこのファイルを選びます。</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                    </button>
+                </div>
+
                 <h3 class="settings-section">読み取り</h3>
                 <div class="settings-list">
                     <button class="settings-tile" id="btn-web-platform" type="button">
@@ -314,7 +436,7 @@
                     </button>
                 </div>
 
-                <p class="settings-foot">データはこのパソコン内（アプリの保存領域）にだけ保存され、戦績データを外部に送信することはありません。<br>Tactical Archive PC v1.0.0 ・ 非公式ツール ・ <a href="#" id="link-open-data-folder">保存フォルダを開く</a></p>
+                <p class="settings-foot">データはこのパソコン内（アプリの保存領域）にだけ保存され、戦績データを外部に送信することはありません。<br>Tactical Archive PC v1.1.0 ・ 非公式ツール ・ <a href="#" id="link-open-data-folder">保存フォルダを開く</a></p>
 
                 <input type="file" id="db-restore-input" accept=".json,application/json,text/plain,*/*" hidden>
                 <input type="file" id="bulk-roster-input" accept="image/*" multiple hidden>
@@ -848,5 +970,7 @@
 <script src="students_data.js"></script>
 <script src="app.js" type="module"></script>
 <script src="pc-desktop.js" type="module"></script>
+<script src="pc-analysis.js" type="module"></script>
+<script src="pc-tools.js" type="module"></script>
 </body>
 </html>

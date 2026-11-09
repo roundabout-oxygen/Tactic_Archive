@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld('taDesktop', {
     logDetection: (rec) => {
         try { ipcRenderer.send('ta:log-detection', JSON.parse(JSON.stringify(rec))); } catch (e) { /* ignore */ }
     },
+    organizeFile: (req) => ipcRenderer.invoke('ta:organize-file', req),
+    pickBackupFolder: () => ipcRenderer.invoke('ta:pick-backup-folder'),
+    clearBackupFolder: () => ipcRenderer.invoke('ta:clear-backup-folder'),
+    writeBackup: (req) => ipcRenderer.invoke('ta:write-backup', req),
+    openFolder: (which) => ipcRenderer.invoke('ta:open-folder', which),
     openDetectionLog: () => ipcRenderer.invoke('ta:open-detection-log'),
     openDataFolder: () => ipcRenderer.invoke('ta:open-data-folder'),
     appInfo: () => ipcRenderer.invoke('ta:app-info')

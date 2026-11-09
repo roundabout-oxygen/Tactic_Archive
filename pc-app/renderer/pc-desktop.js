@@ -80,12 +80,140 @@ function showSummaryDialog(text, s) {
 
 // ---------- Folder patrol ----------
 let patrolRunning = false;
+let cachedCfg = {};
+
+// ---------- Automatic backup ----------
+let backupRunning = false;
+function formatDateTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function updateBackupLabels() {
+    const c = cachedCfg;
+    const fl = document.getElementById('backup-folder-label');
+    if (fl) fl.textContent = c.backupFolder || '未設定（自動バックアップしません）';
+    const st = document.getElementById('backup-status-label');
+    if (st) {
+        const parts = [];
+        parts.push(c.backupLastSuccess ? `最後に成功：${formatDateTime(c.backupLastSuccess)}（${c.backupLastFile || ''}）` : 'まだバックアップしていません');
+        if (c.backupLastError && (!c.backupLastSuccess || c.backupLastError.at > c.backupLastSuccess)) {
+            parts.push(`前回失敗：${formatDateTime(c.backupLastError.at)}（${c.backupLastError.message}）`);
+        }
+        st.textContent = parts.join(' / ');
+        st.classList.toggle('backup-error', !!(c.backupLastError && (!c.backupLastSuccess || c.backupLastError.at > c.backupLastSuccess)));
+    }
+    const chkS = document.getElementById('chk-backup-startup');
+    if (chkS) chkS.checked = !!c.backupOnStartup;
+    const chkP = document.getElementById('chk-backup-patrol');
+    if (chkP) chkP.checked = !!c.backupAfterPatrol;
+    const num = document.getElementById('num-backup-keep');
+    if (num && document.activeElement !== num) num.value = String(c.backupKeep || 10);
+}
+function notifyBackupFailure(message) {
+    toast('自動バックアップに失敗しました：' + message, 'warn', 8000);
+    try { new Notification('Tactical Archive PC', { body: '自動バックアップに失敗しました：' + message }); } catch (e) { /* ignore */ }
+}
+// reason: '起動時' / '巡回後' / '手動'. Returns the result of the main process (or null when not configured).
+async function runAutoBackup(reason) {
+    if (!desk || !window.taApp) return null;
+    cachedCfg = await desk.getConfig();
+    if (!cachedCfg.backupFolder) {
+        if (reason === '手動') toast('先にバックアップ先フォルダを選んでください', 'warn');
+        return null;
+    }
+    if (backupRunning) return null;
+    backupRunning = true;
+    let res;
+    try {
+        const json = await window.taApp.buildFullBackupJson();
+        res = await desk.writeBackup({ kind: 'full', json });
+    } catch (e) {
+        res = { ok: false, error: String(e && e.message || e) };
+    }
+    backupRunning = false;
+    cachedCfg = await desk.getConfig();
+    updateBackupLabels();
+    if (res.ok) {
+        console.log(`[AutoBackup] (${reason}) saved`, res.file, 'deleted:', res.deleted);
+        if (reason === '手動') toast('バックアップを保存しました', 'success');
+    } else {
+        notifyBackupFailure(res.error);
+    }
+    return res;
+}
+window.taRunAutoBackup = runAutoBackup;
+
+function updateOrganizeLabels() {
+    const name = cachedCfg.organizeSubfolder || '取り込み済み';
+    ['organize-folder-label', 'organize-folder-label2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = name;
+    });
+    const o = document.getElementById('chk-organize');
+    if (o) o.checked = !!cachedCfg.organizeEnabled;
+    const r = document.getElementById('chk-organize-rename');
+    if (r) r.checked = !!cachedCfg.organizeRename;
+}
+async function setCfg(partial) {
+    cachedCfg = await desk.setConfig(partial);
+    updateOrganizeLabels();
+    updateBackupLabels();
+    return cachedCfg;
+}
+function initOrganizeAndBackupSettings() {
+    const o = document.getElementById('chk-organize');
+    if (o) o.addEventListener('change', async () => {
+        await setCfg({ organizeEnabled: o.checked });
+        toast(o.checked ? `取り込んだ画像を「${cachedCfg.organizeSubfolder}」フォルダへ移動します` : '取り込んだ画像は移動しません', 'info');
+    });
+    const r = document.getElementById('chk-organize-rename');
+    if (r) r.addEventListener('change', () => setCfg({ organizeRename: r.checked }));
+    const btnName = document.getElementById('btn-organize-folder-name');
+    if (btnName) btnName.addEventListener('click', async () => {
+        const v = await window.taPrompt('移動先フォルダの名前（登録フォルダの中に作ります）', cachedCfg.organizeSubfolder || '取り込み済み');
+        if (v == null) return;
+        await setCfg({ organizeSubfolder: v });
+        toast(`移動先フォルダ：${cachedCfg.organizeSubfolder}`, 'success');
+    });
+
+    const btnFolder = document.getElementById('btn-pick-backup-folder');
+    if (btnFolder) btnFolder.addEventListener('click', async () => {
+        const f = await desk.pickBackupFolder();
+        cachedCfg = await desk.getConfig();
+        updateBackupLabels();
+        if (f) toast('バックアップ先フォルダを登録しました', 'success');
+    });
+    const chkS = document.getElementById('chk-backup-startup');
+    if (chkS) chkS.addEventListener('change', () => setCfg({ backupOnStartup: chkS.checked }));
+    const chkP = document.getElementById('chk-backup-patrol');
+    if (chkP) chkP.addEventListener('change', () => setCfg({ backupAfterPatrol: chkP.checked }));
+    const num = document.getElementById('num-backup-keep');
+    if (num) num.addEventListener('change', () => setCfg({ backupKeep: Number(num.value) || 10 }));
+    const btnNow = document.getElementById('btn-backup-now');
+    if (btnNow) btnNow.addEventListener('click', () => runAutoBackup('手動'));
+    const btnPre = document.getElementById('btn-open-preedit');
+    if (btnPre) btnPre.addEventListener('click', () => desk.openFolder('pre-edit'));
+}
 
 const patrolHooks = {
     // Called by app.js for every file of a batch
     onFileOutcome(file, outcome, detail) {
         if (!desk || !file || !file.__taPath) return;
         if (outcome === 'error') return; // retried on the next patrol
+        if (outcome === 'imported' && cachedCfg.organizeEnabled) {
+            // Move (and optionally rename) the imported screenshot; the main process updates the processed list
+            desk.organizeFile({ path: file.__taPath, mtimeMs: file.__taMtime, record: detail || null })
+                .then(r => {
+                    if (!r.ok) {
+                        console.warn('[Organize] failed', file.__taPath, r.error);
+                        toast(`「${file.name}」を移動できませんでした（${r.error}）`, 'warn', 6000);
+                    }
+                })
+                .catch(e => console.warn('[Organize] failed', e));
+            return;
+        }
         const rec = { path: file.__taPath, mtimeMs: file.__taMtime, status: outcome };
         if (outcome === 'aspect') rec.aspect = (detail && detail.aspect) || lsGet(ASPECT_KEY) || '';
         desk.markProcessed(rec).catch(e => console.warn('[Patrol] markProcessed failed', e));
@@ -102,6 +230,12 @@ const patrolHooks = {
             }
         }
         refreshProcessedCount();
+        if (info && info.patrol && stats.imported > 0 && desk) {
+            desk.getConfig().then(c => {
+                cachedCfg = c;
+                if (c.backupAfterPatrol) runAutoBackup('巡回後');
+            });
+        }
     },
     showSummary(text, stats) {
         showSummaryDialog(text, stats);
@@ -284,7 +418,28 @@ function init() {
     refreshFolderLabels();
     refreshProcessedCount();
     updatePatrolButton();
+    initOrganizeAndBackupSettings();
+    desk.getConfig().then(c => {
+        cachedCfg = c;
+        updateOrganizeLabels();
+        updateBackupLabels();
+        // Startup backup: after the app has finished loading its data
+        if (c.backupOnStartup && c.backupFolder) setTimeout(() => runAutoBackup('起動時'), 4000);
+    });
 }
+
+// Shared with pc-tools.js
+window.taDialog = openDialog;
+window.taShowAlert = function (title, message) {
+    return openDialog((box, close) => {
+        box.innerHTML = `<h3></h3><p></p><div class="ta-dialog-actions"><button type="button" class="btn-primary" data-act="ok">OK</button></div>`;
+        box.querySelector('h3').textContent = title;
+        box.querySelector('p').textContent = message;
+        const ok = box.querySelector('[data-act="ok"]');
+        ok.onclick = () => close(true);
+        return { focus: ok, onEnter: () => close(true), cancelValue: true };
+    });
+};
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 else init();
