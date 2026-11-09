@@ -232,3 +232,37 @@ div.settings-tile, div.settings-tile:hover { cursor: default; }
 .settings-advanced > summary i { font-size: 10px; transition: transform .15s; }
 .settings-advanced[open] > summary i { transform: rotate(90deg); }
 .settings-advanced > summary:hover { color: var(--primary); }
+
+/* ===== Opponent roster popup: narrowing by clicking students (ported from docs/index.css) ===== */
+.orp-student { cursor: pointer; }
+.orp-student.zero, .orp-sp-cell.zero { opacity: 0.38; filter: grayscale(1); }
+.orp-student.zero { cursor: default; }
+.orp-student.selected, .orp-sp-cell.selected { border: 2px solid #1a8cff; box-shadow: 0 0 0 3px rgba(26, 140, 255, 0.22); opacity: 1; filter: none; }
+.orp-sp-cell {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 6px 4px; border: 1px solid #e1e7f0; border-radius: 12px; background: #f7f9fc; cursor: pointer;
+    transition: opacity .15s, border-color .15s;
+}
+.orp-sp-cell img, .orp-sp-cell .orp-ph { width: 100%; max-width: 60px; aspect-ratio: 1 / 1; border-radius: 9px; object-fit: cover; background: #e9eef5; }
+.orp-sp-cell .orp-ph { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #536377; }
+.orp-count.sp { background: #1a8cff; }
+.orp-chooser {
+    position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 6;
+    display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: #fff;
+    border: 1px solid #cdd6e3; box-shadow: 0 8px 24px rgba(16, 32, 56, 0.2); white-space: nowrap;
+}
+.orp-chooser button {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; cursor: pointer;
+    border: 1.5px solid var(--slot-color); background: #fff; color: #18273a; font-size: 11.5px; font-weight: 700; font-family: inherit;
+}
+.orp-chooser button b { color: var(--slot-color); }
+.orp-filterbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-radius: 12px; background: #f0f7ff; border: 1px solid #c8e1ff; }
+.orp-filterbar-label { font-size: 12px; font-weight: 800; color: #0a6fdb; margin-right: 2px; }
+.orp-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; border-radius: 999px; cursor: pointer;
+    border: 1.5px solid var(--slot-color, #1a8cff); background: #fff; color: #18273a; font-size: 12px; font-weight: 700; font-family: inherit;
+}
+.orp-chip b { padding: 1px 7px; border-radius: 999px; background: var(--slot-color, #1a8cff); color: #fff; font-size: 11px; }
+.orp-chip.sp { --slot-color: #1a8cff; }
+.orp-chip i { color: #8a97a8; font-size: 11px; }
+.orp-clear { margin-left: auto; border: none; background: transparent; color: #0a6fdb; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: underline; }
