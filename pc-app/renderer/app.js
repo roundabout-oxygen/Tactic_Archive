@@ -6279,19 +6279,19 @@ async function showOpponentRosterPopup(opponentName) {
     card.appendChild(header);
 
     const body = document.createElement('div');
-    body.style.cssText = 'overflow-y:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:14px;';
+    body.style.cssText = 'position:relative;overflow-y:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:14px;';
 
     const isStrikerSelected = (name) => filters.some(f => f.kind === 'striker' && f.name === name);
     const isSpecialSelected = (name) => filters.some(f => f.kind === 'special' && f.name === name);
     const pickStriker = (name, slot) => {
         if (slot == null) filters = filters.filter(f => !(f.kind === 'striker' && f.name === name));
         else filters = filters.filter(f => !(f.kind === 'striker' && f.slot === slot)).concat([{ kind: 'striker', slot, name }]);
-        renderBody();
+        renderBody(true);
     };
     const toggleSpecial = (name) => {
         if (isSpecialSelected(name)) filters = filters.filter(f => !(f.kind === 'special' && f.name === name));
         else filters = filters.concat([{ kind: 'special', name }]);
-        renderBody();
+        renderBody(true);
     };
 
     // Active narrowing conditions
@@ -6312,7 +6312,7 @@ async function showOpponentRosterPopup(opponentName) {
             chip.title = 'この条件を外す';
             chip.addEventListener('click', () => {
                 filters = filters.filter(x => x !== f);
-                renderBody();
+                renderBody(true);
             });
             bar.appendChild(chip);
         });
@@ -6320,7 +6320,7 @@ async function showOpponentRosterPopup(opponentName) {
         clear.type = 'button';
         clear.className = 'orp-clear';
         clear.textContent = 'すべて解除';
-        clear.addEventListener('click', () => { filters = []; renderBody(); });
+        clear.addEventListener('click', () => { filters = []; renderBody(true); });
         bar.appendChild(clear);
         return bar;
     };
@@ -6365,7 +6365,8 @@ async function showOpponentRosterPopup(opponentName) {
     card.style.maxWidth = '94vw';
     card.appendChild(body);
 
-    const renderBody = () => {
+    // keepSlotsTop: after picking / clearing a student, scroll so the D1-D4 boxes sit at the top (small screens)
+    const renderBody = (keepSlotsTop = false) => {
         const { records, total, strikers, specials } = aggregate(mode);
         const countText = filters.length ? `${records.length} / ${total}戦` : `${total}戦`;
         globalBtn.disabled = filters.length === 0;
@@ -6376,6 +6377,14 @@ async function showOpponentRosterPopup(opponentName) {
         if (strikerFlow) body.appendChild(strikerFlow);
         body.appendChild(specialSection(specials));
         if (strikerFlow && strikerFlow._draw) requestAnimationFrame(strikerFlow._draw);
+        if (keepSlotsTop && strikerFlow) {
+            const slots = strikerFlow.querySelector('.orp-slots');
+            if (slots) {
+                let y = 0;
+                for (let el = slots; el && el !== body; el = el.offsetParent) y += el.offsetTop;
+                body.scrollTop = Math.max(0, y - 6);
+            }
+        }
     };
 
     overlay.appendChild(card);
@@ -6559,6 +6568,13 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         hint.querySelector('.orp-pick-cancel').addEventListener('click', disarm);
         hint.hidden = false;
         focus(null, null);
+        // Small screens: the boxes to pick from may be scrolled out of view
+        const sc = wrap.parentElement;
+        if (sc && sc.scrollHeight > sc.clientHeight) {
+            let y = 0;
+            for (let el = slotsRow; el && el !== sc; el = el.offsetParent) y += el.offsetTop;
+            if (y < sc.scrollTop || y > sc.scrollTop + sc.clientHeight - 40) sc.scrollTop = Math.max(0, y - 6);
+        }
         document.addEventListener('keydown', onKey, true);
     }
     function disarm() {
