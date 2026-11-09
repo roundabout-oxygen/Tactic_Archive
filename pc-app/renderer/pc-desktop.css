@@ -266,3 +266,25 @@ div.settings-tile, div.settings-tile:hover { cursor: default; }
 .orp-chip.sp { --slot-color: #1a8cff; }
 .orp-chip i { color: #8a97a8; font-size: 11px; }
 .orp-clear { margin-left: auto; border: none; background: transparent; color: #0a6fdb; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: underline; }
+
+/* 「全体で編成検索」 button and the history banner */
+.orp-global-search {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid #1a8cff; background: #1a8cff; color: #fff;
+    font-size: 12.5px; font-weight: 800; font-family: inherit; white-space: nowrap;
+}
+.orp-global-search:hover { background: #0a6fdb; border-color: #0a6fdb; }
+.orp-global-search:disabled { background: #fff; color: #9fb0c5; border-color: #d5dde8; cursor: not-allowed; }
+.team-filter-banner {
+    flex-shrink: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    width: 100%; max-width: 1440px; margin: 0 auto 8px; padding: 8px 12px;
+    border-radius: 12px; background: #f0f7ff; border: 1px solid #c8e1ff;
+}
+.tfb-label { font-size: 12.5px; font-weight: 800; color: #0a6fdb; margin-right: 2px; }
+.tfb-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px; border-radius: 999px;
+    border: 1.5px solid var(--slot-color, #1a8cff); background: #fff; color: #18273a; font-size: 12px; font-weight: 700;
+}
+.tfb-chip b { padding: 1px 7px; border-radius: 999px; background: var(--slot-color, #1a8cff); color: #fff; font-size: 11px; }
+.tfb-clear { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #c8e1ff; background: #fff; color: #0a6fdb; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }

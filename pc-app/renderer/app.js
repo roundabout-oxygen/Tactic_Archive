@@ -1240,6 +1240,67 @@ let pendingBulkSlotSave = null; // Bulk roster flow: callback(name) invoked by t
 let uploadQueue = []; // Queue of File objects to review sequentially
 let activePositionFilter = null; // Filter for specific position: { sourceTab: 'attack'|'defense', team: 'attack'|'defense', index: 0-5, studentName: string }
 
+// Team search across every opponent (set from the opponent roster popup's 「全体で編成検索」)
+// { tabs: ['attack'|'defense'], conds: [{ kind: 'striker', slot: 0-3, name } | { kind: 'special', name }] }
+// Conditions apply to the opponent's team: the defense team in attack records, the attack team in defense records.
+let activeTeamFilter = null;
+
+function teamFilterMatches(item, tf) {
+    const team = item.battle_type === 'defense' ? 'attack' : 'defense';
+    return tf.conds.every(f => {
+        if (f.kind === 'striker') {
+            const s = resolveHistorySlotStudent(item, team, f.slot);
+            return !!s && s.name === f.name;
+        }
+        return [4, 5].some(i => {
+            const s = resolveHistorySlotStudent(item, team, i);
+            return !!s && s.name === f.name;
+        });
+    });
+}
+
+function renderTeamFilterBanner(type) {
+    const pane = document.getElementById(`tab-${type}`);
+    const wrapper = pane && pane.querySelector('.history-list-wrapper');
+    if (!wrapper) return;
+    let banner = document.getElementById(`team-filter-banner-${type}`);
+    const tf = activeTeamFilter && activeTeamFilter.tabs.includes(type) ? activeTeamFilter : null;
+    if (!tf) {
+        if (banner) banner.remove();
+        return;
+    }
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = `team-filter-banner-${type}`;
+        banner.className = 'team-filter-banner';
+        wrapper.parentNode.insertBefore(banner, wrapper);
+    }
+    const prefix = type === 'defense' ? 'A' : 'D'; // the opponent's attack / defense team
+    banner.innerHTML = '';
+    const label = document.createElement('span');
+    label.className = 'tfb-label';
+    label.innerHTML = '<i class="fa-solid fa-people-group"></i> 編成検索';
+    banner.appendChild(label);
+    tf.conds.forEach(f => {
+        const chip = document.createElement('span');
+        chip.className = 'tfb-chip';
+        const tag = f.kind === 'striker' ? `${prefix}${f.slot + 1}` : 'SP';
+        if (f.kind === 'striker' && typeof ROSTER_SLOT_COLORS !== 'undefined') chip.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[f.slot]);
+        chip.innerHTML = `<b>${tag}</b>${escapeHtml(f.name)}`;
+        banner.appendChild(chip);
+    });
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'tfb-clear';
+    clear.innerHTML = '<i class="fa-solid fa-xmark"></i> 解除';
+    clear.addEventListener('click', () => {
+        activeTeamFilter = null;
+        ['attack', 'defense'].forEach(t => renderTeamFilterBanner(t));
+        filterHistory(type);
+    });
+    banner.appendChild(clear);
+}
+
 function getEffectivePositionFilter(currentType) {
     if (!activePositionFilter) return null;
     const { sourceTab, team, index, studentName } = activePositionFilter;
@@ -5490,7 +5551,8 @@ function buildHistorySearchCriteria(type) {
         type,
         searchVal,
         terms,
-        positionFilter: getEffectivePositionFilter(type)
+        positionFilter: getEffectivePositionFilter(type),
+        teamFilter: (activeTeamFilter && activeTeamFilter.tabs.includes(type)) ? activeTeamFilter : null
     };
 }
 
@@ -5545,6 +5607,9 @@ function historyMatchesCriteria(item, criteria) {
         }
     }
 
+    // Team search across every opponent (「全体で編成検索」)
+    if (criteria.teamFilter && !teamFilterMatches(item, criteria.teamFilter)) return false;
+
     // Search commander name / student name / team composition (all terms must match)
     if (criteria.terms.length > 0) {
         const keys = getHistorySearchKeys(item);
@@ -5586,6 +5651,7 @@ async function filterHistory(type = 'attack') {
     if (paneEl) paneEl.classList.toggle('anon-filter', ((searchEl && searchEl.value) || '').replace(/[\s　]+/g, '') === '匿名');
     const criteria = buildHistorySearchCriteria(type);
     const filtered = currentHistory.filter(item => historyMatchesCriteria(item, criteria));
+    renderTeamFilterBanner(type);
     renderHistoryItems(filtered, type, criteria);
     requestAnimationFrame(updateHistoryIconSize);
 }
@@ -6169,6 +6235,22 @@ async function showOpponentRosterPopup(opponentName) {
         });
         seg.appendChild(b);
     });
+    // Search every opponent's history with the selected placement conditions
+    const globalBtn = document.createElement('button');
+    globalBtn.type = 'button';
+    globalBtn.className = 'orp-global-search';
+    globalBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> 全体で編成検索';
+    globalBtn.title = '選んでいる条件で、すべての対戦相手の履歴を絞り込みます';
+    globalBtn.addEventListener('click', () => {
+        if (!filters.length) return;
+        const tabs = mode === 'both' ? ['attack', 'defense'] : [mode === 'defense' ? 'attack' : 'defense'];
+        activeTeamFilter = { tabs, conds: filters.map(f => Object.assign({}, f)) };
+        overlay.classList.remove('active');
+        const target = (mode === 'both' && isHistoryTab(activeTab)) ? activeTab : tabs[0];
+        syncSearchInput('', true); // other opponents too: clear the name search
+        window.switchToTab(target);
+    });
+    header.appendChild(globalBtn);
     header.appendChild(seg);
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
@@ -6269,6 +6351,7 @@ async function showOpponentRosterPopup(opponentName) {
     const renderBody = () => {
         const { records, total, strikers, specials } = aggregate(mode);
         const countText = filters.length ? `${records.length} / ${total}戦` : `${total}戦`;
+        globalBtn.disabled = filters.length === 0;
         sub.textContent = `手持ち生徒・${MODE_LABEL[mode]}（${countText}の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
         body.innerHTML = '';
         if (filters.length) body.appendChild(buildFilterBar());
