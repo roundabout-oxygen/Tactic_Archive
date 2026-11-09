@@ -6434,8 +6434,12 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
     stage.appendChild(svg);
 
     const slotLabel = (i) => slotPrefix ? `${slotPrefix}${i + 1}` : `${i + 1}番`;
-    let openChooser = null;
-    const closeChooser = () => { if (openChooser) { openChooser.remove(); openChooser = null; } };
+    // A student placed in several slots is 'armed' on click; the slot is then chosen by clicking a D1-D4 box above
+    let armed = null; // index into list
+    const hint = document.createElement('div');
+    hint.className = 'orp-pick-hint';
+    hint.hidden = true;
+    stage.appendChild(hint);
 
     const row = document.createElement('div');
     row.className = 'orp-students';
@@ -6451,27 +6455,12 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         cell.innerHTML = `${img}<span class="orp-count">×${st.count}</span><div class="orp-name">${escapeHtml(st.name)}</div><div class="orp-bar">${bar}</div>`;
         if (ctx) {
             cell.addEventListener('click', (e) => {
-                if (e.target.closest('.orp-chooser')) return;
-                if (selected) { closeChooser(); ctx.onPick(st.name, null); return; }
+                if (selected) { disarm(); ctx.onPick(st.name, null); return; }
                 if (st.count === 0) return;
                 const used = st.slots.map((c, i) => c ? i : -1).filter(i => i >= 0);
-                if (used.length === 1) { closeChooser(); ctx.onPick(st.name, used[0]); return; }
-                // Placed in several slots: choose which one to narrow by
-                const wasOpen = openChooser && openChooser.parentElement === cell;
-                closeChooser();
-                if (wasOpen) return;
-                const menu = document.createElement('div');
-                menu.className = 'orp-chooser';
-                used.forEach(i => {
-                    const b = document.createElement('button');
-                    b.type = 'button';
-                    b.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[i]);
-                    b.innerHTML = `<b>${slotLabel(i)}</b>×${st.slots[i]}`;
-                    b.addEventListener('click', (ev) => { ev.stopPropagation(); closeChooser(); ctx.onPick(st.name, i); });
-                    menu.appendChild(b);
-                });
-                cell.appendChild(menu);
-                openChooser = menu;
+                if (used.length === 1) { disarm(); ctx.onPick(st.name, used[0]); return; }
+                // Placed in several slots: pick the slot from the boxes above
+                if (armed === idx) disarm(); else arm(idx);
             });
         }
         row.appendChild(cell);
@@ -6521,12 +6510,14 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         });
         // Thin lines underneath, thick ones on top
         paths.sort((a, b) => a.c - b.c).forEach(({ p }) => svg.appendChild(p));
+        if (armed != null) focus(null, null);
     };
     wrap._draw = draw;
     if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
 
-    // Hover (mouse): highlight one student's or one slot's lines
+    // Hover (mouse): highlight one student's or one slot's lines (while a student is armed, keep its highlight)
     const focus = (attr, val) => {
+        if (armed != null && !(attr === 'st' && val === armed)) { if (attr !== null || val !== null) return; attr = 'st'; val = armed; }
         stage.classList.toggle('orp-focus', val != null);
         svg.querySelectorAll('path').forEach(p => p.classList.toggle('on', val != null && p.dataset[attr] === String(val)));
         cellEls.forEach((el, idx) => el.classList.toggle('on', val != null && (attr === 'st' ? String(idx) === String(val) : list[idx].slots[val] > 0)));
@@ -6539,7 +6530,50 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
     slotEls.forEach((el, i) => {
         el.addEventListener('mouseenter', () => focus('slot', i));
         el.addEventListener('mouseleave', () => focus(null, null));
+        el.addEventListener('click', () => {
+            if (armed == null || !ctx) return;
+            const st = list[armed];
+            if (!st.slots[i]) return;
+            disarm();
+            ctx.onPick(st.name, i);
+        });
     });
+
+    function arm(idx) {
+        armed = idx;
+        const st = list[idx];
+        stage.classList.add('orp-arming');
+        cellEls.forEach((el, k) => el.classList.toggle('armed', k === idx));
+        slotEls.forEach((el, i) => {
+            const c = st.slots[i];
+            el.classList.toggle('pick', c > 0);
+            el.classList.toggle('nopick', !c);
+            let badge = el.querySelector('.orp-pick-count');
+            if (c > 0) {
+                if (!badge) { badge = document.createElement('em'); badge.className = 'orp-pick-count'; el.appendChild(badge); }
+                badge.textContent = `×${c}`;
+            } else if (badge) badge.remove();
+            el.title = c > 0 ? `${st.name} を ${slotLabel(i)} で絞り込み（${c}回）` : '';
+        });
+        hint.innerHTML = `<i class="fa-solid fa-hand-pointer"></i> <b>${escapeHtml(st.name)}</b> の位置を上の枠から選んでください<button type="button" class="orp-pick-cancel">キャンセル</button>`;
+        hint.querySelector('.orp-pick-cancel').addEventListener('click', disarm);
+        hint.hidden = false;
+        focus(null, null);
+        document.addEventListener('keydown', onKey, true);
+    }
+    function disarm() {
+        if (armed == null) return;
+        armed = null;
+        stage.classList.remove('orp-arming');
+        cellEls.forEach(el => el.classList.remove('armed'));
+        slotEls.forEach(el => { el.classList.remove('pick', 'nopick'); el.title = ''; const b = el.querySelector('.orp-pick-count'); if (b) b.remove(); });
+        hint.hidden = true;
+        focus(null, null);
+        document.removeEventListener('keydown', onKey, true);
+    }
+    function onKey(e) {
+        if (e.key === 'Escape' && armed != null) { e.stopPropagation(); e.preventDefault(); disarm(); }
+    }
     return wrap;
 }
 
