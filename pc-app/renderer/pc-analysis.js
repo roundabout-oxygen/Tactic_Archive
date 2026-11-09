@@ -134,23 +134,29 @@ function tableCard({ id, title, icon, cols, rows, emptyText, bare = false }) {
         ${table}</section>`;
 }
 
-function trendSvg(days) {
+// availW: width of the card body. The chart stretches to fill it; with many days it keeps a minimum
+// slot width and scrolls sideways instead.
+function trendSvg(days, availW) {
     if (days.length === 0) return '<div class="an-empty">データがありません</div>';
-    const barW = 18, gap = 6, h = 180, top = 16, bottom = 34, left = 34, right = 34;
+    const h = 180, top = 16, bottom = 34, left = 34, right = 40, MIN_SLOT = 24;
+    const slot = Math.max(MIN_SLOT, ((availW || 0) - left - right) / days.length);
+    const barW = Math.min(36, Math.max(12, slot * 0.7));
+    const gap = slot - barW;
     const plotH = h - top - bottom;
     const maxN = Math.max(1, ...days.map(d => d.n));
-    const w = left + right + days.length * (barW + gap);
+    const w = Math.floor(left + right + days.length * slot);
+    const labelStep = Math.max(1, Math.ceil(42 / slot)); // keep "10/31" labels from overlapping
     const y = (v) => top + plotH - (v / maxN) * plotH;
     const yr = (r) => top + plotH - (r / 100) * plotH;
     let bars = '', pts = [], labels = '';
     days.forEach((d, i) => {
-        const x = left + i * (barW + gap);
+        const x = left + i * slot + gap / 2;
         if (d.n > 0) {
             bars += `<rect class="an-bar" data-day="${i}" x="${x}" y="${y(d.n)}" width="${barW}" height="${top + plotH - y(d.n)}" rx="3"><title>${d.day}：${d.n}戦 ${d.w}勝 ${pct(d.w, d.n).toFixed(1)}%</title></rect>`;
             pts.push(`${x + barW / 2},${yr(pct(d.w, d.n))}`);
         }
         const dd = d.day.slice(5).replace('-', '/');
-        if (days.length <= 31 || i % Math.ceil(days.length / 31) === 0) {
+        if ((days.length - 1 - i) % labelStep === 0) { // count from the latest day so it is always labeled
             labels += `<text class="an-axis" x="${x + barW / 2}" y="${h - 14}" text-anchor="middle">${dd}</text>`;
         }
     });
@@ -231,9 +237,30 @@ async function render() {
             <div class="an-stat"><span>勝敗</span><b>${wins} / ${records.length - wins}</b></div>
             <div class="an-stat an-stat-wide"><span>期間</span><b>${esc(range.label)}</b></div>
         </div>
-        <section class="an-card"><h3 class="an-card-title"><i class="fa-solid fa-chart-column"></i> 日別の戦数と${rateLabel}の推移</h3>${trendSvg(days)}</section>
+        <section class="an-card" id="an-trend-card"><h3 class="an-card-title"><i class="fa-solid fa-chart-column"></i> 日別の戦数と${rateLabel}の推移</h3><div id="an-trend-host"></div></section>
         <div class="an-grid-2">${cards.join('')}</div>
         <p class="an-note"><i class="fa-solid fa-hand-pointer"></i> 行・棒をクリックすると、該当する戦績を${typeLabel}タブで表示します（タブ上の「解除」で元に戻ります）。</p>`;
+    trendDays = days;
+    drawTrend();
+}
+
+// The trend chart is sized to its card, so it is drawn after layout and again when the card resizes
+let trendDays = [];
+let trendDrawnW = -1;
+let trendObserver = null;
+function drawTrend() {
+    const host = document.getElementById('an-trend-host');
+    if (!host) return;
+    const w = Math.floor(host.clientWidth);
+    trendDrawnW = w;
+    host.innerHTML = trendSvg(trendDays, w);
+    if (!trendObserver && window.ResizeObserver) {
+        trendObserver = new ResizeObserver(() => {
+            const h = document.getElementById('an-trend-host');
+            if (h && h.clientWidth > 0 && Math.floor(h.clientWidth) !== trendDrawnW) drawTrend();
+        });
+    }
+    if (trendObserver) { trendObserver.disconnect(); trendObserver.observe(host); }
 }
 
 function initAnalysis() {
