@@ -1330,3 +1330,58 @@ body.compact .inspector-panel { transform: scale(0.85); transform-origin: bottom
 .orp-focus .orp-lines path.on { stroke-opacity: 0.95; }
 .orp-focus .orp-student:not(.on), .orp-focus .orp-slot:not(.on) { opacity: 0.35; }
 .orp-focus .orp-student.on { border-color: #cdd6e3; }
+
+/* Opponent roster popup: narrowing by clicking students */
+.orp-student.zero, .orp-sp-cell.zero { opacity: 0.38; filter: grayscale(1); }
+.orp-student.zero { cursor: default; }
+.orp-student.selected, .orp-sp-cell.selected { border: 2px solid #1a8cff; box-shadow: 0 0 0 3px rgba(26, 140, 255, 0.22); opacity: 1; filter: none; }
+.orp-sp-cell {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 6px 4px; border: 1px solid #e1e7f0; border-radius: 12px; background: #f7f9fc; cursor: pointer;
+    transition: opacity .15s, border-color .15s;
+}
+.orp-sp-cell img, .orp-sp-cell .orp-ph { width: 100%; max-width: 60px; aspect-ratio: 1 / 1; border-radius: 9px; object-fit: cover; background: #e9eef5; }
+.orp-sp-cell .orp-ph { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #536377; }
+.orp-count.sp { background: #1a8cff; }
+.orp-chooser {
+    position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 6;
+    display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: #fff;
+    border: 1px solid #cdd6e3; box-shadow: 0 8px 24px rgba(16, 32, 56, 0.2); white-space: nowrap;
+}
+.orp-chooser button {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; cursor: pointer;
+    border: 1.5px solid var(--slot-color); background: #fff; color: #18273a; font-size: 11.5px; font-weight: 700; font-family: inherit;
+}
+.orp-chooser button b { color: var(--slot-color); }
+.orp-filterbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-radius: 12px; background: #f0f7ff; border: 1px solid #c8e1ff; }
+.orp-filterbar-label { font-size: 12px; font-weight: 800; color: #0a6fdb; margin-right: 2px; }
+.orp-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; border-radius: 999px; cursor: pointer;
+    border: 1.5px solid var(--slot-color, #1a8cff); background: #fff; color: #18273a; font-size: 12px; font-weight: 700; font-family: inherit;
+}
+.orp-chip b { padding: 1px 7px; border-radius: 999px; background: var(--slot-color, #1a8cff); color: #fff; font-size: 11px; }
+.orp-chip.sp { --slot-color: #1a8cff; }
+.orp-chip i { color: #8a97a8; font-size: 11px; }
+.orp-clear { margin-left: auto; border: none; background: transparent; color: #0a6fdb; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: underline; }
+
+/* 「全体で編成検索」 button and the history banner */
+.orp-global-search {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid #1a8cff; background: #1a8cff; color: #fff;
+    font-size: 12.5px; font-weight: 800; font-family: inherit; white-space: nowrap;
+}
+.orp-global-search:hover { background: #0a6fdb; border-color: #0a6fdb; }
+.orp-global-search:disabled { background: #fff; color: #9fb0c5; border-color: #d5dde8; cursor: not-allowed; }
+.team-filter-banner {
+    flex-shrink: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    width: 100%; max-width: 1440px; margin: 0 auto 8px; padding: 8px 12px;
+    border-radius: 12px; background: #f0f7ff; border: 1px solid #c8e1ff;
+}
+.tfb-label { font-size: 12.5px; font-weight: 800; color: #0a6fdb; margin-right: 2px; }
+.tfb-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px; border-radius: 999px;
+    border: 1.5px solid var(--slot-color, #1a8cff); background: #fff; color: #18273a; font-size: 12px; font-weight: 700;
+}
+.tfb-chip b { padding: 1px 7px; border-radius: 999px; background: var(--slot-color, #1a8cff); color: #fff; font-size: 11px; }
+.tfb-clear { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #c8e1ff; background: #fff; color: #0a6fdb; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }

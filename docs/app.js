@@ -1235,7 +1235,68 @@ let currentAddStudentFeatures = null; // Extracted face features to save for new
 let manualIconDataUrl = ''; // Icon data URL for the Student Add modal (shared with bulk roster flow)
 let pendingBulkSlotSave = null; // Bulk roster flow: callback(name) invoked by the Student Add modal save button
 let uploadQueue = []; // Queue of File objects to review sequentially
-let activePositionFilter = null; // Filter for specific position: { sourceTab: 'attack'|'defense', team: 'attack'|'defense', index: 0-5, studentName: string }
+let activePositionFilter = null;
+
+// Team search across every opponent (set from the opponent roster popup's 「全体で編成検索」)
+// { tabs: ['attack'|'defense'], conds: [{ kind: 'striker', slot: 0-3, name } | { kind: 'special', name }] }
+// Conditions apply to the opponent's team: the defense team in attack records, the attack team in defense records.
+let activeTeamFilter = null;
+
+function teamFilterMatches(item, tf) {
+    const team = item.battle_type === 'defense' ? 'attack' : 'defense';
+    return tf.conds.every(f => {
+        if (f.kind === 'striker') {
+            const s = resolveHistorySlotStudent(item, team, f.slot);
+            return !!s && s.name === f.name;
+        }
+        return [4, 5].some(i => {
+            const s = resolveHistorySlotStudent(item, team, i);
+            return !!s && s.name === f.name;
+        });
+    });
+}
+
+function renderTeamFilterBanner(type) {
+    const pane = document.getElementById(`tab-${type}`);
+    const wrapper = pane && pane.querySelector('.history-list-wrapper');
+    if (!wrapper) return;
+    let banner = document.getElementById(`team-filter-banner-${type}`);
+    const tf = activeTeamFilter && activeTeamFilter.tabs.includes(type) ? activeTeamFilter : null;
+    if (!tf) {
+        if (banner) banner.remove();
+        return;
+    }
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = `team-filter-banner-${type}`;
+        banner.className = 'team-filter-banner';
+        wrapper.parentNode.insertBefore(banner, wrapper);
+    }
+    const prefix = type === 'defense' ? 'A' : 'D'; // the opponent's attack / defense team
+    banner.innerHTML = '';
+    const label = document.createElement('span');
+    label.className = 'tfb-label';
+    label.innerHTML = '<i class="fa-solid fa-people-group"></i> 編成検索';
+    banner.appendChild(label);
+    tf.conds.forEach(f => {
+        const chip = document.createElement('span');
+        chip.className = 'tfb-chip';
+        const tag = f.kind === 'striker' ? `${prefix}${f.slot + 1}` : 'SP';
+        if (f.kind === 'striker' && typeof ROSTER_SLOT_COLORS !== 'undefined') chip.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[f.slot]);
+        chip.innerHTML = `<b>${tag}</b>${escapeHtml(f.name)}`;
+        banner.appendChild(chip);
+    });
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'tfb-clear';
+    clear.innerHTML = '<i class="fa-solid fa-xmark"></i> 解除';
+    clear.addEventListener('click', () => {
+        activeTeamFilter = null;
+        ['attack', 'defense'].forEach(t => renderTeamFilterBanner(t));
+        filterHistory(type);
+    });
+    banner.appendChild(clear);
+} // Filter for specific position: { sourceTab: 'attack'|'defense', team: 'attack'|'defense', index: 0-5, studentName: string }
 
 function getEffectivePositionFilter(currentType) {
     if (!activePositionFilter) return null;
@@ -5198,7 +5259,8 @@ function buildHistorySearchCriteria(type) {
         type,
         searchVal,
         terms,
-        positionFilter: getEffectivePositionFilter(type)
+        positionFilter: getEffectivePositionFilter(type),
+        teamFilter: (activeTeamFilter && activeTeamFilter.tabs.includes(type)) ? activeTeamFilter : null
     };
 }
 
@@ -5225,6 +5287,9 @@ function historyMatchesCriteria(item, criteria) {
             return false;
         }
     }
+
+    // Team search across every opponent (「全体で編成検索」)
+    if (criteria.teamFilter && !teamFilterMatches(item, criteria.teamFilter)) return false;
 
     // Search commander name / student name / team composition (all terms must match)
     if (criteria.terms.length > 0) {
@@ -5267,6 +5332,7 @@ async function filterHistory(type = 'attack') {
     if (paneEl) paneEl.classList.toggle('anon-filter', ((searchEl && searchEl.value) || '').replace(/[\s　]+/g, '') === '匿名');
     const criteria = buildHistorySearchCriteria(type);
     const filtered = currentHistory.filter(item => historyMatchesCriteria(item, criteria));
+    renderTeamFilterBanner(type);
     renderHistoryItems(filtered, type, criteria);
     requestAnimationFrame(updateHistoryIconSize);
 }
@@ -5752,26 +5818,51 @@ async function showOpponentRosterPopup(opponentName) {
         try { await ensureFullHistoryLoaded(); } catch (e) {}
     }
     const allRecords = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
-    // mode: 'defense' = the opponent's defense team (my attack records), 'attack' = the opponent's attack team (my defense records), 'both'
-    const aggregate = (mode) => {
-    const records = allRecords.filter(h => mode === 'both' || (mode === 'attack' ? h.battle_type === 'defense' : h.battle_type !== 'defense'));
-    const strikers = new Map();
-    const specials = new Map();
-    records.forEach(item => {
-        // The opponent's team: defense team in my attack records, attack team in my defense records
-        const oppTeam = item.battle_type === 'defense' ? 'attack' : 'defense';
-        for (let i = 0; i < 6; i++) {
-            const s = resolveHistorySlotStudent(item, oppTeam, i);
-            if (!s) continue;
-            const map = i >= 4 ? specials : strikers;
-            const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0, slots: [0, 0, 0, 0] };
-            entry.count++;
-            if (i < 4) entry.slots[i]++;
-            if (!entry.icon && s.icon) entry.icon = s.icon;
-            map.set(s.name, entry);
+    // The opponent's team: defense team in my attack records, attack team in my defense records
+    const oppTeamOf = (item) => item.battle_type === 'defense' ? 'attack' : 'defense';
+
+    // Narrowing: { kind: 'striker', slot: 0-3, name } / { kind: 'special', name } — all must match
+    let filters = [];
+    const matchesFilters = (item) => filters.every(f => {
+        const team = oppTeamOf(item);
+        if (f.kind === 'striker') {
+            const s = resolveHistorySlotStudent(item, team, f.slot);
+            return !!s && s.name === f.name;
         }
+        return [4, 5].some(i => {
+            const s = resolveHistorySlotStudent(item, team, i);
+            return !!s && s.name === f.name;
+        });
     });
-    return { records, strikers, specials };
+
+    // mode: 'defense' = the opponent's defense team (my attack records), 'attack' = the opponent's attack team (my defense records), 'both'
+    // base* = every record of the mode (keeps the list and layout stable); count / slots = narrowed records
+    const aggregate = (mode) => {
+        const base = allRecords.filter(h => mode === 'both' || (mode === 'attack' ? h.battle_type === 'defense' : h.battle_type !== 'defense'));
+        const narrowed = filters.length ? base.filter(matchesFilters) : base;
+        const strikers = new Map();
+        const specials = new Map();
+        const add = (item, isBase) => {
+            const team = oppTeamOf(item);
+            for (let i = 0; i < 6; i++) {
+                const s = resolveHistorySlotStudent(item, team, i);
+                if (!s) continue;
+                const map = i >= 4 ? specials : strikers;
+                const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0, slots: [0, 0, 0, 0], baseCount: 0, baseSlots: [0, 0, 0, 0] };
+                if (isBase) {
+                    entry.baseCount++;
+                    if (i < 4) entry.baseSlots[i]++;
+                } else {
+                    entry.count++;
+                    if (i < 4) entry.slots[i]++;
+                }
+                if (!entry.icon && s.icon) entry.icon = s.icon;
+                map.set(s.name, entry);
+            }
+        };
+        base.forEach(item => add(item, true));
+        narrowed.forEach(item => add(item, false));
+        return { records: narrowed, total: base.length, strikers, specials };
     };
     const SLOT_PREFIX = { defense: 'D', attack: 'A', both: '' };
     const MODE_LABEL = { both: '両方', defense: '防衛', attack: '攻撃' };
@@ -5818,11 +5909,28 @@ async function showOpponentRosterPopup(opponentName) {
         b.addEventListener('click', () => {
             if (mode === m) return;
             mode = m;
+            filters = []; // slot labels differ between modes: start over
             seg.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x.dataset.val === m));
             renderBody();
         });
         seg.appendChild(b);
     });
+    // Search every opponent's history with the selected placement conditions
+    const globalBtn = document.createElement('button');
+    globalBtn.type = 'button';
+    globalBtn.className = 'orp-global-search';
+    globalBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> 全体で編成検索';
+    globalBtn.title = '選んでいる条件で、すべての対戦相手の履歴を絞り込みます';
+    globalBtn.addEventListener('click', () => {
+        if (!filters.length) return;
+        const tabs = mode === 'both' ? ['attack', 'defense'] : [mode === 'defense' ? 'attack' : 'defense'];
+        activeTeamFilter = { tabs, conds: filters.map(f => Object.assign({}, f)) };
+        overlay.classList.remove('active');
+        const target = (mode === 'both' && isHistoryTab(activeTab)) ? activeTab : tabs[0];
+        syncSearchInput('', true); // other opponents too: clear the name search
+        window.switchToTab(target);
+    });
+    header.appendChild(globalBtn);
     header.appendChild(seg);
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
@@ -5833,13 +5941,59 @@ async function showOpponentRosterPopup(opponentName) {
     header.appendChild(closeBtn);
     card.appendChild(header);
 
-    // Body: strikers / specials
     const body = document.createElement('div');
     body.style.cssText = 'overflow-y:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:14px;';
-    const section = (label, color, map) => {
+
+    const isStrikerSelected = (name) => filters.some(f => f.kind === 'striker' && f.name === name);
+    const isSpecialSelected = (name) => filters.some(f => f.kind === 'special' && f.name === name);
+    const pickStriker = (name, slot) => {
+        if (slot == null) filters = filters.filter(f => !(f.kind === 'striker' && f.name === name));
+        else filters = filters.filter(f => !(f.kind === 'striker' && f.slot === slot)).concat([{ kind: 'striker', slot, name }]);
+        renderBody();
+    };
+    const toggleSpecial = (name) => {
+        if (isSpecialSelected(name)) filters = filters.filter(f => !(f.kind === 'special' && f.name === name));
+        else filters = filters.concat([{ kind: 'special', name }]);
+        renderBody();
+    };
+
+    // Active narrowing conditions
+    const buildFilterBar = () => {
+        const bar = document.createElement('div');
+        bar.className = 'orp-filterbar';
+        const label = document.createElement('span');
+        label.className = 'orp-filterbar-label';
+        label.innerHTML = '<i class="fa-solid fa-filter"></i> 絞り込み';
+        bar.appendChild(label);
+        filters.forEach(f => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'orp-chip' + (f.kind === 'special' ? ' sp' : '');
+            if (f.kind === 'striker') chip.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[f.slot]);
+            const tag = f.kind === 'striker' ? `${SLOT_PREFIX[mode] || ''}${f.slot + 1}` : 'SP';
+            chip.innerHTML = `<b>${tag}</b>${escapeHtml(f.name)}<i class="fa-solid fa-xmark"></i>`;
+            chip.title = 'この条件を外す';
+            chip.addEventListener('click', () => {
+                filters = filters.filter(x => x !== f);
+                renderBody();
+            });
+            bar.appendChild(chip);
+        });
+        const clear = document.createElement('button');
+        clear.type = 'button';
+        clear.className = 'orp-clear';
+        clear.textContent = 'すべて解除';
+        clear.addEventListener('click', () => { filters = []; renderBody(); });
+        bar.appendChild(clear);
+        return bar;
+    };
+
+    // Specials: click to narrow to records with this student in a special slot
+    const specialSection = (map) => {
+        const color = '#1a8cff';
         const wrap = document.createElement('div');
         const head = document.createElement('div');
-        head.textContent = `${label}（${map.size}人）`;
+        head.textContent = `スペシャル（${map.size}人）`;
         head.style.cssText = `font-size:12.5px;font-weight:800;color:${color};margin-bottom:8px;padding-left:8px;border-left:3px solid ${color};`;
         wrap.appendChild(head);
         if (map.size === 0) {
@@ -5851,33 +6005,23 @@ async function showOpponentRosterPopup(opponentName) {
         }
         const grid = document.createElement('div');
         grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:8px;';
-        [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')).forEach(st => {
+        [...map.values()].sort((a, b) => b.baseCount - a.baseCount || a.name.localeCompare(b.name, 'ja')).forEach(st => {
+            const selected = isSpecialSelected(st.name);
             const cell = document.createElement('div');
-            cell.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:1px solid #e1e7f0;border-radius:12px;background:#f7f9fc;';
-            if (st.icon) {
-                const img = document.createElement('img');
-                img.src = st.icon;
-                img.style.cssText = 'width:100%;max-width:60px;aspect-ratio:1/1;height:auto;border-radius:9px;object-fit:cover;background:#e9eef5;';
-                cell.appendChild(img);
-            } else {
-                const ph = document.createElement('div');
-                ph.textContent = st.name.slice(0, 2);
-                ph.style.cssText = 'width:100%;max-width:60px;aspect-ratio:1/1;border-radius:9px;background:#e9eef5;color:#536377;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;';
-                cell.appendChild(ph);
-            }
-            const nm = document.createElement('div');
-            nm.textContent = st.name;
-            nm.style.cssText = 'width:100%;text-align:center;font-size:10.5px;font-weight:700;color:#18273a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-            cell.appendChild(nm);
-            const cnt = document.createElement('span');
-            cnt.textContent = `×${st.count}`;
-            cnt.style.cssText = `position:absolute;top:3px;right:3px;padding:0 5px;border-radius:999px;background:${color};color:#fff;font-size:10px;font-weight:800;line-height:16px;`;
-            cell.appendChild(cnt);
+            cell.className = 'orp-sp-cell' + (st.count === 0 ? ' zero' : '') + (selected ? ' selected' : '');
+            cell.title = selected ? 'クリックで絞り込みを外す' : (st.count ? 'クリックでこの生徒の編成に絞り込み' : '');
+            const img = st.icon ? `<img src="${escapeHtml(st.icon)}" alt="">` : `<div class="orp-ph">${escapeHtml(st.name.slice(0, 2))}</div>`;
+            cell.innerHTML = `${img}<div class="orp-name">${escapeHtml(st.name)}</div><span class="orp-count sp">×${st.count}</span>`;
+            cell.addEventListener('click', () => {
+                if (st.count === 0 && !selected) return;
+                toggleSpecial(st.name);
+            });
             grid.appendChild(cell);
         });
         wrap.appendChild(grid);
         return wrap;
     };
+
     // Widen the card so every striker fits on one row (sized for "both" so switching does not resize it)
     const maxStrikers = aggregate('both').strikers.size;
     card.style.width = `min(${Math.max(560, maxStrikers * 78 + 60)}px, 94%)`;
@@ -5885,13 +6029,15 @@ async function showOpponentRosterPopup(opponentName) {
     card.appendChild(body);
 
     const renderBody = () => {
-        const { records, strikers, specials } = aggregate(mode);
-        sub.textContent = `手持ち生徒・${MODE_LABEL[mode]}（${records.length}戦の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
+        const { records, total, strikers, specials } = aggregate(mode);
+        const countText = filters.length ? `${records.length} / ${total}戦` : `${total}戦`;
+        globalBtn.disabled = filters.length === 0;
+        sub.textContent = `手持ち生徒・${MODE_LABEL[mode]}（${countText}の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
         body.innerHTML = '';
-        // Strikers: slot map (which position each student was placed in)
-        const strikerFlow = buildStrikerSlotFlow(strikers, SLOT_PREFIX[mode]);
-        body.appendChild(strikerFlow || section('ストライカー', '#e5484d', strikers));
-        body.appendChild(section('スペシャル', '#1a8cff', specials));
+        if (filters.length) body.appendChild(buildFilterBar());
+        const strikerFlow = buildStrikerSlotFlow(strikers, SLOT_PREFIX[mode], { isSelected: isStrikerSelected, onPick: pickStriker });
+        if (strikerFlow) body.appendChild(strikerFlow);
+        body.appendChild(specialSection(specials));
         if (strikerFlow && strikerFlow._draw) requestAnimationFrame(strikerFlow._draw);
     };
 
@@ -5903,15 +6049,22 @@ async function showOpponentRosterPopup(opponentName) {
 // Slot colors for positions 1-4 (lines use the color of the slot they lead to)
 const ROSTER_SLOT_COLORS = ['#f08c00', '#0ca678', '#228be6', '#7048e8'];
 
-function buildStrikerSlotFlow(strikers, slotPrefix = '') {
-    if (!strikers || strikers.size === 0) return null;
+// ctx: { isSelected(name), onPick(name, slot | null) } — clicking a student narrows the popup to that placement
+function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
+    const wrapEmpty = () => {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = '<div class="orp-section-head">ストライカー（0人）</div><div style="font-size:12px;color:#8a97a8;padding:4px 8px;">記録がありません</div>';
+        return wrap;
+    };
+    if (!strikers || strikers.size === 0) return wrapEmpty();
     const list = [...strikers.values()].map(st => {
-        const placed = st.slots.reduce((a, b) => a + b, 0) || 1;
-        const mean = st.slots.reduce((a, c, i) => a + c * i, 0) / placed;
-        return Object.assign({}, st, { placed, mean });
+        const baseSlots = st.baseSlots || st.slots;
+        const placed = baseSlots.reduce((a, b) => a + b, 0) || 1;
+        const mean = baseSlots.reduce((a, c, i) => a + c * i, 0) / placed;
+        return Object.assign({}, st, { mean });
     });
-    // Order by the average slot so each student sits near the slot it is used in most
-    list.sort((a, b) => a.mean - b.mean || b.count - a.count || a.name.localeCompare(b.name, 'ja'));
+    // Order by the average slot (over all records of the mode, so the layout stays put while narrowing)
+    list.sort((a, b) => a.mean - b.mean || (b.baseCount || b.count) - (a.baseCount || a.count) || a.name.localeCompare(b.name, 'ja'));
     const maxPair = Math.max(1, ...list.map(st => Math.max(...st.slots)));
     const slotTotals = [0, 1, 2, 3].map(i => list.filter(st => st.slots[i] > 0).length);
 
@@ -5919,7 +6072,7 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '') {
     wrap.className = 'orp-flow';
     const head = document.createElement('div');
     head.className = 'orp-section-head';
-    head.innerHTML = `ストライカー（${list.length}人）<span>線の太さ ＝ その位置で使われた回数</span>`;
+    head.innerHTML = `ストライカー（${list.length}人）<span>線の太さ ＝ その位置で使われた回数・生徒をクリックで絞り込み</span>`;
     wrap.appendChild(head);
 
     const stage = document.createElement('div');
@@ -5943,16 +6096,47 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '') {
     svg.setAttribute('aria-hidden', 'true');
     stage.appendChild(svg);
 
+    const slotLabel = (i) => slotPrefix ? `${slotPrefix}${i + 1}` : `${i + 1}番`;
+    let openChooser = null;
+    const closeChooser = () => { if (openChooser) { openChooser.remove(); openChooser = null; } };
+
     const row = document.createElement('div');
     row.className = 'orp-students';
     const cellEls = list.map((st, idx) => {
+        const selected = !!(ctx && ctx.isSelected(st.name));
         const cell = document.createElement('div');
-        cell.className = 'orp-student';
+        cell.className = 'orp-student' + (st.count === 0 ? ' zero' : '') + (selected ? ' selected' : '');
         cell.dataset.st = idx;
-        cell.title = `${st.name}（${st.count}回）\n` + st.slots.map((c, i) => slotPrefix ? `${slotPrefix}${i + 1}：${c}回` : `${i + 1}番：${c}回`).join('　');
+        cell.title = `${st.name}（${st.count}回）\n` + st.slots.map((c, i) => `${slotLabel(i)}：${c}回`).join('　')
+            + (ctx ? (selected ? '\nクリックで絞り込みを外す' : (st.count ? '\nクリックでこの配置に絞り込み' : '')) : '');
         const img = st.icon ? `<img src="${escapeHtml(st.icon)}" alt="">` : `<div class="orp-ph">${escapeHtml(st.name.slice(0, 2))}</div>`;
         const bar = st.slots.map((c, i) => c ? `<i style="flex:${c};background:${ROSTER_SLOT_COLORS[i]}"></i>` : '').join('');
         cell.innerHTML = `${img}<span class="orp-count">×${st.count}</span><div class="orp-name">${escapeHtml(st.name)}</div><div class="orp-bar">${bar}</div>`;
+        if (ctx) {
+            cell.addEventListener('click', (e) => {
+                if (e.target.closest('.orp-chooser')) return;
+                if (selected) { closeChooser(); ctx.onPick(st.name, null); return; }
+                if (st.count === 0) return;
+                const used = st.slots.map((c, i) => c ? i : -1).filter(i => i >= 0);
+                if (used.length === 1) { closeChooser(); ctx.onPick(st.name, used[0]); return; }
+                // Placed in several slots: choose which one to narrow by
+                const wasOpen = openChooser && openChooser.parentElement === cell;
+                closeChooser();
+                if (wasOpen) return;
+                const menu = document.createElement('div');
+                menu.className = 'orp-chooser';
+                used.forEach(i => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[i]);
+                    b.innerHTML = `<b>${slotLabel(i)}</b>×${st.slots[i]}`;
+                    b.addEventListener('click', (ev) => { ev.stopPropagation(); closeChooser(); ctx.onPick(st.name, i); });
+                    menu.appendChild(b);
+                });
+                cell.appendChild(menu);
+                openChooser = menu;
+            });
+        }
         row.appendChild(cell);
         return cell;
     });
@@ -6004,7 +6188,7 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '') {
     wrap._draw = draw;
     if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
 
-    // Hover: highlight one student's or one slot's lines
+    // Hover (mouse): highlight one student's or one slot's lines
     const focus = (attr, val) => {
         stage.classList.toggle('orp-focus', val != null);
         svg.querySelectorAll('path').forEach(p => p.classList.toggle('on', val != null && p.dataset[attr] === String(val)));
@@ -6012,21 +6196,13 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '') {
         slotEls.forEach((el, i) => el.classList.toggle('on', val != null && (attr === 'slot' ? String(i) === String(val) : list[val].slots[i] > 0)));
     };
     cellEls.forEach((el, idx) => {
-        el.addEventListener('mouseenter', () => focus('st', idx));
+        el.addEventListener('mouseenter', (e) => { if (e.pointerType !== 'touch') focus('st', idx); });
         el.addEventListener('mouseleave', () => focus(null, null));
     });
     slotEls.forEach((el, i) => {
         el.addEventListener('mouseenter', () => focus('slot', i));
         el.addEventListener('mouseleave', () => focus(null, null));
     });
-    // Touch screens: a tap toggles the highlight
-    let tapped = null;
-    const tapToggle = (attr, val) => {
-        const key = attr + ':' + val;
-        if (tapped === key) { tapped = null; focus(null, null); } else { tapped = key; focus(attr, val); }
-    };
-    cellEls.forEach((el, idx) => el.addEventListener('click', () => tapToggle('st', idx)));
-    slotEls.forEach((el, i) => el.addEventListener('click', () => tapToggle('slot', i)));
     return wrap;
 }
 
