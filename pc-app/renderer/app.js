@@ -5511,6 +5511,19 @@ function createDetailSlotElement(slotData, team, index) {
 }
 
 // ---- History search (fast) ----
+// PC: romaji search helpers (renderer/kana-romaji.js); names are cached per string
+const _nameRomajiCache = new Map();
+function taNameRomaji(name) {
+    if (!name || !window.taRomaji) return null;
+    if (!_nameRomajiCache.has(name)) _nameRomajiCache.set(name, window.taRomaji.nameRomaji(name));
+    return _nameRomajiCache.get(name);
+}
+function taTermRomaji(term) {
+    return window.taRomaji ? window.taRomaji.termRomaji(term) : null;
+}
+function romaMatch(nameRoma, romaTerm) {
+    return !!(nameRoma && romaTerm && nameRoma.includes(romaTerm));
+}
 // Per-record cache of normalized strings (WeakMap: not stored into IndexedDB).
 // Signature check keeps it valid when a record is edited in place.
 const _historySearchKeyCache = new WeakMap();
@@ -5527,7 +5540,10 @@ function getHistorySearchKeys(item) {
         cmdLower: (item.commander_name || '').toLowerCase(),
         cmdHira: toHiragana(item.commander_name || ''),
         namesLower: names.map(n => n.toLowerCase()),
-        namesHira: names.map(n => toHiragana(n))
+        namesHira: names.map(n => toHiragana(n)),
+        // PC: romaji of kana names ("kenu" / IME text being typed such as "けｎ" match ケヌメドス)
+        cmdRoma: taNameRomaji(item.commander_name || ''),
+        namesRoma: names.map(n => taNameRomaji(n))
     };
     _historySearchKeyCache.set(item, keys);
     return keys;
@@ -5540,12 +5556,13 @@ function buildHistorySearchCriteria(type) {
     const terms = searchVal === '' ? [] : searchVal.split(/[\s,，、]+/).filter(t => t.length > 0).map(term => {
         const lowerTerm = term.toLowerCase();
         const hiraTerm = toHiragana(term);
+        const romaTerm = taTermRomaji(term);
         const studentIds = new Set(
             currentRoster
-                .filter(s => s.name && (s.name.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(s.name).includes(hiraTerm))))
+                .filter(s => s.name && (s.name.toLowerCase().includes(lowerTerm) || (hiraTerm && toHiragana(s.name).includes(hiraTerm)) || romaMatch(taNameRomaji(s.name), romaTerm)))
                 .map(s => s.id)
         );
-        return { lowerTerm, hiraTerm, studentIds };
+        return { lowerTerm, hiraTerm, romaTerm, studentIds };
     });
     return {
         type,
@@ -5615,11 +5632,11 @@ function historyMatchesCriteria(item, criteria) {
         const keys = getHistorySearchKeys(item);
         for (const t of criteria.terms) {
             // 1. Commander name (Hiragana / Katakana bidirectional match)
-            if (keys.cmdLower.includes(t.lowerTerm) || (t.hiraTerm && keys.cmdHira.includes(t.hiraTerm))) continue;
+            if (keys.cmdLower.includes(t.lowerTerm) || (t.hiraTerm && keys.cmdHira.includes(t.hiraTerm)) || romaMatch(keys.cmdRoma, t.romaTerm)) continue;
             // 2. Student names saved in the record
             let matched = false;
             for (let i = 0; i < keys.namesLower.length; i++) {
-                if (keys.namesLower[i].includes(t.lowerTerm) || (t.hiraTerm && keys.namesHira[i].includes(t.hiraTerm))) {
+                if (keys.namesLower[i].includes(t.lowerTerm) || (t.hiraTerm && keys.namesHira[i].includes(t.hiraTerm)) || romaMatch(keys.namesRoma[i], t.romaTerm)) {
                     matched = true;
                     break;
                 }
