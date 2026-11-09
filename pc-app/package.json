@@ -1,0 +1,55 @@
+{
+  "name": "tactical-archive-pc",
+  "productName": "Tactical Archive PC",
+  "version": "1.0.0",
+  "description": "ブルーアーカイブ戦術対抗戦の対戦履歴をPC版のスクリーンショットから記録・検索するツール（Windows デスクトップ版）",
+  "main": "main.js",
+  "private": true,
+  "license": "MIT",
+  "author": "Tactical Archive",
+  "scripts": {
+    "prepare-vendor": "node scripts/copy-vendor.js",
+    "start": "npm run prepare-vendor && electron .",
+    "dist": "npm run prepare-vendor && electron-builder --win portable",
+    "dist:nsis": "npm run prepare-vendor && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "^6.4.0",
+    "@tesseract.js-data/jpn": "^1.0.0",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "tesseract.js": "^5.1.1",
+    "tesseract.js-core": "^5.1.1"
+  },
+  "build": {
+    "appId": "io.github.roundabout-oxygen.tacticalarchive.pc",
+    "productName": "Tactical Archive PC",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "renderer/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "renderer/icon.png",
+      "artifactName": "TacticalArchivePC-${version}-portable.${ext}",
+      "signAndEditExecutable": true
+    },
+    "portable": {
+      "artifactName": "TacticalArchivePC-${version}-portable.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "TacticalArchivePC-${version}-setup.${ext}"
+    }
+  }
+}

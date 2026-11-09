@@ -1,0 +1,61 @@
+/* Tactical Archive PC (Windows desktop): styles for the desktop-only parts */
+
+/* Folder patrol bar (upload tab) */
+.patrol-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 14px; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.patrol-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.patrol-label { font-size: 12px; font-weight: 700; color: var(--text-3); }
+.patrol-label i { color: var(--primary); margin-right: 4px; }
+.patrol-path {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.patrol-path.unset { color: var(--text-3); font-weight: 500; }
+.patrol-btn { flex: 0 0 auto; }
+.patrol-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.patrol-status { font-size: 12px; color: var(--text-2); flex-basis: 100%; }
+.patrol-status:empty { display: none; }
+
+/* Toggle tiles in Settings */
+.toggle-tile { cursor: pointer; }
+.tile-switch {
+    appearance: none; -webkit-appearance: none; flex: 0 0 auto;
+    width: 42px; height: 24px; border-radius: 12px; position: relative; cursor: pointer;
+    background: var(--border); transition: background 0.15s ease;
+}
+.tile-switch::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.15s ease;
+}
+.tile-switch:checked { background: var(--primary); }
+.tile-switch:checked::after { transform: translateX(18px); }
+.tile-switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+#settings-folder-label { word-break: break-all; }
+.settings-foot a { color: var(--primary); }
+
+/* Welcome: only the aspect ratio is chosen */
+#welcome-aspect { margin-top: 8px; }
+
+/* In-page prompt / summary dialog (window.prompt is not available in Electron) */
+.ta-dialog-overlay {
+    position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+    background: rgba(15, 23, 42, 0.45); padding: 16px;
+}
+.ta-dialog {
+    width: min(440px, 100%); background: var(--surface); border-radius: var(--radius-lg);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); padding: 20px;
+}
+.ta-dialog h3 { margin: 0 0 10px; font-size: 16px; }
+.ta-dialog p { margin: 0 0 12px; font-size: 14px; color: var(--text-2); white-space: pre-line; line-height: 1.7; }
+.ta-dialog input[type="text"] {
+    width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.ta-dialog .ta-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.ta-summary-list { list-style: none; margin: 0 0 4px; padding: 0; font-size: 14px; }
+.ta-summary-list li { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid var(--border); }
+.ta-summary-list li:last-child { border-bottom: none; }
+.ta-summary-list b { font-variant-numeric: tabular-nums; }
