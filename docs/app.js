@@ -5571,8 +5571,42 @@ function createHistoryRowElement(item, type = 'attack') {
     nameSpan.title = item.commander_name || 'Unknown';
     commEl.appendChild(nameSpan);
     
+    // Long-press (or right-click) on the opponent name: popup with the students this opponent has used
+    {
+        let lpTimer = null, lpX = 0, lpY = 0;
+        const cancelLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+        commEl.style.webkitUserSelect = 'none';
+        commEl.style.userSelect = 'none';
+        commEl.style.webkitTouchCallout = 'none';
+        commEl.addEventListener('pointerdown', (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
+            commEl.dataset.longpress = '';
+            lpX = e.clientX; lpY = e.clientY;
+            cancelLp();
+            lpTimer = setTimeout(() => {
+                lpTimer = null;
+                commEl.dataset.longpress = '1'; // the click that follows the release must not filter
+                showOpponentRosterPopup(item.commander_name);
+            }, 550);
+        });
+        commEl.addEventListener('pointermove', (e) => {
+            if (lpTimer && Math.hypot(e.clientX - lpX, e.clientY - lpY) > 10) cancelLp();
+        });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => commEl.addEventListener(t, cancelLp));
+        commEl.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelLp();
+            showOpponentRosterPopup(item.commander_name);
+        });
+    }
+
     commEl.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (commEl.dataset.longpress === '1') {
+            commEl.dataset.longpress = '';
+            return;
+        }
         const opponentName = (item.commander_name || '').trim();
         if (!opponentName || opponentName === 'Unknown') return;
 
@@ -5687,6 +5721,147 @@ function createHistoryRowElement(item, type = 'attack') {
     row.appendChild(tdTags);
     
     return row;
+}
+
+// ==========================================
+// OPPONENT ROSTER POPUP (long-press / right-click on an opponent name)
+// Lists every student the opponent has used in the history: strikers (slots 1-4) and specials (5-6)
+// ==========================================
+function resolveHistorySlotStudent(item, team, index) {
+    const names = team === 'attack' ? item.attack_names : item.defense_names;
+    const ids = team === 'attack' ? item.attack_team : item.defense_team;
+    const savedName = names && names[index];
+    const validSaved = savedName && savedName !== '生徒' && savedName !== '未登録';
+    let student = null;
+    if (validSaved) student = currentRoster.find(s => s.name === savedName);
+    if (!student && ids && ids[index]) student = currentRoster.find(s => s.id === ids[index]);
+    const name = (student && student.name) || (validSaved ? savedName : '');
+    return name ? { name, icon: (student && student.icon_path) || null } : null;
+}
+
+async function showOpponentRosterPopup(opponentName) {
+    opponentName = (opponentName || '').trim();
+    if (!opponentName || opponentName === 'Unknown') return;
+
+    let overlay = document.getElementById('opponent-roster-modal');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'opponent-roster-modal';
+        overlay.className = 'modal-overlay';
+        overlay.style.zIndex = '2600';
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
+        document.body.appendChild(overlay);
+    }
+    // A long-press can also fire 'contextmenu': don't rebuild the same popup twice
+    if (overlay.classList.contains('active') && overlay.dataset.name === opponentName) return;
+
+    if (!isFullHistoryLoaded) {
+        try { await ensureFullHistoryLoaded(); } catch (e) {}
+    }
+    const records = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
+    const strikers = new Map();
+    const specials = new Map();
+    records.forEach(item => {
+        // The opponent's team: defense team in my attack records, attack team in my defense records
+        const oppTeam = item.battle_type === 'defense' ? 'attack' : 'defense';
+        for (let i = 0; i < 6; i++) {
+            const s = resolveHistorySlotStudent(item, oppTeam, i);
+            if (!s) continue;
+            const map = i >= 4 ? specials : strikers;
+            const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0 };
+            entry.count++;
+            if (!entry.icon && s.icon) entry.icon = s.icon;
+            map.set(s.name, entry);
+        }
+    });
+
+    overlay.innerHTML = '';
+    overlay.dataset.name = opponentName;
+    const card = document.createElement('div');
+    card.className = 'modal-card opponent-roster-card';
+    card.style.cssText = 'width:min(560px,94vw);max-width:560px;max-height:calc(100% - 24px);display:flex;flex-direction:column;padding:0;overflow:hidden;background:#fff;border-radius:16px;box-shadow:0 18px 50px rgba(16,32,56,0.25);';
+
+    // Header: avatar + name + record count
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e1e7f0;flex-shrink:0;';
+    const avatarSrc = opponentDirectory[opponentName];
+    if (avatarSrc) {
+        const av = document.createElement('img');
+        av.src = avatarSrc;
+        av.style.cssText = 'width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#e6ecf4;';
+        header.appendChild(av);
+    }
+    const titleBox = document.createElement('div');
+    titleBox.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;';
+    const title = document.createElement('div');
+    title.textContent = opponentName;
+    title.style.cssText = 'font-size:16px;font-weight:800;color:#18273a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    const sub = document.createElement('div');
+    sub.textContent = `手持ち生徒（${records.length}戦の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
+    sub.style.cssText = 'font-size:11.5px;color:#8a97a8;font-weight:600;';
+    titleBox.appendChild(title);
+    titleBox.appendChild(sub);
+    header.appendChild(titleBox);
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    closeBtn.setAttribute('aria-label', '閉じる');
+    closeBtn.style.cssText = 'width:34px;height:34px;border-radius:10px;border:1px solid #e1e7f0;background:#fff;color:#536377;font-size:15px;cursor:pointer;flex-shrink:0;';
+    closeBtn.addEventListener('click', () => overlay.classList.remove('active'));
+    header.appendChild(closeBtn);
+    card.appendChild(header);
+
+    // Body: strikers / specials
+    const body = document.createElement('div');
+    body.style.cssText = 'overflow-y:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:14px;';
+    const section = (label, color, map) => {
+        const wrap = document.createElement('div');
+        const head = document.createElement('div');
+        head.textContent = `${label}（${map.size}人）`;
+        head.style.cssText = `font-size:12.5px;font-weight:800;color:${color};margin-bottom:8px;padding-left:8px;border-left:3px solid ${color};`;
+        wrap.appendChild(head);
+        if (map.size === 0) {
+            const empty = document.createElement('div');
+            empty.textContent = '記録がありません';
+            empty.style.cssText = 'font-size:12px;color:#8a97a8;padding:4px 8px;';
+            wrap.appendChild(empty);
+            return wrap;
+        }
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:8px;';
+        [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')).forEach(st => {
+            const cell = document.createElement('div');
+            cell.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:1px solid #e1e7f0;border-radius:12px;background:#f7f9fc;';
+            if (st.icon) {
+                const img = document.createElement('img');
+                img.src = st.icon;
+                img.style.cssText = 'width:100%;max-width:60px;aspect-ratio:1/1;height:auto;border-radius:9px;object-fit:cover;background:#e9eef5;';
+                cell.appendChild(img);
+            } else {
+                const ph = document.createElement('div');
+                ph.textContent = st.name.slice(0, 2);
+                ph.style.cssText = 'width:100%;max-width:60px;aspect-ratio:1/1;border-radius:9px;background:#e9eef5;color:#536377;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;';
+                cell.appendChild(ph);
+            }
+            const nm = document.createElement('div');
+            nm.textContent = st.name;
+            nm.style.cssText = 'width:100%;text-align:center;font-size:10.5px;font-weight:700;color:#18273a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+            cell.appendChild(nm);
+            const cnt = document.createElement('span');
+            cnt.textContent = `×${st.count}`;
+            cnt.style.cssText = `position:absolute;top:3px;right:3px;padding:0 5px;border-radius:999px;background:${color};color:#fff;font-size:10px;font-weight:800;line-height:16px;`;
+            cell.appendChild(cnt);
+            grid.appendChild(cell);
+        });
+        wrap.appendChild(grid);
+        return wrap;
+    };
+    body.appendChild(section('ストライカー', '#e5484d', strikers));
+    body.appendChild(section('スペシャル', '#1a8cff', specials));
+    card.appendChild(body);
+
+    overlay.appendChild(card);
+    overlay.classList.add('active');
 }
 
 function setupHistoryScrollListeners() {
