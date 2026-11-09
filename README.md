@@ -3,14 +3,14 @@
 『ブルーアーカイブ』戦術対抗戦の戦績記録 Android アプリ。
 リザルト画面のスクリーンショットから生徒アイコンと相手プレイヤー名を認識し、戦績を記録・検索できます。
 
-[![Android Version](https://img.shields.io/badge/Android-v1.2.16-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+[![Android Version](https://img.shields.io/badge/Android-v1.2.17-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
 ## ダウンロード
 
-- **Android版 APK (v1.2.16)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+- **Android版 APK (v1.2.17)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 - **初期設定手順（note）**: https://note.com/glad_lilac3872/n/nb495e629f395
 - **デモ（閲覧専用）**: https://roundabout-oxygen.github.io/Tactic_Archive/demo/ — 作者の今シーズンの実戦データ（対戦相手の名前は架空の名前に置き換えています）でアプリの画面を試せます
 

@@ -1290,22 +1290,15 @@ function updateViewportLayout() {
     const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const b = document.body;
     if (!b) return;
-    // Demo only: the viewer picks 'landscape' or 'portrait' at startup (window.__taLayoutPref)
-    const pref = window.__taLayoutPref;
-    const uprightTouch = coarse && h > w;
-    let force = uprightTouch && w <= 640;
-    if (pref === 'landscape') force = uprightTouch;
-    if (pref === 'portrait') force = false;
-    // 'portrait' on a PC / landscape screen: show the app in a phone-width column
-    const frame = pref === 'portrait' && !uprightTouch;
-    b.classList.toggle('demo-portrait', frame);
+    // Phones and tablets held upright always show the landscape UI rotated 90°
+    const force = coarse && h > w;
     // While typing on a rotated screen the soft keyboard only changes the height: keep the layout stable
     const ae = document.activeElement;
     const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
     if (force && typing && b.classList.contains('force-landscape') && w === _layoutLastW) return;
     _layoutLastW = w;
     b.classList.toggle('force-landscape', force);
-    const aw = force ? h : (frame ? Math.min(w, 430) : w);
+    const aw = force ? h : w;
     const ah = force ? w : h;
     document.documentElement.style.setProperty('--app-w', aw + 'px');
     document.documentElement.style.setProperty('--app-h', ah + 'px');
@@ -5758,7 +5751,10 @@ async function showOpponentRosterPopup(opponentName) {
     if (!isFullHistoryLoaded) {
         try { await ensureFullHistoryLoaded(); } catch (e) {}
     }
-    const records = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
+    const allRecords = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
+    // mode: 'defense' = the opponent's defense team (my attack records), 'attack' = the opponent's attack team (my defense records), 'both'
+    const aggregate = (mode) => {
+    const records = allRecords.filter(h => mode === 'both' || (mode === 'attack' ? h.battle_type === 'defense' : h.battle_type !== 'defense'));
     const strikers = new Map();
     const specials = new Map();
     records.forEach(item => {
@@ -5768,18 +5764,24 @@ async function showOpponentRosterPopup(opponentName) {
             const s = resolveHistorySlotStudent(item, oppTeam, i);
             if (!s) continue;
             const map = i >= 4 ? specials : strikers;
-            const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0 };
+            const entry = map.get(s.name) || { name: s.name, icon: s.icon, count: 0, slots: [0, 0, 0, 0] };
             entry.count++;
+            if (i < 4) entry.slots[i]++;
             if (!entry.icon && s.icon) entry.icon = s.icon;
             map.set(s.name, entry);
         }
     });
+    return { records, strikers, specials };
+    };
+    const SLOT_PREFIX = { defense: 'D', attack: 'A', both: '' };
+    const MODE_LABEL = { both: '両方', defense: '防衛', attack: '攻撃' };
+    let mode = 'defense';
 
     overlay.innerHTML = '';
     overlay.dataset.name = opponentName;
     const card = document.createElement('div');
     card.className = 'modal-card opponent-roster-card';
-    card.style.cssText = 'width:min(560px,94vw);max-width:560px;max-height:calc(100% - 24px);display:flex;flex-direction:column;padding:0;overflow:hidden;background:#fff;border-radius:16px;box-shadow:0 18px 50px rgba(16,32,56,0.25);';
+    card.style.cssText = 'width:min(560px,94%);max-width:560px;max-height:calc(100% - 24px);display:flex;flex-direction:column;padding:0;overflow:hidden;background:#fff;border-radius:16px;box-shadow:0 18px 50px rgba(16,32,56,0.25);';
 
     // Header: avatar + name + record count
     const header = document.createElement('div');
@@ -5797,11 +5799,31 @@ async function showOpponentRosterPopup(opponentName) {
     title.textContent = opponentName;
     title.style.cssText = 'font-size:16px;font-weight:800;color:#18273a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     const sub = document.createElement('div');
-    sub.textContent = `手持ち生徒（${records.length}戦の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
-    sub.style.cssText = 'font-size:11.5px;color:#8a97a8;font-weight:600;';
+    sub.style.cssText = 'font-size:11.5px;color:#8a97a8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
     titleBox.appendChild(title);
     titleBox.appendChild(sub);
     header.appendChild(titleBox);
+    // Which of the opponent's teams to show (default: defense = the team I attacked)
+    const seg = document.createElement('div');
+    seg.className = 'seg orp-mode';
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', '相手の編成');
+    ['both', 'defense', 'attack'].forEach(m => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'seg-btn' + (m === mode ? ' active' : '');
+        b.dataset.val = m;
+        b.textContent = MODE_LABEL[m];
+        b.title = m === 'defense' ? '相手の防衛編成（こちらが攻撃した戦績）' : m === 'attack' ? '相手の攻撃編成（こちらが防衛した戦績）' : '攻撃・防衛の両方';
+        b.addEventListener('click', () => {
+            if (mode === m) return;
+            mode = m;
+            seg.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x.dataset.val === m));
+            renderBody();
+        });
+        seg.appendChild(b);
+    });
+    header.appendChild(seg);
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
@@ -5856,12 +5878,156 @@ async function showOpponentRosterPopup(opponentName) {
         wrap.appendChild(grid);
         return wrap;
     };
-    body.appendChild(section('ストライカー', '#e5484d', strikers));
-    body.appendChild(section('スペシャル', '#1a8cff', specials));
+    // Widen the card so every striker fits on one row (sized for "both" so switching does not resize it)
+    const maxStrikers = aggregate('both').strikers.size;
+    card.style.width = `min(${Math.max(560, maxStrikers * 78 + 60)}px, 94%)`;
+    card.style.maxWidth = '94%';
     card.appendChild(body);
+
+    const renderBody = () => {
+        const { records, strikers, specials } = aggregate(mode);
+        sub.textContent = `手持ち生徒・${MODE_LABEL[mode]}（${records.length}戦の記録から）` + (opponentName === '匿名' ? '・匿名の相手はまとめて集計' : '');
+        body.innerHTML = '';
+        // Strikers: slot map (which position each student was placed in)
+        const strikerFlow = buildStrikerSlotFlow(strikers, SLOT_PREFIX[mode]);
+        body.appendChild(strikerFlow || section('ストライカー', '#e5484d', strikers));
+        body.appendChild(section('スペシャル', '#1a8cff', specials));
+        if (strikerFlow && strikerFlow._draw) requestAnimationFrame(strikerFlow._draw);
+    };
 
     overlay.appendChild(card);
     overlay.classList.add('active');
+    renderBody();
+}
+
+// Slot colors for positions 1-4 (lines use the color of the slot they lead to)
+const ROSTER_SLOT_COLORS = ['#f08c00', '#0ca678', '#228be6', '#7048e8'];
+
+function buildStrikerSlotFlow(strikers, slotPrefix = '') {
+    if (!strikers || strikers.size === 0) return null;
+    const list = [...strikers.values()].map(st => {
+        const placed = st.slots.reduce((a, b) => a + b, 0) || 1;
+        const mean = st.slots.reduce((a, c, i) => a + c * i, 0) / placed;
+        return Object.assign({}, st, { placed, mean });
+    });
+    // Order by the average slot so each student sits near the slot it is used in most
+    list.sort((a, b) => a.mean - b.mean || b.count - a.count || a.name.localeCompare(b.name, 'ja'));
+    const maxPair = Math.max(1, ...list.map(st => Math.max(...st.slots)));
+    const slotTotals = [0, 1, 2, 3].map(i => list.filter(st => st.slots[i] > 0).length);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'orp-flow';
+    const head = document.createElement('div');
+    head.className = 'orp-section-head';
+    head.innerHTML = `ストライカー（${list.length}人）<span>線の太さ ＝ その位置で使われた回数</span>`;
+    wrap.appendChild(head);
+
+    const stage = document.createElement('div');
+    stage.className = 'orp-stage';
+    const slotsRow = document.createElement('div');
+    slotsRow.className = 'orp-slots';
+    const slotEls = [0, 1, 2, 3].map(i => {
+        const el = document.createElement('div');
+        el.className = 'orp-slot';
+        el.dataset.slot = i;
+        el.style.setProperty('--slot-color', ROSTER_SLOT_COLORS[i]);
+        el.innerHTML = `<b>${slotPrefix}${i + 1}</b><span>${slotTotals[i]}人</span>`;
+        slotsRow.appendChild(el);
+        return el;
+    });
+    stage.appendChild(slotsRow);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'orp-lines');
+    svg.setAttribute('aria-hidden', 'true');
+    stage.appendChild(svg);
+
+    const row = document.createElement('div');
+    row.className = 'orp-students';
+    const cellEls = list.map((st, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'orp-student';
+        cell.dataset.st = idx;
+        cell.title = `${st.name}（${st.count}回）\n` + st.slots.map((c, i) => slotPrefix ? `${slotPrefix}${i + 1}：${c}回` : `${i + 1}番：${c}回`).join('　');
+        const img = st.icon ? `<img src="${escapeHtml(st.icon)}" alt="">` : `<div class="orp-ph">${escapeHtml(st.name.slice(0, 2))}</div>`;
+        const bar = st.slots.map((c, i) => c ? `<i style="flex:${c};background:${ROSTER_SLOT_COLORS[i]}"></i>` : '').join('');
+        cell.innerHTML = `${img}<span class="orp-count">×${st.count}</span><div class="orp-name">${escapeHtml(st.name)}</div><div class="orp-bar">${bar}</div>`;
+        row.appendChild(cell);
+        return cell;
+    });
+    stage.appendChild(row);
+    wrap.appendChild(stage);
+
+    const draw = () => {
+        if (!stage.isConnected) return;
+        const base = appRect(stage);
+        if (!base.width) return;
+        svg.setAttribute('width', base.width);
+        svg.setAttribute('height', base.height);
+        svg.setAttribute('viewBox', `0 0 ${base.width} ${base.height}`);
+        svg.innerHTML = '';
+        const slotRects = slotEls.map(el => appRect(el));
+        const cellRects = cellEls.map(el => appRect(el));
+        // Spread the line ends along each slot's bottom edge, in the order of the students below
+        const slotUsers = [0, 1, 2, 3].map(i => list.map((st, idx) => st.slots[i] ? idx : -1).filter(idx => idx >= 0));
+        const paths = [];
+        list.forEach((st, idx) => {
+            st.slots.forEach((c, i) => {
+                if (!c) return;
+                const sr = slotRects[i];
+                const users = slotUsers[i];
+                const pos = users.indexOf(idx);
+                const pad = Math.min(18, sr.width * 0.18);
+                const x1 = sr.left - base.left + pad + (sr.width - pad * 2) * (users.length > 1 ? pos / (users.length - 1) : 0.5);
+                const y1 = sr.bottom - base.top;
+                const cr = cellRects[idx];
+                const used = st.slots.map((v, k) => v ? k : -1).filter(k => k >= 0);
+                const off = used.length > 1 ? (used.indexOf(i) - (used.length - 1) / 2) * Math.min(9, cr.width / (used.length + 1)) : 0;
+                const x2 = cr.left - base.left + cr.width / 2 + off;
+                const y2 = cr.top - base.top + 1;
+                const midY = (y1 + y2) / 2;
+                const ratio = c / maxPair;
+                const p = document.createElementNS(svgNS, 'path');
+                p.setAttribute('d', `M${x1.toFixed(1)},${y1.toFixed(1)} C${x1.toFixed(1)},${midY.toFixed(1)} ${x2.toFixed(1)},${midY.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`);
+                p.setAttribute('stroke', ROSTER_SLOT_COLORS[i]);
+                p.setAttribute('stroke-width', (1.25 + ratio * 5.5).toFixed(2));
+                p.setAttribute('stroke-opacity', (0.28 + ratio * 0.62).toFixed(2));
+                p.dataset.st = idx;
+                p.dataset.slot = i;
+                paths.push({ p, c });
+            });
+        });
+        // Thin lines underneath, thick ones on top
+        paths.sort((a, b) => a.c - b.c).forEach(({ p }) => svg.appendChild(p));
+    };
+    wrap._draw = draw;
+    if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
+
+    // Hover: highlight one student's or one slot's lines
+    const focus = (attr, val) => {
+        stage.classList.toggle('orp-focus', val != null);
+        svg.querySelectorAll('path').forEach(p => p.classList.toggle('on', val != null && p.dataset[attr] === String(val)));
+        cellEls.forEach((el, idx) => el.classList.toggle('on', val != null && (attr === 'st' ? String(idx) === String(val) : list[idx].slots[val] > 0)));
+        slotEls.forEach((el, i) => el.classList.toggle('on', val != null && (attr === 'slot' ? String(i) === String(val) : list[val].slots[i] > 0)));
+    };
+    cellEls.forEach((el, idx) => {
+        el.addEventListener('mouseenter', () => focus('st', idx));
+        el.addEventListener('mouseleave', () => focus(null, null));
+    });
+    slotEls.forEach((el, i) => {
+        el.addEventListener('mouseenter', () => focus('slot', i));
+        el.addEventListener('mouseleave', () => focus(null, null));
+    });
+    // Touch screens: a tap toggles the highlight
+    let tapped = null;
+    const tapToggle = (attr, val) => {
+        const key = attr + ':' + val;
+        if (tapped === key) { tapped = null; focus(null, null); } else { tapped = key; focus(attr, val); }
+    };
+    cellEls.forEach((el, idx) => el.addEventListener('click', () => tapToggle('st', idx)));
+    slotEls.forEach((el, i) => el.addEventListener('click', () => tapToggle('slot', i)));
+    return wrap;
 }
 
 function setupHistoryScrollListeners() {

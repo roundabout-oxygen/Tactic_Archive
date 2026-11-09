@@ -2349,3 +2349,57 @@ button:active,
 .wizard-nav-next:active {
     transform: scale(0.94);
 }
+
+/* ===== Opponent roster popup: defense / attack switch and striker slot map (ported from the PC app) ===== */
+.orp-mode { flex-shrink: 0; display: inline-flex; padding: 3px; gap: 2px; background: #f7f9fc; border: 1px solid #e1e7f0; border-radius: 12px; }
+.orp-mode .seg-btn { border: 0; background: transparent; padding: 6px 12px; border-radius: 9px; cursor: pointer; font-size: 12.5px; font-weight: 700; color: #536377; font-family: inherit; }
+.orp-mode .seg-btn:hover { color: #18273a; }
+.orp-mode .seg-btn.active { background: #fff; color: #1a8cff; box-shadow: 0 1px 2px rgba(16, 32, 56, 0.06), 0 0 0 1px #e1e7f0; }
+.orp-section-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    font-size: 12.5px; font-weight: 800; color: #e5484d;
+    margin-bottom: 10px; padding-left: 8px; border-left: 3px solid #e5484d;
+}
+.orp-section-head span { font-size: 11px; font-weight: 600; color: #8a97a8; }
+.orp-stage { position: relative; padding: 0 2px; }
+.orp-slots { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.orp-slot {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    height: 38px; border-radius: 10px;
+    background: #fff;
+    background: color-mix(in srgb, var(--slot-color) 12%, #fff);
+    border: 1.5px solid var(--slot-color);
+    border: 1.5px solid color-mix(in srgb, var(--slot-color) 55%, #fff);
+    border-bottom: 4px solid var(--slot-color);
+    color: var(--slot-color); cursor: pointer;
+    transition: opacity .15s, transform .15s;
+}
+.orp-slot b { font-size: 18px; font-weight: 800; line-height: 1; }
+.orp-slot span { font-size: 11px; font-weight: 700; color: #8a97a8; }
+.orp-lines { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.orp-lines path { fill: none; stroke-linecap: round; transition: stroke-opacity .15s; }
+.orp-students {
+    position: relative; z-index: 1; margin-top: 96px;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+}
+.orp-student {
+    position: relative; flex: 1 1 0; min-width: 52px; max-width: 76px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 6px 4px 7px; border: 1px solid #e1e7f0; border-radius: 12px; background: #fff;
+    box-shadow: 0 1px 2px rgba(16, 32, 56, 0.06); cursor: pointer; transition: opacity .15s, border-color .15s;
+}
+.orp-student img, .orp-student .orp-ph {
+    width: 100%; max-width: 60px; aspect-ratio: 1 / 1; border-radius: 9px; object-fit: cover; background: #e9eef5;
+}
+.orp-student .orp-ph { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #536377; }
+.orp-count {
+    position: absolute; top: 3px; right: 3px; padding: 0 5px; border-radius: 999px;
+    background: #18273a; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px;
+}
+.orp-name { width: 100%; text-align: center; font-size: 10.5px; font-weight: 700; color: #18273a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.orp-bar { display: flex; width: 100%; height: 4px; border-radius: 2px; overflow: hidden; gap: 1px; background: #f7f9fc; }
+.orp-bar i { display: block; min-width: 3px; }
+.orp-focus .orp-lines path { stroke-opacity: 0.07; }
+.orp-focus .orp-lines path.on { stroke-opacity: 0.95; }
+.orp-focus .orp-student:not(.on), .orp-focus .orp-slot:not(.on) { opacity: 0.35; }
+.orp-focus .orp-student.on { border-color: #cdd6e3; }
