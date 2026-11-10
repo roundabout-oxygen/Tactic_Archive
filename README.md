@@ -4,7 +4,7 @@
 リザルト画面のスクリーンショットから生徒アイコンと相手プレイヤー名を認識し、戦績を記録・分析・検索できます。
 
 [![Android Version](https://img.shields.io/badge/Android-v1.2.20-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-[![PC Version](https://img.shields.io/badge/PC-v1.1.2-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchivePC-v1.1.2.zip)
+[![PC Version](https://img.shields.io/badge/PC-v1.1.3-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchivePC.zip)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -22,12 +22,13 @@
 - **Android版 APK (v1.2.20)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
   - 端末内で画像認識を行い、手軽に対抗戦の記録がつけられるAndroidアプリです。
   - 初期設定手順は [note記事](https://note.com/glad_lilac3872/n/nb495e629f395) を参照してください。
-- **PC版 Windows (v1.1.2)**: [TacticalArchivePC-v1.1.2.zip のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchivePC-v1.1.2.zip)
+- **PC版 Windows (v1.1.3)**: [TacticalArchivePC.zip のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchivePC.zip)
   - ダウンロードして解凍するだけですぐに使えるポータブル版（Windows 10/11 64bit）です。
+  - 16:9 と 4:3 の両方のアスペクト比に対応しており、混在していても自動判別して取り込みます。
   - 戦績データや設定はexeと同じフォルダ内の `data` フォルダに保存されるため、PCを汚さず完全独立して動作します。
   - スクリーンショット保存フォルダの自動巡回・整理、自動バックアップ、高精度なリザルト自動判別機能を備えています。
 
-> **注意**: スクリーンショットの解像度やアスペクト比が変わると認識位置がズレます。取り込む画像のサイズは統一してください（PC版は16:9または4:3のプリセットに対応）。
+> **注意**: PC版は 16:9 および 4:3 のスクリーンショットに両対応しています（サイズ違いは自動でリサイズされます）。スマホ版等の縦長画像や異なる比率は自動スキップされます。
 
 ---
 

@@ -1372,7 +1372,7 @@ function buildBatchSummaryText(s, { patrol = false, cancelled = false } = {}) {
     lines.push('');
     lines.push(`取り込み ${s.imported}件` + (s.autoSaved > 0 ? `（うち高速モードで自動登録 ${s.autoSaved}件）` : ''));
     lines.push(`スキップ（対戦履歴以外） ${s.nonResult}件`);
-    lines.push(`アスペクト比違い ${s.aspect}件` + (s.aspect > 0 ? `（${getPcAspect()} 以外）` : ''));
+    lines.push(`アスペクト比違い ${s.aspect}件` + (s.aspect > 0 ? `（16:9 / 4:3 以外）` : ''));
     if (s.duplicate > 0) lines.push(`登録済みのため除外 ${s.duplicate}件`);
     if (s.userSkipped > 0) lines.push(`確認画面でスキップ ${s.userSkipped}件`);
     if (s.error > 0) lines.push(`エラー ${s.error}件`);
@@ -1516,7 +1516,7 @@ function getPcAspect() {
     return PC_ASPECTS[v] ? v : null;
 }
 function isPcMode() {
-    return !!getPcAspect();
+    return true; // PC desktop app: always in PC client mode
 }
 function guessWebPlatform() {
     const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -1530,9 +1530,12 @@ function classifyPcAspect(width, height) {
     }
     return null;
 }
-// Calibration profiles are stored per key: PC uses one key per chosen ratio, mobile the exact ratio
+// Calibration profiles are stored per key: PC uses pc-16:9 or pc-4:3 based on image ratio
 function getCalibrationKeyForImage(img) {
-    if (isPcMode()) return 'pc-' + getPcAspect();
+    if (isPcMode()) {
+        const detected = classifyPcAspect(img.width, img.height);
+        return 'pc-' + (detected || getPcAspect() || '16:9');
+    }
     return (img.width / img.height).toFixed(3);
 }
 // Redraw a PC screenshot at the canonical size of its ratio (same layout, so the same crops apply)
@@ -1652,7 +1655,7 @@ window.taApp = {
 
 function getPlatformLabel() {
     const p = getWebPlatform();
-    if (p === 'pc') return `PC版ブルーアーカイブ（${getPcAspect() || '未選択'}）`;
+    if (p === 'pc') return 'PC版（16:9 / 4:3 自動対応）';
     if (p === 'mobile') return 'スマホ・タブレット版';
     return '未設定';
 }
@@ -1665,7 +1668,7 @@ function updatePlatformUI() {
     const hint = document.getElementById('upload-platform-hint');
     if (hint) {
         hint.innerHTML = isPcMode()
-            ? `<i class="fa-solid fa-desktop"></i> <b>${getPcAspect()}</b> のスクリーンショットのみ読み込みます（サイズ違いは自動でリサイズ）`
+            ? `<i class="fa-solid fa-desktop"></i> <b>16:9 / 4:3</b> のスクリーンショットに対応（サイズ違いは自動でリサイズ）`
             : `<i class="fa-solid fa-mobile-screen"></i> スマホ・タブレットモード`;
     }
     const capture = document.getElementById('btn-web-capture');
@@ -1824,13 +1827,12 @@ function initWebSettingsExtras() {
             try {
                 let img = await loadImageFromFile(file);
                 if (isPcMode()) {
-                    const pcAspect = getPcAspect();
                     const detected = classifyPcAspect(img.width, img.height);
-                    if (detected !== pcAspect) {
-                        showToast(`${pcAspect} のスクリーンショットを選んでください（${detected || img.width + '×' + img.height} の画像です）`, 'warn', 5000);
+                    if (!detected) {
+                        showToast(`16:9 または 4:3 のスクリーンショットを選んでください（${img.width}×${img.height} の画像です）`, 'warn', 5000);
                         return;
                     }
-                    img = await normalizePcScreenshot(img, pcAspect);
+                    img = await normalizePcScreenshot(img, detected);
                 }
                 const { profile } = getOrComputeCalibrationProfile(img, null);
                 lastUploadedImage = img;
@@ -3914,22 +3916,21 @@ async function handleScreenshotUpload(file) {
         await loadPromise;
         if (isScanCancelled) return;
 
-        // Web PC mode: only the chosen aspect ratio is accepted; other sizes of it are resized
+        // Web PC mode: 16:9 and 4:3 are both accepted and normalized to their canonical sizes
         if (isPcMode()) {
-            const pcAspect = getPcAspect();
             const detected = classifyPcAspect(img.width, img.height);
-            if (detected !== pcAspect) {
+            if (!detected) {
                 pcSkippedCount++;
-                const what = detected ? `${detected} の画像` : `${img.width}×${img.height} の画像`;
-                if (!batchIsPatrol) showToast(`${pcAspect} のスクリーンショットを読み込んでください（${what}をスキップしました）`, 'warn', 5000);
-                reportFileOutcome(file, 'aspect', { aspect: pcAspect, detected, width: img.width, height: img.height });
+                const what = `${img.width}×${img.height} の画像`;
+                if (!batchIsPatrol) showToast(`16:9 または 4:3 のスクリーンショットを読み込んでください（${what}をスキップしました）`, 'warn', 5000);
+                reportFileOutcome(file, 'aspect', { aspect: 'other', detected: null, width: img.width, height: img.height });
                 scannerScreen.style.display = 'none';
                 dropZone.style.display = 'flex';
                 uploadQueue.shift();
                 processNextInUploadQueue();
                 return;
             }
-            img = await normalizePcScreenshot(img, pcAspect);
+            img = await normalizePcScreenshot(img, detected);
             if (isScanCancelled) return;
         }
 

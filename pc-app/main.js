@@ -242,8 +242,11 @@ function registerIpc() {
         const files = all.filter(f => {
             const rec = entries[processedKey(f.path, f.mtimeMs)];
             if (!rec) return true;
-            // Skipped for the aspect ratio: look again after the aspect ratio setting is changed
-            if (rec.status === 'aspect') return !!aspect && rec.aspect !== aspect;
+            // Skipped for the aspect ratio: retry if it was previously skipped under single-ratio mode (16:9 or 4:3)
+            if (rec.status === 'aspect') {
+                if (rec.aspect === '16:9' || rec.aspect === '4:3') return true;
+                return false;
+            }
             return false;
         });
         files.sort((a, b) => a.mtimeMs - b.mtimeMs || a.name.localeCompare(b.name));

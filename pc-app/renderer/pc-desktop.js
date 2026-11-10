@@ -320,11 +320,7 @@ async function runPatrol() {
         toast('取り込み中です。終わってからもう一度お試しください', 'warn');
         return;
     }
-    const aspect = lsGet(ASPECT_KEY);
-    if (!aspect) {
-        toast('先にアスペクト比を選んでください（設定 → アスペクト比）', 'warn');
-        return;
-    }
+    const aspect = lsGet(ASPECT_KEY) || '16:9';
     const cfg = await desk.getConfig();
     if (!cfg.folder) {
         toast('スクリーンショットフォルダが未登録です。フォルダを選んでください', 'warn');
