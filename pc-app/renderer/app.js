@@ -6445,10 +6445,8 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
     const slotLabel = (i) => slotPrefix ? `${slotPrefix}${i + 1}` : `${i + 1}番`;
     // A student placed in several slots is 'armed' on click; the slot is then chosen by clicking a D1-D4 box above
     let armed = null; // index into list
-    const hint = document.createElement('div');
-    hint.className = 'orp-pick-hint';
-    hint.hidden = true;
-    stage.appendChild(hint);
+    // The other way round: a D1-D4 box is armed on click, then a student placed there is chosen
+    let armedSlot = null;
 
     const row = document.createElement('div');
     row.className = 'orp-students';
@@ -6464,6 +6462,12 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         cell.innerHTML = `${img}<span class="orp-count">×${st.count}</span><div class="orp-name">${escapeHtml(st.name)}</div><div class="orp-bar">${bar}</div>`;
         if (ctx) {
             cell.addEventListener('click', (e) => {
+                if (armedSlot != null) {
+                    // Slot chosen first: narrow to this student in that slot (students never placed there are ignored)
+                    const slot = armedSlot;
+                    if (st.slots[slot] > 0) { disarmSlot(); ctx.onPick(st.name, slot); }
+                    return;
+                }
                 if (selected) { disarm(); ctx.onPick(st.name, null); return; }
                 if (st.count === 0) return;
                 const used = st.slots.map((c, i) => c ? i : -1).filter(i => i >= 0);
@@ -6519,7 +6523,7 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         });
         // Thin lines underneath, thick ones on top
         paths.sort((a, b) => a.c - b.c).forEach(({ p }) => svg.appendChild(p));
-        if (armed != null) focus(null, null);
+        if (armed != null || armedSlot != null) focus(null, null);
     };
     wrap._draw = draw;
     if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
@@ -6527,6 +6531,7 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
     // Hover (mouse): highlight one student's or one slot's lines (while a student is armed, keep its highlight)
     const focus = (attr, val) => {
         if (armed != null && !(attr === 'st' && val === armed)) { if (attr !== null || val !== null) return; attr = 'st'; val = armed; }
+        if (armed == null && armedSlot != null) { attr = 'slot'; val = armedSlot; } // keep the armed slot's students highlighted
         stage.classList.toggle('orp-focus', val != null);
         svg.querySelectorAll('path').forEach(p => p.classList.toggle('on', val != null && p.dataset[attr] === String(val)));
         cellEls.forEach((el, idx) => el.classList.toggle('on', val != null && (attr === 'st' ? String(idx) === String(val) : list[idx].slots[val] > 0)));
@@ -6539,8 +6544,15 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
     slotEls.forEach((el, i) => {
         el.addEventListener('mouseenter', () => focus('slot', i));
         el.addEventListener('mouseleave', () => focus(null, null));
+        if (ctx) el.title = 'クリックしてから生徒を選ぶと、この位置で絞り込み';
         el.addEventListener('click', () => {
-            if (armed == null || !ctx) return;
+            if (!ctx) return;
+            if (armed == null) {
+                // No student armed: arm this slot, then pick one of the students placed in it
+                if (armedSlot === i) disarmSlot();
+                else if (list.some(s => s.slots[i] > 0)) armSlot(i);
+                return;
+            }
             const st = list[armed];
             if (!st.slots[i]) return;
             disarm();
@@ -6548,7 +6560,24 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         });
     });
 
+    function armSlot(i) {
+        disarm();
+        armedSlot = i;
+        stage.classList.add('orp-slot-arming');
+        slotEls.forEach((el, k) => el.classList.toggle('armed-slot', k === i));
+        focus(null, null);
+        document.addEventListener('keydown', onKey, true);
+    }
+    function disarmSlot() {
+        if (armedSlot == null) return;
+        armedSlot = null;
+        stage.classList.remove('orp-slot-arming');
+        slotEls.forEach(el => el.classList.remove('armed-slot'));
+        focus(null, null);
+        document.removeEventListener('keydown', onKey, true);
+    }
     function arm(idx) {
+        disarmSlot();
         armed = idx;
         const st = list[idx];
         stage.classList.add('orp-arming');
@@ -6564,9 +6593,6 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
             } else if (badge) badge.remove();
             el.title = c > 0 ? `${st.name} を ${slotLabel(i)} で絞り込み（${c}回）` : '';
         });
-        hint.innerHTML = `<i class="fa-solid fa-hand-pointer"></i> <b>${escapeHtml(st.name)}</b> の位置を上の枠から選んでください<button type="button" class="orp-pick-cancel">キャンセル</button>`;
-        hint.querySelector('.orp-pick-cancel').addEventListener('click', disarm);
-        hint.hidden = false;
         focus(null, null);
         // Small screens: the boxes to pick from may be scrolled out of view
         const sc = wrap.parentElement;
@@ -6582,13 +6608,12 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         armed = null;
         stage.classList.remove('orp-arming');
         cellEls.forEach(el => el.classList.remove('armed'));
-        slotEls.forEach(el => { el.classList.remove('pick', 'nopick'); el.title = ''; const b = el.querySelector('.orp-pick-count'); if (b) b.remove(); });
-        hint.hidden = true;
+        slotEls.forEach(el => { el.classList.remove('pick', 'nopick'); el.title = ctx ? 'クリックしてから生徒を選ぶと、この位置で絞り込み' : ''; const b = el.querySelector('.orp-pick-count'); if (b) b.remove(); });
         focus(null, null);
         document.removeEventListener('keydown', onKey, true);
     }
     function onKey(e) {
-        if (e.key === 'Escape' && armed != null) { e.stopPropagation(); e.preventDefault(); disarm(); }
+        if (e.key === 'Escape' && (armed != null || armedSlot != null)) { e.stopPropagation(); e.preventDefault(); disarm(); disarmSlot(); }
     }
     return wrap;
 }
