@@ -1,20 +1,32 @@
 # Tactical Archive
 
-『ブルーアーカイブ』戦術対抗戦の戦績記録 Android アプリ。
-リザルト画面のスクリーンショットから生徒アイコンと相手プレイヤー名を認識し、戦績を記録・検索できます。
+『ブルーアーカイブ』戦術対抗戦の戦績記録ツール（Android / Windows PC対応）。
+リザルト画面のスクリーンショットから生徒アイコンと相手プレイヤー名を認識し、戦績を記録・分析・検索できます。
 
-[![Android Version](https://img.shields.io/badge/Android-v1.2.19-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+[![Android Version](https://img.shields.io/badge/Android-v1.2.20-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+[![PC Version](https://img.shields.io/badge/PC-v1.1.1-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchivePC-v1.1.1.zip)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+---
+
+## デモ版（ブラウザですぐ試せます）
+
+- **[Webデモ版を試す（閲覧専用）](https://roundabout-oxygen.github.io/Tactic_Archive/demo/)**
+  インストール不要で、ブラウザから今シーズンの実戦データ（対戦相手名は架空名）を使ってアプリの画面や分析機能を直接体験できます。
+  まずは使い勝手や画面イメージを確認したい場合にご利用ください。
 
 ---
 
 ## ダウンロード
 
-- **Android版 APK (v1.2.19)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
-- **初期設定手順（note）**: https://note.com/glad_lilac3872/n/nb495e629f395
-- **デモ（閲覧専用）**: https://roundabout-oxygen.github.io/Tactic_Archive/demo/ — 作者の今シーズンの実戦データ（対戦相手の名前は架空の名前に置き換えています）でアプリの画面を試せます
+- **Android版 APK (v1.2.20)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+  - 端末内で画像認識を行い、手軽に対抗戦の記録がつけられるAndroidアプリです。
+  - 初期設定手順は [note記事](https://note.com/glad_lilac3872/n/nb495e629f395) を参照してください。
+- **PC版 Windows (v1.1.1)**: [TacticalArchivePC-v1.1.1.zip のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchivePC-v1.1.1.zip)
+  - ダウンロードして解凍するだけですぐに使えるポータブル版（Windows 10/11 64bit）です。
+  - スクリーンショット保存フォルダの自動巡回・整理、自動バックアップ、高精度なリザルト自動判別機能を備えています。
 
-> **注意**: スクリーンショットの解像度やアスペクト比が変わると認識位置がズレます。取り込む画像のサイズは統一してください。
+> **注意**: スクリーンショットの解像度やアスペクト比が変わると認識位置がズレます。取り込む画像のサイズは統一してください（PC版は16:9または4:3のプリセットに対応）。
 
 ---
 
@@ -51,7 +63,8 @@
 
 ## 動作環境
 
-- Android 7.0 以上
+- **Android版**: Android 7.0 以上
+- **PC版**: Windows 10 / 11 (64bit)
 
 ---
 
