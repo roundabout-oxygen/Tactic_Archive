@@ -20,9 +20,26 @@ protocol.registerSchemesAsPrivileged([
     { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }
 ]);
 
-// For testing: TA_USER_DATA=<folder> keeps the data (IndexedDB, settings, processed list) in another folder
-if (process.env.TA_USER_DATA) {
-    app.setPath('userData', path.resolve(process.env.TA_USER_DATA));
+// Portable data directory: store data in a 'data' folder next to the executable
+let dataDir;
+if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    // electron-builder portable executable sets PORTABLE_EXECUTABLE_DIR to the folder where the .exe sits
+    dataDir = path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data');
+} else if (app.isPackaged) {
+    dataDir = path.join(path.dirname(process.execPath), 'data');
+} else if (process.env.TA_USER_DATA) {
+    dataDir = path.resolve(process.env.TA_USER_DATA);
+} else {
+    dataDir = path.join(__dirname, 'data');
+}
+
+try {
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+    app.setPath('userData', dataDir);
+} catch (e) {
+    console.error('Failed to set custom data directory:', e);
 }
 
 if (!app.requestSingleInstanceLock()) {

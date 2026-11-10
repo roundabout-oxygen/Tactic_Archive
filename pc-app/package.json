@@ -1,7 +1,7 @@
 {
   "name": "tactical-archive-pc",
   "productName": "Tactical Archive PC",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "ブルーアーカイブ戦術対抗戦の対戦履歴をPC版のスクリーンショットから記録・検索するツール（Windows デスクトップ版）",
   "main": "main.js",
   "private": true,

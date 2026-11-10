@@ -201,8 +201,8 @@ async function render() {
     const type = state.type;
     const records = history.filter(h => (type === 'defense' ? h.battle_type === 'defense' : h.battle_type !== 'defense')
         && h.created_at >= range.from && h.created_at <= range.to);
-    const own = type === 'attack' ? 'attack' : 'defense';
-    const opp = type === 'attack' ? 'defense' : 'attack';
+    const own = 'attack';
+    const opp = 'defense';
     const rateLabel = type === 'defense' ? '防衛率' : '勝率';
     const typeLabel = type === 'defense' ? '防衛' : '攻撃';
     const wins = records.filter(r => r.result === 'WIN').length;

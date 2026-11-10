@@ -5900,8 +5900,8 @@ function createHistoryRowElement(item, type = 'attack') {
     // Web v2: which side won (for the phone card colors) and which team is the user's own
     const recType = item.battle_type === 'defense' ? 'defense' : 'attack';
     row.className = `history-row ${item.result === 'WIN' ? 'row-win' : 'row-lose'}`;
-    row.dataset.mine = recType;
-    row.dataset.winner = ((item.result === 'WIN') === (recType === 'attack')) ? 'attack' : 'defense';
+    row.dataset.mine = 'attack';
+    row.dataset.winner = item.result === 'WIN' ? 'attack' : 'defense';
     
     // Click on the row opens Detail/Edit Modal
     row.addEventListener('click', (e) => {
@@ -6128,14 +6128,12 @@ function createHistoryRowElement(item, type = 'attack') {
     row.appendChild(tdUtility);
     row.appendChild(tdDate);
     row.appendChild(tdComm);
-    // Web: the user's own team is always on the left (defense records: defense | attack)
-    const leftTeam = recType === 'defense' ? tdDefense : tdAttack;
-    const rightTeam = recType === 'defense' ? tdAttack : tdDefense;
-    leftTeam.classList.add('td-left');
-    rightTeam.classList.add('td-right');
-    row.appendChild(leftTeam);
+    // The user's own team (attack_team) is always on the left; the opponent team (defense_team) is always on the right
+    tdAttack.classList.add('td-left');
+    tdDefense.classList.add('td-right');
+    row.appendChild(tdAttack);
     row.appendChild(tdVs);
-    row.appendChild(rightTeam);
+    row.appendChild(tdDefense);
     row.appendChild(tdTags);
     
     return row;
@@ -6177,8 +6175,8 @@ async function showOpponentRosterPopup(opponentName) {
         try { await ensureFullHistoryLoaded(); } catch (e) {}
     }
     const allRecords = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
-    // The opponent's team: defense team in my attack records, attack team in my defense records
-    const oppTeamOf = (item) => item.battle_type === 'defense' ? 'attack' : 'defense';
+    // The opponent's team is always in defense_team
+    const oppTeamOf = (item) => 'defense';
 
     // Narrowing: { kind: 'striker', slot: 0-3, name } / { kind: 'special', name } — all must match
     let filters = [];
