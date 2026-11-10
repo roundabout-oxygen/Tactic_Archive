@@ -1,10 +1,20 @@
-// Tactical Archive DEMO: analysis tab (copied into docs/demo/ by tools/build_demo.py).
+// Tactical Archive: analysis tab (shared by the Web version, the demo and the Android app).
 // Ported from the PC version (pc-app/renderer/pc-analysis.js): attack / defense, period filter,
 // team / student / opponent stats, daily trend. Rows open the matching records on the history tab
-// (window.taApp.showHistoryByIds, added to the demo's app.js by build_demo.py). Read-only.
+// (window.taApp.showHistoryByIds in app.js).
+// #tab-analysis may set data-limit (rows per list, default 15) and data-more="popup"
+// (「すべて表示」 opens the full list in a separate window instead of expanding in place).
 
 const state = { type: 'attack', period: 'all', from: '', to: '', studentSide: 'own', expanded: {} };
-const LIST_LIMIT = 15;
+function listLimit() {
+    const pane = document.getElementById('tab-analysis');
+    return (pane && Number(pane.dataset.limit)) || 15;
+}
+function morePopup() {
+    const pane = document.getElementById('tab-analysis');
+    return !!pane && pane.dataset.more === 'popup';
+}
+let cardDefs = {}; // id -> { title, cols, rows } for the full-list window
 
 function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -118,18 +128,29 @@ function rateBar(w, n) {
     return `<div class="an-rate"><div class="an-rate-bar"><span style="width:${r}%"></span></div><b>${r.toFixed(1)}%</b></div>`;
 }
 
-function tableCard({ id, title, icon, cols, rows, emptyText, bare = false }) {
-    const expanded = !!state.expanded[id];
-    const shown = expanded ? rows : rows.slice(0, LIST_LIMIT);
-    const more = rows.length > LIST_LIMIT
-        ? `<button type="button" class="an-more" data-expand="${id}">${expanded ? '上位だけ表示' : `すべて表示（${rows.length}件）`}</button>` : '';
-    const body = shown.length
-        ? shown.map((r, i) => `<tr class="an-row" data-row="${id}:${i}">${r.cells.map((c, j) => `<td class="${cols[j].cls || ''}">${c}</td>`).join('')}</tr>`).join('')
+function tableHtml(id, cols, rows, emptyText) {
+    const body = rows.length
+        ? rows.map((r, i) => `<tr class="an-row" data-row="${id}:${i}">${r.cells.map((c, j) => `<td class="${cols[j].cls || ''}">${c}</td>`).join('')}</tr>`).join('')
         : `<tr><td colspan="${cols.length}" class="an-empty">${esc(emptyText || 'データがありません')}</td></tr>`;
-    const table = `<div class="an-table-wrap"><table class="an-table">
+    return `<div class="an-table-wrap"><table class="an-table">
             <thead><tr>${cols.map(c => `<th class="${c.cls || ''}">${esc(c.label)}</th>`).join('')}</tr></thead>
             <tbody>${body}</tbody>
-        </table></div>${more}`;
+        </table></div>`;
+}
+
+function tableCard({ id, title, icon, cols, rows, emptyText, bare = false, popupTitle }) {
+    const limit = listLimit();
+    const popup = morePopup();
+    const expanded = !popup && !!state.expanded[id];
+    const shown = expanded ? rows : rows.slice(0, limit);
+    cardDefs[id] = { title: popupTitle || title, cols, rows };
+    let more = '';
+    if (rows.length > limit) {
+        more = popup
+            ? `<button type="button" class="an-more" data-popup="${id}"><i class="fa-solid fa-up-right-from-square"></i> すべて表示（${rows.length}件）</button>`
+            : `<button type="button" class="an-more" data-expand="${id}">${expanded ? '上位だけ表示' : `すべて表示（${rows.length}件）`}</button>`;
+    }
+    const table = tableHtml(id, cols, shown, emptyText) + more;
     if (bare) return table;
     return `<section class="an-card" data-card="${id}">
         <h3 class="an-card-title"><i class="fa-solid ${icon}"></i> ${esc(title)}</h3>
@@ -186,6 +207,7 @@ async function render() {
     const typeLabel = type === 'defense' ? '防衛' : '攻撃';
     const wins = records.filter(r => r.result === 'WIN').length;
     rowActions = {};
+    cardDefs = {};
     const open = (ids, label) => () => window.taApp.showHistoryByIds(ids, `${typeLabel}・${range.label}・${label}`, type);
 
     const teamRows = (list, cardId) => list.map((e, i) => {
@@ -219,7 +241,7 @@ async function render() {
     cards.push(`<section class="an-card" data-card="students-wrap">
         <div class="an-card-head"><h3 class="an-card-title"><i class="fa-solid fa-user-graduate"></i> 生徒別の採用数・${rateLabel}</h3>
         <div class="seg seg-sm" id="an-student-side"><button type="button" class="seg-btn ${state.studentSide === 'own' ? 'active' : ''}" data-val="own">自軍</button><button type="button" class="seg-btn ${state.studentSide === 'opp' ? 'active' : ''}" data-val="opp">相手</button></div></div>
-        ${tableCard({ id: 'students', bare: true, cols: [{ label: '生徒' }, { label: '採用数', cls: 'num' }, { label: '採用率', cls: 'num' }, { label: rateLabel, cls: 'rate' }], rows: studentRows })}
+        ${tableCard({ id: 'students', bare: true, popupTitle: `生徒別の採用数・${rateLabel}（${state.studentSide === 'own' ? '自軍' : '相手'}）`, cols: [{ label: '生徒' }, { label: '採用数', cls: 'num' }, { label: '採用率', cls: 'num' }, { label: rateLabel, cls: 'rate' }], rows: studentRows })}
     </section>`);
     const oppRows = opponents.map((e, i) => {
         rowActions[`opponents:${i}`] = open(e.ids, `相手 ${e.name}（${e.ids.length}件）`);
@@ -257,7 +279,7 @@ function drawTrend() {
     const w = Math.floor(host.clientWidth);
     trendDrawnW = w;
     host.innerHTML = trendSvg(trendDays, w);
-    // DEMO: many days scroll sideways - start at the latest days
+    // Many days scroll sideways - start at the latest days
     const scroller = host.querySelector('.an-trend-scroll');
     if (scroller) scroller.scrollLeft = scroller.scrollWidth;
     if (!trendObserver && window.ResizeObserver) {
@@ -269,13 +291,44 @@ function drawTrend() {
     if (trendObserver) { trendObserver.disconnect(); trendObserver.observe(host); }
 }
 
-// DEMO: the roster popup opens on the opponent's team that matches the analysis type
+// The roster popup opens on the opponent's team that matches the analysis type
 // (attack analysis -> the opponent's defense teams, defense analysis -> their attack teams)
 async function openRoster(name) {
+    closeListWindow();
     await window.taApp.showOpponentRosterPopup(name);
     if (state.type !== 'defense') return;
     const b = document.querySelector('#opponent-roster-modal .orp-mode .seg-btn[data-val="attack"]');
     if (b) b.click();
+}
+
+// 「すべて表示」 (data-more="popup"): the whole list in a separate window; rows work as on the tab
+function closeListWindow() {
+    const ov = document.getElementById('analysis-list-modal');
+    if (ov) ov.classList.remove('active');
+}
+function openListWindow(id) {
+    const def = cardDefs[id];
+    if (!def) return;
+    let ov = document.getElementById('analysis-list-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'analysis-list-modal';
+        ov.className = 'modal-overlay';
+        ov.style.zIndex = '2550';
+        ov.addEventListener('click', (e) => {
+            if (e.target === ov || e.target.closest('.an-win-close')) { closeListWindow(); return; }
+            const rosterBtn = e.target.closest('[data-roster]');
+            if (rosterBtn) { e.stopPropagation(); openRoster(rosterBtn.dataset.roster); return; }
+            const row = e.target.closest('[data-row]');
+            if (row) { const f = rowActions[row.dataset.row]; if (f) { closeListWindow(); f(); } }
+        });
+        document.body.appendChild(ov);
+    }
+    ov.innerHTML = `<div class="an-win">
+        <div class="an-win-head"><h3>${esc(def.title)}<span>${def.rows.length}件</span></h3>
+        <button type="button" class="an-win-close" aria-label="閉じる"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="an-win-body">${tableHtml(id, def.cols, def.rows)}</div></div>`;
+    ov.classList.add('active');
 }
 
 function initAnalysis() {
@@ -307,6 +360,8 @@ function initAnalysis() {
         if (rosterBtn) { e.stopPropagation(); openRoster(rosterBtn.dataset.roster); return; }
         const side = e.target.closest('#an-student-side .seg-btn');
         if (side) { state.studentSide = side.dataset.val; state.expanded.students = false; render(); return; }
+        const win = e.target.closest('[data-popup]');
+        if (win) { openListWindow(win.dataset.popup); return; }
         const more = e.target.closest('[data-expand]');
         if (more) { state.expanded[more.dataset.expand] = !state.expanded[more.dataset.expand]; render(); return; }
         const bar = e.target.closest('[data-day]');

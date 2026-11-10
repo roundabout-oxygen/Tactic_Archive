@@ -33,7 +33,7 @@
                     <div class="logo" style="gap: 7px; display: flex; align-items: center;">
                         <img src="icon.png" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 8px rgba(0, 163, 255, 0.4);">
                         <span style="font-size: 13px; font-weight: 800;">Tactical Archive</span>
-                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.2.19</span>
+                        <span style="font-size: 10px; font-weight: 600; color: var(--color-blue); opacity: 0.85; margin-left: 2px;">v1.2.20</span>
                     </div>
                     <nav class="nav-tabs" style="gap: 8px; margin-left: auto;">
                         <button class="tab-btn active" data-tab="attack" style="padding: 6px 12px; font-size: 12px;">
@@ -41,6 +41,9 @@
                         </button>
                         <button class="tab-btn" data-tab="defense" style="padding: 6px 12px; font-size: 12px;">
                             <i class="fa-solid fa-shield-halved"></i> Defense
+                        </button>
+                        <button class="tab-btn" data-tab="analysis" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fa-solid fa-chart-simple"></i> Analysis
                         </button>
                         <button class="tab-btn" data-tab="upload" style="padding: 6px 12px; font-size: 12px;">
                             <i class="fa-solid fa-circle-plus"></i> Upload
@@ -135,6 +138,28 @@
                         </div>
                     </section>
 
+                    <!-- 1c. ANALYSIS TAB (analysis.js) -->
+                    <!-- ===== Analysis (analysis.js) ===== -->
+                    <section id="tab-analysis" class="tab-pane" data-limit="5" data-more="popup">
+                        <div class="page-wrap analysis-wrap">
+                            <div class="analysis-controls">
+                                <div class="seg" id="an-type" role="group" aria-label="攻撃・防衛">
+                                    <button type="button" class="seg-btn active" data-val="attack"><i class="fa-solid fa-bolt"></i> 攻撃</button>
+                                    <button type="button" class="seg-btn" data-val="defense"><i class="fa-solid fa-shield-halved"></i> 防衛</button>
+                                </div>
+                                <div class="seg" id="an-period" role="group" aria-label="期間">
+                                    <button type="button" class="seg-btn active" data-val="all">全期間</button>
+                                    <button type="button" class="seg-btn" data-val="30">直近30日</button>
+                                    <button type="button" class="seg-btn" data-val="custom">任意期間</button>
+                                </div>
+                                <div class="an-range" id="an-range" hidden>
+                                    <input type="date" id="an-from" aria-label="開始日"> <span>〜</span> <input type="date" id="an-to" aria-label="終了日">
+                                </div>
+                            </div>
+                            <div id="analysis-body" class="analysis-body"></div>
+                        </div>
+                    </section>
+
                     <!-- 2. UPLOAD TAB -->
                     <section id="tab-upload" class="tab-pane" style="position: relative;">
                         <!-- Fast Mode toggle (auto-register screenshots that need no manual check) -->
@@ -194,7 +219,7 @@
                                 <div class="settings-title-group">
                                     <i class="fa-solid fa-sliders" style="color: var(--color-blue); font-size: 15px;"></i>
                                     <h3 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">システム設定 ＆ 辞書管理</h3>
-                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.2.19</span>
+                                    <span style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px;">v1.2.20</span>
                                 </div>
                                 <div class="roster-summary" style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary);">
                                     <i class="fa-solid fa-users" style="color: var(--color-blue);"></i>
@@ -980,6 +1005,7 @@
 
     <!-- App Script -->
     <script src="app.js" type="module"></script>
+    <script src="analysis.js" type="module"></script>
 
     <!-- MODAL: CSV EXPORT -->
     <div class="modal-overlay" id="csv-export-modal" style="z-index: 2500;">
