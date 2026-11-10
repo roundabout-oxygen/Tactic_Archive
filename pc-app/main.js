@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
 const { pathToFileURL } = require('url');
+const crypto = require('crypto');
 
 const RENDERER_DIR = path.join(__dirname, 'renderer');
 const APP_ORIGIN = 'app://bundle';
@@ -68,11 +69,18 @@ const CONFIG_DEFAULTS = {
     backupKeep: 10,
     backupLastSuccess: null,
     backupLastFile: null,
-    backupLastError: null
+    backupLastError: null,
+    // Files the automatic backup wrote into backupFolder: only these are pruned, so full backups
+    // saved by hand (same TacticalArchive_Full_ naming) in the same folder are never deleted
+    backupWritten: [],
+    backupWrittenFolder: '',
+    // Content of the last automatic backup (hash ignores created_at) and its number of records
+    backupLastHash: '',
+    backupLastCount: 0
 };
 // Values the page may change, with their types (backupLast* are written by the main process only)
 const CONFIG_TYPES = {
-    folder: 'string', includeSubfolders: 'boolean',
+    includeSubfolders: 'boolean',
     organizeEnabled: 'boolean', organizeSubfolder: 'string', organizeRename: 'boolean',
     backupOnStartup: 'boolean', backupAfterPatrol: 'boolean', backupKeep: 'number'
 };
@@ -306,6 +314,9 @@ function registerIpc() {
         return saveConfig();
     });
     // kind 'full': TacticalArchive_Full_YYYYMMDD_HHMMSS.json in the backup folder, keeping backupKeep files.
+    //   Only files written by this automatic backup (config.backupWritten) are pruned.
+    //   Unchanged content is not written again (unless req.force), and when the number of records drops
+    //   sharply (empty / broken database) the new file is written but nothing is pruned.
     // kind 'pre-edit': TacticalArchive_BeforeEdit_YYYYMMDD_HHMMSS.json in userData/pre-edit-backups (last 20).
     ipcMain.handle('ta:write-backup', async (_e, req) => {
         const c = getConfig();
@@ -316,32 +327,76 @@ function registerIpc() {
         const prefix = kind === 'full' ? 'TacticalArchive_Full_' : 'TacticalArchive_BeforeEdit_';
         const keep = kind === 'full' ? c.backupKeep : 20;
         const pattern = new RegExp('^' + prefix + '\\d{8}_\\d{6}(_\\d+)?\\.json$');
+        let hash = '', count = 0, pruneBlocked = '';
         try {
             if (!dir) throw new Error('バックアップ先フォルダが未設定です');
+            if (kind === 'full') {
+                if (c.backupWrittenFolder !== dir) { c.backupWritten = []; c.backupWrittenFolder = dir; c.backupLastHash = ''; c.backupLastCount = 0; }
+                try {
+                    const data = JSON.parse(json);
+                    count = Array.isArray(data.battle_history) ? data.battle_history.length : 0;
+                    hash = crypto.createHash('sha256').update(JSON.stringify(Object.assign({}, data, { created_at: '' }))).digest('hex');
+                } catch (e) { /* not JSON: write it as is */ }
+                const lastExists = c.backupLastFile && fs.existsSync(path.join(dir, c.backupLastFile));
+                if (!req.force && hash && hash === c.backupLastHash && lastExists) {
+                    return { ok: true, skipped: 'unchanged', file: path.join(dir, c.backupLastFile), deleted: [] };
+                }
+                if (c.backupLastCount > 0 && count < c.backupLastCount * 0.5) {
+                    pruneBlocked = `戦績が前回の ${c.backupLastCount} 件から ${count} 件に減ったため、古いバックアップは削除しませんでした`;
+                }
+            }
             await fsp.mkdir(dir, { recursive: true });
             const file = uniquePath(dir, prefix + stamp(), '.json');
             const tmp = file + '.tmp';
             await fsp.writeFile(tmp, json, 'utf8');
             await fsp.rename(tmp, file);
-            // Generations: only files this app created (naming rule), newest first by name
-            const mine = (await fsp.readdir(dir)).filter(n => pattern.test(n)).sort().reverse();
+            // Generations, newest first by name. Full: only the files this automatic backup wrote.
             const deleted = [];
-            for (const n of mine.slice(keep)) {
-                try { await fsp.unlink(path.join(dir, n)); deleted.push(n); } catch (e) { /* in use */ }
+            const names = await fsp.readdir(dir);
+            let mine;
+            if (kind === 'full') {
+                const present = new Set(names);
+                c.backupWritten = (c.backupWritten || []).filter(n => present.has(n) && pattern.test(n)).concat([path.basename(file)]);
+                mine = c.backupWritten.slice().sort().reverse();
+            } else {
+                mine = names.filter(n => pattern.test(n)).sort().reverse();
+            }
+            if (!pruneBlocked) {
+                for (const n of mine.slice(keep)) {
+                    try { await fsp.unlink(path.join(dir, n)); deleted.push(n); } catch (e) { /* in use */ }
+                }
             }
             if (kind === 'full') {
+                const gone = new Set(deleted);
+                c.backupWritten = c.backupWritten.filter(n => !gone.has(n));
                 c.backupLastSuccess = new Date().toISOString();
                 c.backupLastFile = path.basename(file);
                 c.backupLastError = null;
+                if (hash) c.backupLastHash = hash;
+                // A sharp drop does not lower the reference count, so the next run keeps protecting older files
+                if (!pruneBlocked) c.backupLastCount = count;
                 saveConfig();
             }
-            return { ok: true, file, deleted };
+            return { ok: true, file, deleted, warning: pruneBlocked || undefined };
         } catch (e) {
             if (kind === 'full') {
                 c.backupLastError = { at: new Date().toISOString(), message: e.message || String(e) };
                 saveConfig();
             }
             return { ok: false, error: e.message || String(e) };
+        }
+    });
+    // Latest pre-edit backup (for undoing the last bulk edit): { ok, name, mtime, json }
+    ipcMain.handle('ta:read-latest-pre-edit', async () => {
+        const dir = userFile('pre-edit-backups');
+        try {
+            const names = (await fsp.readdir(dir)).filter(n => /^TacticalArchive_BeforeEdit_\d{8}_\d{6}(_\d+)?\.json$/.test(n)).sort().reverse();
+            if (!names.length) return { ok: false, error: '一括修正前のバックアップがありません' };
+            const file = path.join(dir, names[0]);
+            const st = await fsp.stat(file);
+            return { ok: true, name: names[0], mtime: st.mtimeMs, json: await fsp.readFile(file, 'utf8') };
+        } catch (e) {
+            return { ok: false, error: e.code === 'ENOENT' ? '一括修正前のバックアップがありません' : (e.message || String(e)) };
         }
     });
     ipcMain.handle('ta:open-folder', async (_e, which) => {
@@ -354,9 +409,20 @@ function registerIpc() {
         return shell.openPath(target);
     });
 
-    ipcMain.handle('ta:processed-count', () => Object.keys(getProcessed().entries).length);
-    ipcMain.handle('ta:reset-processed', () => {
-        const n = Object.keys(getProcessed().entries).length;
+    ipcMain.handle('ta:processed-count', (_e, status) => {
+        const all = Object.values(getProcessed().entries);
+        return typeof status === 'string' ? all.filter(e => e && e.status === status).length : all.length;
+    });
+    // status given (e.g. 'nonResult'): forget only those entries, so the next patrol looks at them again
+    ipcMain.handle('ta:reset-processed', (_e, status) => {
+        const entries = getProcessed().entries;
+        if (typeof status === 'string') {
+            let n = 0;
+            for (const [k, e] of Object.entries(entries)) if (e && e.status === status) { delete entries[k]; n++; }
+            saveProcessedSoon();
+            return n;
+        }
+        const n = Object.keys(entries).length;
         processed = { version: 1, entries: {} };
         saveProcessedSoon();
         return n;

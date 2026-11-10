@@ -305,11 +305,11 @@
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
-                    <button class="settings-tile" id="btn-open-preedit" type="button">
-                        <span class="tile-icon info"><i class="fa-solid fa-folder-open"></i></span>
+                    <button class="settings-tile" id="btn-undo-bulk" type="button">
+                        <span class="tile-icon warning"><i class="fa-solid fa-rotate-left"></i></span>
                         <span class="tile-content">
-                            <span class="tile-title">一括修正前のバックアップを開く</span>
-                            <span class="tile-desc">一括置換・統合の直前に自動保存したファイルのフォルダです。元に戻すときは「リストア」で選びます。</span>
+                            <span class="tile-title">直前の一括修正を元に戻す</span>
+                            <span class="tile-desc">一括置換・統合の直前に自動保存したデータで、戦績・生徒図鑑・修正辞書を上書きします（そのあとに取り込んだ戦績は消えます）。</span>
                         </span>
                         <i class="fa-solid fa-chevron-right tile-arrow"></i>
                     </button>
@@ -398,6 +398,14 @@
                             </span>
                             <i class="fa-solid fa-chevron-right tile-arrow"></i>
                         </button>
+                        <button class="settings-tile" id="btn-recheck-nonresult" type="button">
+                            <span class="tile-icon warning"><i class="fa-solid fa-filter-circle-xmark"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">対戦履歴以外と判定した画像を見直す</span>
+                                <span class="tile-desc">スキップした画像（<b id="nonresult-count">0</b> 件）の記録だけを消し、次の巡回でもう一度判定します。取り込み済みの画像はそのままです。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
                         <button class="settings-tile" id="btn-reset-processed" type="button">
                             <span class="tile-icon warning"><i class="fa-solid fa-eraser"></i></span>
                             <span class="tile-content">
@@ -411,6 +419,14 @@
                             <span class="tile-content">
                                 <span class="tile-title">リザルト判定ログを開く</span>
                                 <span class="tile-desc">画像ごとの判定値を記録したファイルです。誤判定の調整に使います。</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right tile-arrow"></i>
+                        </button>
+                        <button class="settings-tile" id="btn-open-preedit" type="button">
+                            <span class="tile-icon info"><i class="fa-solid fa-folder-open"></i></span>
+                            <span class="tile-content">
+                                <span class="tile-title">一括修正前のバックアップのフォルダを開く</span>
+                                <span class="tile-desc">一括置換・統合の直前に自動保存したファイル（最新 20 件）があります。</span>
                             </span>
                             <i class="fa-solid fa-chevron-right tile-arrow"></i>
                         </button>

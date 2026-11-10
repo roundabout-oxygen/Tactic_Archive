@@ -11,8 +11,8 @@ contextBridge.exposeInMainWorld('taDesktop', {
     listUnprocessed: (opts) => ipcRenderer.invoke('ta:list-unprocessed', opts || {}),
     readFile: (filePath) => ipcRenderer.invoke('ta:read-file', filePath),
     markProcessed: (rec) => ipcRenderer.invoke('ta:mark-processed', rec),
-    processedCount: () => ipcRenderer.invoke('ta:processed-count'),
-    resetProcessed: () => ipcRenderer.invoke('ta:reset-processed'),
+    processedCount: (status) => ipcRenderer.invoke('ta:processed-count', status),
+    resetProcessed: (status) => ipcRenderer.invoke('ta:reset-processed', status),
     logDetection: (rec) => {
         try { ipcRenderer.send('ta:log-detection', JSON.parse(JSON.stringify(rec))); } catch (e) { /* ignore */ }
     },
@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('taDesktop', {
     clearBackupFolder: () => ipcRenderer.invoke('ta:clear-backup-folder'),
     writeBackup: (req) => ipcRenderer.invoke('ta:write-backup', req),
     openFolder: (which) => ipcRenderer.invoke('ta:open-folder', which),
+    readLatestPreEdit: () => ipcRenderer.invoke('ta:read-latest-pre-edit'),
     openDetectionLog: () => ipcRenderer.invoke('ta:open-detection-log'),
     openDataFolder: () => ipcRenderer.invoke('ta:open-data-folder'),
     appInfo: () => ipcRenderer.invoke('ta:app-info')

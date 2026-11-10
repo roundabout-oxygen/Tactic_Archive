@@ -65,7 +65,7 @@ async function openOpponentReplace() {
                 if (addRule) await window.taApp.saveRename(o, n);
                 await window.taApp.reloadAll();
                 close(true);
-                await window.taShowAlert('置き換えました', `${changed.length}件の対戦相手名を「${o}」→「${n}」に変えました。${addRule ? '\n修正辞書にも登録しました。' : ''}\n\n変更前のデータ：\n${backupFile}\n（元に戻すときは「設定 → リストア」でこのファイルを選びます）`);
+                await window.taShowAlert('置き換えました', `${changed.length}件の対戦相手名を「${o}」→「${n}」に変えました。${addRule ? '\n修正辞書にも登録しました。' : ''}\n\n変更前のデータ：\n${backupFile}\n（元に戻すときは「設定 → 直前の一括修正を元に戻す」）`);
             } catch (e) {
                 console.error(e);
                 run.disabled = false;
@@ -81,7 +81,11 @@ async function openOpponentReplace() {
 function slotMatches(h, side, i, src) {
     const names = side === 'attack' ? h.attack_names : h.defense_names;
     const ids = side === 'attack' ? h.attack_team : h.defense_team;
-    return (names && names[i] === src.name) || (!!src.id && ids && ids[i] === src.id);
+    // Same priority as the display (resolveHistorySlotStudent): the saved name wins, the ID counts only when the
+    // name is missing. Records merged from another device can carry IDs that mean a different local student.
+    const saved = names && names[i];
+    if (saved && saved !== '生徒' && saved !== '未登録') return saved === src.name;
+    return !!src.id && !!ids && ids[i] === src.id;
 }
 function countStudentUses(history, src) {
     let records = 0, slots = 0;
@@ -174,7 +178,7 @@ async function openStudentMerge() {
                 }
                 await window.taApp.reloadAll();
                 close(true);
-                await window.taShowAlert('置き換えました', `${changed.length}件の戦績で「${src.name}」を「${dst.name}」に置き換えました。${del ? '\n統合元を生徒図鑑から削除しました。' : ''}\n\n変更前のデータ：\n${backupFile}\n（元に戻すときは「設定 → リストア」でこのファイルを選びます）`);
+                await window.taShowAlert('置き換えました', `${changed.length}件の戦績で「${src.name}」を「${dst.name}」に置き換えました。${del ? '\n統合元を生徒図鑑から削除しました。' : ''}\n\n変更前のデータ：\n${backupFile}\n（元に戻すときは「設定 → 直前の一括修正を元に戻す」）`);
             } catch (e) {
                 console.error(e);
                 run.disabled = false;

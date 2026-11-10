@@ -1349,6 +1349,8 @@ let pcSkippedCount = 0; // Screenshots skipped in the current batch because of t
 // Outcomes: imported, nonResult (not a battle result screen), aspect, duplicate, userSkipped, error
 let batchStats = null;
 let batchIsPatrol = false;
+// PC: re-importing screenshots that were judged "not a battle result": skip the check for this batch
+let batchForceReview = false;
 function newBatchStats() {
     return { imported: 0, autoSaved: 0, nonResult: 0, aspect: 0, duplicate: 0, userSkipped: 0, error: 0 };
 }
@@ -1381,6 +1383,7 @@ function finishBatch({ cancelled = false } = {}) {
     const patrol = batchIsPatrol;
     batchStats = null;
     batchIsPatrol = false;
+    batchForceReview = false;
     if (!s) return;
     try {
         if (window.taPatrol && typeof window.taPatrol.onBatchEnd === 'function') window.taPatrol.onBatchEnd(s, { patrol, cancelled });
@@ -1588,10 +1591,28 @@ window.taApp = {
         const data = await buildBackupData({ history: true, roster: true, calibration: true, opponents: true });
         return JSON.stringify(data);
     },
+    // Open the restore dialog with given backup data, e.g. undoing a bulk edit from its pre-edit backup.
+    // opts.mode: 'merge' | 'overwrite'; opts.sections: { history, roster, calibration, opponents } to tick
+    openRestoreData(data, opts = {}) {
+        pendingRestoreData = data;
+        renderRestoreDetectedList(data);
+        if (opts.sections) {
+            Object.entries(opts.sections).forEach(([key, on]) => {
+                const chk = document.getElementById(`restore-chk-${key}`);
+                if (chk && !chk.disabled) chk.checked = !!on;
+            });
+        }
+        const radio = document.querySelector(`input[name="restore-mode"][value="${opts.mode || 'merge'}"]`);
+        if (radio) radio.checked = true;
+        restoreModal.classList.add('active');
+    },
     // Show the given records on the attack / defense tab (banner with a clear button)
     showHistoryByIds(ids, label, type) {
         analysisIdFilter = { ids: new Set(ids), label: label || `${ids.length}件` };
         activePositionFilter = null;
+        // The team search from the roster popup would otherwise narrow these records further
+        activeTeamFilter = null;
+        ['attack', 'defense'].forEach(t => renderTeamFilterBanner(t));
         syncSearchInput('', false);
         updateAnalysisFilterBanner();
         window.switchToTab(type === 'defense' ? 'defense' : 'attack');
@@ -2735,6 +2756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pcSkippedCount = 0;
         batchStats = newBatchStats();
         batchIsPatrol = !!opts.patrol;
+        batchForceReview = !!opts.forceReview;
         // Startup loads only the latest 15 records; make sure duplicate check sees the full history
         // (no wait if the background full load has already finished)
         if (!isFullHistoryLoaded) {
@@ -3933,7 +3955,7 @@ async function handleScreenshotUpload(file) {
         if (isScanCancelled) return;
 
         // PC desktop: skip screenshots that are not a battle result (no review screen)
-        if (isAutoSkipNonResultEnabled()) {
+        if (isAutoSkipNonResultEnabled() && !batchForceReview) {
             scanStatusText.innerText = '戦闘履歴の画面か確認しています...';
             const check = await analyzeResultScreen(img, profile);
             if (isScanCancelled) return;

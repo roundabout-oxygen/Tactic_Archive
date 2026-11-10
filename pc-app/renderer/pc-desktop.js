@@ -57,7 +57,13 @@ window.taPrompt = function (message, defaultValue = '') {
     });
 };
 
+// Screenshots judged 'not a battle result' in the current / last batch (to list them and re-import on demand)
+let batchSkippedFiles = [];
+let lastSkippedFiles = [];
+
 function showSummaryDialog(text, s) {
+    const skipped = lastSkippedFiles;
+    lastSkippedFiles = [];
     const lines = String(text).split('\n');
     const title = lines[0] || '結果';
     return openDialog((box, close) => {
@@ -69,11 +75,21 @@ function showSummaryDialog(text, s) {
         if (s.duplicate > 0) rows.push(['登録済みのため除外', s.duplicate + '件']);
         if (s.userSkipped > 0) rows.push(['確認画面でスキップ', s.userSkipped + '件']);
         if (s.error > 0) rows.push(['エラー（次回の巡回で再試行）', s.error + '件']);
+        // The result detection is not verified on every screen yet: show what was skipped and allow importing it
+        const skippedHtml = skipped.length ? `<details class="ta-skipped"><summary>対戦履歴以外としてスキップした画像（${skipped.length}件）</summary>
+                <ul>${skipped.map(f => `<li>${escapeHtml(f.name)}</li>`).join('')}</ul>
+                <p>戦績の画像が混ざっていたら、確認画面で取り込めます。</p></details>` : '';
         box.innerHTML = `<h3>${escapeHtml(title)}</h3><ul class="ta-summary-list">${rows.map(([k, v]) =>
-            `<li><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></li>`).join('')}</ul>
-            <div class="ta-dialog-actions"><button type="button" class="btn-primary" data-act="ok">OK</button></div>`;
+            `<li><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></li>`).join('')}</ul>${skippedHtml}
+            <div class="ta-dialog-actions">${skipped.length ? `<button type="button" class="btn-secondary" data-act="review"><i class="fa-solid fa-eye"></i> スキップした画像を確認画面で取り込む</button>` : ''}<button type="button" class="btn-primary" data-act="ok">OK</button></div>`;
         const ok = box.querySelector('[data-act="ok"]');
         ok.onclick = () => close(true);
+        const review = box.querySelector('[data-act="review"]');
+        if (review) review.onclick = () => {
+            close(true);
+            // Next tick: the summary dialog closes first, then the review screen opens for each skipped image
+            setTimeout(() => window.processMultipleScreenshotUploads(skipped, { forceReview: true }), 0);
+        };
         return { focus: ok, onEnter: () => close(true), cancelValue: true };
     });
 }
@@ -135,16 +151,19 @@ async function runAutoBackup(reason) {
     let res;
     try {
         const json = await window.taApp.buildFullBackupJson();
-        res = await desk.writeBackup({ kind: 'full', json });
+        // 手動 always writes; automatic runs skip unchanged content (so old generations are not pushed out)
+        res = await desk.writeBackup({ kind: 'full', json, force: reason === '手動' });
     } catch (e) {
         res = { ok: false, error: String(e && e.message || e) };
+    } finally {
+        backupRunning = false;
     }
-    backupRunning = false;
     cachedCfg = await desk.getConfig();
     updateBackupLabels();
     if (res.ok) {
-        console.log(`[AutoBackup] (${reason}) saved`, res.file, 'deleted:', res.deleted);
+        console.log(`[AutoBackup] (${reason}) ${res.skipped ? 'skipped (unchanged)' : 'saved'}`, res.file, 'deleted:', res.deleted);
         if (reason === '手動') toast('バックアップを保存しました', 'success');
+        if (res.warning) toast(res.warning, 'warn', 10000);
     } else {
         notifyBackupFailure(res.error);
     }
@@ -211,11 +230,24 @@ function initOrganizeAndBackupSettings() {
     });
     const btnPre = document.getElementById('btn-open-preedit');
     if (btnPre) btnPre.addEventListener('click', () => desk.openFolder('pre-edit'));
+    // Undo the last bulk edit: the restore dialog opens with the pre-edit backup in 「完全上書き」 mode
+    // (「追加・統合」 would add the old records next to the renamed ones, or skip the merged ones)
+    const btnUndo = document.getElementById('btn-undo-bulk');
+    if (btnUndo) btnUndo.addEventListener('click', async () => {
+        const res = await desk.readLatestPreEdit();
+        if (!res.ok) { toast(res.error, 'warn'); return; }
+        let data;
+        try { data = JSON.parse(res.json); } catch (e) { toast('バックアップを読み込めませんでした：' + e.message, 'warn'); return; }
+        const n = Array.isArray(data.battle_history) ? data.battle_history.length : 0;
+        if (!confirm(`${formatDateTime(res.mtime)} の一括修正の直前の状態に戻します（戦績 ${n}件）。\n\n戦績・生徒図鑑・修正辞書を、そのときの内容で上書きします。一括修正のあとに取り込んだ戦績は消えます。\n\n次の画面で項目を確認して「復元を実行」を押してください。`)) return;
+        window.taApp.openRestoreData(data, { mode: 'overwrite', sections: { history: true, roster: true, calibration: false, opponents: true } });
+    });
 }
 
 const patrolHooks = {
     // Called by app.js for every file of a batch
     onFileOutcome(file, outcome, detail) {
+        if (file && outcome === 'nonResult') batchSkippedFiles.push(file); // dropped files too (listed in the summary)
         if (!desk || !file || !file.__taPath) return;
         if (outcome === 'error') return; // retried on the next patrol
         if (outcome === 'imported' && cachedCfg.organizeEnabled) {
@@ -235,6 +267,8 @@ const patrolHooks = {
         desk.markProcessed(rec).catch(e => console.warn('[Patrol] markProcessed failed', e));
     },
     onBatchEnd(stats, info) {
+        lastSkippedFiles = batchSkippedFiles;
+        batchSkippedFiles = [];
         if (info && info.patrol) {
             patrolRunning = false;
             updatePatrolButton();
@@ -359,6 +393,8 @@ async function refreshProcessedCount() {
     if (!desk) return;
     const el = document.getElementById('processed-count');
     if (el) el.textContent = String(await desk.processedCount());
+    const nr = document.getElementById('nonresult-count');
+    if (nr) nr.textContent = String(await desk.processedCount('nonResult'));
 }
 
 async function pickFolder() {
@@ -416,6 +452,17 @@ function init() {
         await desk.resetProcessed();
         await refreshProcessedCount();
         toast('処理済みの記録を消しました', 'success');
+    });
+
+    const btnRecheck = document.getElementById('btn-recheck-nonresult');
+    if (btnRecheck) btnRecheck.addEventListener('click', async () => {
+        const n = await desk.processedCount('nonResult');
+        if (n === 0) { toast('対戦履歴以外と判定した画像はありません', 'info'); return; }
+        if (!confirm(`対戦履歴以外と判定した画像 ${n}件を、次の巡回でもう一度判定しますか？
+（「対戦履歴以外を自動スキップ」を OFF にしてから巡回すると、全部を確認画面で見られます）`)) return;
+        await desk.resetProcessed('nonResult');
+        await refreshProcessedCount();
+        toast(`${n}件を次の巡回で見直します`, 'success');
     });
 
     const btnLog = document.getElementById('btn-open-detection-log');
