@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.21';
+const APP_VERSION = 'v1.2.22';
 
 // CSV EXPORT CONTROLLER
 // ==========================================

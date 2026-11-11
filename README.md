@@ -3,7 +3,7 @@
 『ブルーアーカイブ』戦術対抗戦の戦績記録ツール（Android / Windows PC対応）。
 リザルト画面のスクリーンショットから生徒アイコンと相手プレイヤー名を自動認識し、戦績を記録・分析・検索できます。
 
-[![Android Version](https://img.shields.io/badge/Android-v1.2.21-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+[![Android Version](https://img.shields.io/badge/Android-v1.2.22-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
 [![PC Version](https://img.shields.io/badge/PC-v1.1.5-blue.svg)](https://github.com/roundabout-oxygen/Tactic_Archive/releases/latest/download/TacticalArchivePC.zip)
 [![note](https://img.shields.io/badge/note-紹介記事-2cb696.svg)](https://note.com/glad_lilac3872/n/n51b1fd166a97)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -28,7 +28,7 @@
 
 ## ダウンロード
 
-- **Android版 APK (v1.2.21)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
+- **Android版 APK (v1.2.22)**: [TacticalArchive.apk のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/raw/main/release/TacticalArchive.apk)
   - 端末内で画像認識を行い、手軽に対抗戦の記録がつけられるAndroidアプリです。
   - 初期設定手順は [note記事](https://note.com/glad_lilac3872/n/nb495e629f395) を参照してください。
 - **PC版 Windows (v1.1.5)**: [TacticalArchivePC.zip のダウンロード](https://github.com/roundabout-oxygen/Tactic_Archive/releases/latest/download/TacticalArchivePC.zip)

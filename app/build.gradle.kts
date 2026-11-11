@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.tacticalarchive"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1221
-        versionName = "1.2.21"
+        versionCode = 1222
+        versionName = "1.2.22"
     }
 
     buildTypes {
