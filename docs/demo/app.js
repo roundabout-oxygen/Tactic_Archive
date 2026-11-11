@@ -1244,7 +1244,7 @@ let activePositionFilter = null;
 let activeTeamFilter = null;
 
 function teamFilterMatches(item, tf) {
-    const team = item.battle_type === 'defense' ? 'attack' : 'defense';
+    const team = 'defense'; // the opponent's team is always in defense_team (attack_team is always the user's)
     return tf.conds.every(f => {
         if (f.kind === 'striker') {
             const s = resolveHistorySlotStudent(item, team, f.slot);

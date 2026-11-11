@@ -1,6 +1,6 @@
 
 // Tactical Archive Android Application Version
-const APP_VERSION = 'v1.2.20';
+const APP_VERSION = 'v1.2.21';
 
 // CSV EXPORT CONTROLLER
 // ==========================================
@@ -1122,7 +1122,7 @@ let activePositionFilter = null;
 let activeTeamFilter = null;
 
 function teamFilterMatches(item, tf) {
-    const team = item.battle_type === 'defense' ? 'attack' : 'defense';
+    const team = 'defense'; // the opponent's team is always in defense_team (attack_team is always the user's)
     return tf.conds.every(f => {
         if (f.kind === 'striker') {
             const s = resolveHistorySlotStudent(item, team, f.slot);
@@ -5208,7 +5208,8 @@ async function showOpponentRosterPopup(opponentName) {
     }
     const allRecords = currentHistory.filter(h => (h.commander_name || '').trim() === opponentName);
     // The opponent's team: defense team in my attack records, attack team in my defense records
-    const oppTeamOf = (item) => item.battle_type === 'defense' ? 'attack' : 'defense';
+    // The opponent's team is always in defense_team (attack_team is always the user's)
+    const oppTeamOf = (item) => 'defense';
 
     // Narrowing: { kind: 'striker', slot: 0-3, name } / { kind: 'special', name } — all must match
     let filters = [];
