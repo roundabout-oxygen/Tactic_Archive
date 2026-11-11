@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Tactical Archive PC</title>
     <meta name="description" content="ブルーアーカイブ戦術対抗戦の対戦履歴をPC版のスクリーンショットから記録・検索するツール（Windows デスクトップ版）">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' app: 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' app: blob:; style-src 'self' app: 'unsafe-inline'; img-src 'self' app: data: blob:; font-src 'self' app: data:; connect-src 'self' app: data: blob:">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' app: 'wasm-unsafe-eval'; worker-src 'self' app: blob:; style-src 'self' app: 'unsafe-inline'; img-src 'self' app: data: blob:; font-src 'self' app: data:; connect-src 'self' app: data: blob:">
     <link rel="icon" type="image/png" href="icon.png">
     <!-- PC desktop: everything is bundled (works offline) -->
     <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
@@ -23,7 +23,7 @@
             <img src="icon.png" alt="" class="brand-icon">
             <div class="brand-text">
                 <span class="brand-name">Tactical Archive</span>
-                <span class="brand-version">PC v1.1.4</span>
+                <span class="brand-version">PC v1.1.5</span>
             </div>
         </div>
         <nav class="nav-tabs" aria-label="メニュー">
@@ -441,7 +441,7 @@
                     </div>
                 </details>
 
-                <p class="settings-foot">データはこのパソコン内にだけ保存され、戦績データを外部に送信することはありません。<br>Tactical Archive PC v1.1.4 ・ 非公式ツール</p>
+                <p class="settings-foot">データはこのパソコン内にだけ保存され、戦績データを外部に送信することはありません。<br>Tactical Archive PC v1.1.5 ・ 非公式ツール</p>
 
                 <input type="file" id="db-restore-input" accept=".json,application/json,text/plain,*/*" hidden>
                 <input type="file" id="bulk-roster-input" accept="image/*" multiple hidden>
@@ -611,7 +611,7 @@
         </div>
         <div class="modal-body">
             <div class="student-form">
-                <div class="icon-upload-area" id="icon-drop-zone" onclick="document.getElementById('student-icon-input').click()" title="クリックしてアイコンを変更">
+                <div class="icon-upload-area" id="icon-drop-zone" title="クリックしてアイコンを変更">
                     <img id="add-student-icon-preview" src="" alt="" style="display: none;">
                     <div class="icon-upload-placeholder" id="add-student-placeholder"><i class="fa-solid fa-image"></i><span>変更</span></div>
                 </div>

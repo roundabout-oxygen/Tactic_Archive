@@ -33,6 +33,25 @@ if (process.env.PORTABLE_EXECUTABLE_DIR) {
     dataDir = path.join(__dirname, 'data');
 }
 
+// Moving from the single-exe build (v1.1.4 and earlier): its data sat in a 'data' folder next to that exe.
+// When this folder build is extracted beside it (…\TacticalArchivePC\TacticalArchivePC.exe) and has no data
+// yet, copy the old folder in. It is copied, not moved, so the old exe keeps working.
+function migrateFromPortableLayout() {
+    if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR || fs.existsSync(dataDir)) return;
+    const exeDir = path.dirname(process.execPath);
+    const oldData = path.join(exeDir, '..', 'data');
+    try {
+        if (!fs.existsSync(path.join(oldData, 'IndexedDB'))) return;
+        const siblings = fs.readdirSync(path.join(exeDir, '..'));
+        if (!siblings.some(f => /^TacticalArchivePC.*\.exe$/i.test(f))) return;
+        fs.cpSync(oldData, dataDir, { recursive: true, errorOnExist: false });
+        console.log('Copied data from the single-exe layout:', oldData);
+    } catch (e) {
+        console.error('Data migration failed:', e);
+    }
+}
+migrateFromPortableLayout();
+
 try {
     if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
@@ -42,7 +61,8 @@ try {
     console.error('Failed to set custom data directory:', e);
 }
 
-if (!app.requestSingleInstanceLock()) {
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
     app.quit();
 }
 
@@ -526,6 +546,7 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(() => {
+    if (!gotSingleInstanceLock) return;
     protocol.handle('app', (request) => {
         const url = new URL(request.url);
         if (url.host !== 'bundle') return new Response('Not found', { status: 404 });

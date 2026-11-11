@@ -1642,6 +1642,10 @@ window.taApp = {
     async deleteStudent(id) {
         await deleteStudent(id);
     },
+    // Store an opponent icon under a name that has none yet (an existing icon is kept)
+    async saveOpponentAvatar(name, avatar) {
+        return saveOpponent(name, avatar, false);
+    },
     async reloadAll() {
         currentRoster = await getStudents();
         currentHistory = await getHistory();
@@ -2761,8 +2765,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         batchForceReview = !!opts.forceReview;
         // Startup loads only the latest 15 records; make sure duplicate check sees the full history
         // (no wait if the background full load has already finished)
-        if (!isFullHistoryLoaded) {
-            await ensureFullHistoryLoaded();
+        try {
+            if (!isFullHistoryLoaded) {
+                await ensureFullHistoryLoaded();
+            }
+        } catch (e) {
+            // Never leave the app stuck in "importing" (isUploadBusy) when the start fails
+            console.error('[Upload] could not start the batch:', e);
+            showToast('取り込みを開始できませんでした。もう一度お試しください', 'error');
+            finishBatch({ cancelled: true });
+            return;
         }
         const duplicateNames = [];
         const validFiles = [];
@@ -3962,7 +3974,7 @@ async function handleScreenshotUpload(file) {
             if (isScanCancelled) return;
             try {
                 if (window.taDesktop && typeof window.taDesktop.logDetection === 'function') {
-                    window.taDesktop.logDetection({ file: file.name, path: file.__taPath || null, ...check });
+                    window.taDesktop.logDetection({ file: file.name, ...check }); // file name only: the full path holds the Windows user name
                 }
             } catch (e) {}
             if (!check.isResult) {
@@ -6144,14 +6156,39 @@ function createHistoryRowElement(item, type = 'attack') {
 // OPPONENT ROSTER POPUP (long-press / right-click on an opponent name)
 // Lists every student the opponent has used in the history: strikers (slots 1-4) and specials (5-6)
 // ==========================================
+// Name / ID lookup maps for the roster, rebuilt when currentRoster is replaced or changes length.
+// A hit is re-checked against the student itself and a miss falls back to a scan, so an in-place edit is never
+// answered wrongly; the maps only make the common case (thousands of records x 12 slots) fast.
+let rosterLookupCache = { arr: null, len: -1, byName: new Map(), byId: new Map() };
+function rosterLookup() {
+    const c = rosterLookupCache;
+    if (c.arr !== currentRoster || c.len !== currentRoster.length) {
+        const byName = new Map(), byId = new Map();
+        currentRoster.forEach(s => {
+            if (s.name != null && !byName.has(s.name)) byName.set(s.name, s);
+            if (s.id != null && !byId.has(s.id)) byId.set(s.id, s);
+        });
+        rosterLookupCache = { arr: currentRoster, len: currentRoster.length, byName, byId };
+    }
+    return rosterLookupCache;
+}
+function findRosterByName(name) {
+    const s = rosterLookup().byName.get(name);
+    return s && s.name === name ? s : currentRoster.find(x => x.name === name);
+}
+function findRosterById(id) {
+    const s = rosterLookup().byId.get(id);
+    return s && s.id === id ? s : currentRoster.find(x => x.id === id);
+}
+
 function resolveHistorySlotStudent(item, team, index) {
     const names = team === 'attack' ? item.attack_names : item.defense_names;
     const ids = team === 'attack' ? item.attack_team : item.defense_team;
     const savedName = names && names[index];
     const validSaved = savedName && savedName !== '生徒' && savedName !== '未登録';
     let student = null;
-    if (validSaved) student = currentRoster.find(s => s.name === savedName);
-    if (!student && ids && ids[index]) student = currentRoster.find(s => s.id === ids[index]);
+    if (validSaved) student = findRosterByName(savedName);
+    if (!student && ids && ids[index]) student = findRosterById(ids[index]);
     const name = (student && student.name) || (validSaved ? savedName : '');
     return name ? { name, icon: (student && student.icon_path) || null } : null;
 }
@@ -6547,7 +6584,8 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         if (armed != null || armedSlot != null) focus(null, null);
     };
     wrap._draw = draw;
-    if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
+    // Stop observing once the popup body is rebuilt or closed (the stage leaves the DOM)
+    if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (!stage.isConnected) { ro.disconnect(); return; } draw(); }); ro.observe(stage); }
 
     // Hover (mouse): highlight one student's or one slot's lines (while a student is armed, keep its highlight)
     const focus = (attr, val) => {
@@ -6559,12 +6597,13 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         slotEls.forEach((el, i) => el.classList.toggle('on', val != null && (attr === 'slot' ? String(i) === String(val) : list[val].slots[i] > 0)));
     };
     cellEls.forEach((el, idx) => {
-        el.addEventListener('mouseenter', (e) => { if (e.pointerType !== 'touch') focus('st', idx); });
-        el.addEventListener('mouseleave', () => focus(null, null));
+        // pointer events carry pointerType (mouseenter does not), so a tap does not leave a hover highlight behind
+        el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') focus('st', idx); });
+        el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') focus(null, null); });
     });
     slotEls.forEach((el, i) => {
-        el.addEventListener('mouseenter', () => focus('slot', i));
-        el.addEventListener('mouseleave', () => focus(null, null));
+        el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') focus('slot', i); });
+        el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') focus(null, null); });
         if (ctx) el.title = 'クリックしてから生徒を選ぶと、この位置で絞り込み';
         el.addEventListener('click', () => {
             if (!ctx) return;
@@ -6634,6 +6673,8 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         document.removeEventListener('keydown', onKey, true);
     }
     function onKey(e) {
+        // The popup was closed or rebuilt while picking: just drop this listener
+        if (!wrap.isConnected) { document.removeEventListener('keydown', onKey, true); return; }
         if (e.key === 'Escape' && (armed != null || armedSlot != null)) { e.stopPropagation(); e.preventDefault(); disarm(); disarmSlot(); }
     }
     return wrap;

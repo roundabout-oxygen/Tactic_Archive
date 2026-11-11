@@ -6238,7 +6238,8 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         if (armed != null || armedSlot != null) focus(null, null);
     };
     wrap._draw = draw;
-    if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
+    // Stop observing once the popup body is rebuilt or closed (the stage leaves the DOM)
+    if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (!stage.isConnected) { ro.disconnect(); return; } draw(); }); ro.observe(stage); }
 
     // Hover (mouse): highlight one student's or one slot's lines (while a student is armed, keep its highlight)
     const focus = (attr, val) => {
@@ -6250,12 +6251,13 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         slotEls.forEach((el, i) => el.classList.toggle('on', val != null && (attr === 'slot' ? String(i) === String(val) : list[val].slots[i] > 0)));
     };
     cellEls.forEach((el, idx) => {
-        el.addEventListener('mouseenter', (e) => { if (e.pointerType !== 'touch') focus('st', idx); });
-        el.addEventListener('mouseleave', () => focus(null, null));
+        // pointer events carry pointerType (mouseenter does not), so a tap does not leave a hover highlight behind
+        el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') focus('st', idx); });
+        el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') focus(null, null); });
     });
     slotEls.forEach((el, i) => {
-        el.addEventListener('mouseenter', () => focus('slot', i));
-        el.addEventListener('mouseleave', () => focus(null, null));
+        el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') focus('slot', i); });
+        el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') focus(null, null); });
         if (ctx) el.title = 'クリックしてから生徒を選ぶと、この位置で絞り込み';
         el.addEventListener('click', () => {
             if (!ctx) return;
@@ -6325,6 +6327,8 @@ function buildStrikerSlotFlow(strikers, slotPrefix = '', ctx = null) {
         document.removeEventListener('keydown', onKey, true);
     }
     function onKey(e) {
+        // The popup was closed or rebuilt while picking: just drop this listener
+        if (!wrap.isConnected) { document.removeEventListener('keydown', onKey, true); return; }
         if (e.key === 'Escape' && (armed != null || armedSlot != null)) { e.stopPropagation(); e.preventDefault(); disarm(); disarmSlot(); }
     }
     return wrap;

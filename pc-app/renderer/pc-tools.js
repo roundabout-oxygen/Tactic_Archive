@@ -58,11 +58,19 @@ async function openOpponentReplace() {
             if (!confirm(`対戦相手「${o}」の戦績 ${targets.length}件を「${n}」に置き換えます。\n${addRule ? '修正辞書にも登録します。\n' : ''}実行前に今のデータを自動でバックアップします。よろしいですか？`)) return;
             run.disabled = true;
             run.textContent = '処理中...';
+            box.dataset.busy = '1';
             try {
                 const backupFile = await preEditBackup();
                 const changed = targets.map(h => Object.assign({}, h, { commander_name: n }));
                 await window.taApp.putHistoryRecords(changed);
+                // Rules that turned some OCR text into the old name now give the new name
+                // (the dictionary is applied once, so "X → old" would otherwise keep producing the old name)
+                const chained = (window.taApp.getRenames() || []).filter(r => normName(r.corrected_name) === o && normName(r.ocr_name) !== n);
+                for (const r of chained) await window.taApp.saveRename(r.ocr_name, n);
                 if (addRule) await window.taApp.saveRename(o, n);
+                // Keep the opponent's icon (the directory is keyed by name)
+                const av = window.taApp.getOpponentAvatar(o);
+                if (av) await window.taApp.saveOpponentAvatar(n, av);
                 await window.taApp.reloadAll();
                 close(true);
                 await window.taShowAlert('置き換えました', `${changed.length}件の対戦相手名を「${o}」→「${n}」に変えました。${addRule ? '\n修正辞書にも登録しました。' : ''}\n\n変更前のデータ：\n${backupFile}\n（元に戻すときは「設定 → 直前の一括修正を元に戻す」）`);
@@ -70,6 +78,7 @@ async function openOpponentReplace() {
                 console.error(e);
                 run.disabled = false;
                 run.textContent = '置き換える';
+                delete box.dataset.busy;
                 alert('一括置換に失敗しました：' + (e && e.message || e));
             }
         };
@@ -151,6 +160,7 @@ async function openStudentMerge() {
             if (!confirm(`「${src.name}」を「${dst.name}」に置き換えます（戦績 ${uses.records}件・${uses.slots}枠）。\n${del ? '統合元は生徒図鑑から削除し、顔データは統合先に移します。\n' : ''}実行前に今のデータを自動でバックアップします。よろしいですか？`)) return;
             run.disabled = true;
             run.textContent = '処理中...';
+            box.dataset.busy = '1';
             try {
                 const backupFile = await preEditBackup();
                 const changed = [];
@@ -183,6 +193,7 @@ async function openStudentMerge() {
                 console.error(e);
                 run.disabled = false;
                 run.textContent = '置き換える';
+                delete box.dataset.busy;
                 alert('一括置換に失敗しました：' + (e && e.message || e));
             }
         };

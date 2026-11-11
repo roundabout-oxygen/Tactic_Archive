@@ -39,5 +39,15 @@ exports.default = async function (context) {
         }
     }
 
+    // 3. elevate.exe is only used by the NSIS installer
+    const targets = (context.targets || []).map(t => t.name);
+    if (!targets.includes('nsis')) {
+        const elevate = path.join(appOutDir, 'resources', 'elevate.exe');
+        if (fs.existsSync(elevate)) {
+            fs.unlinkSync(elevate);
+            console.log('[afterPack] Removed resources/elevate.exe (not an NSIS build)');
+        }
+    }
+
     console.log('[afterPack] Pruning complete.');
 };

@@ -25,7 +25,7 @@ Web版（`docs/`）の処理をコピーして、デスクトップ向けの機�
 
 ## 使い方
 
-1. `TacticalArchivePC-<version>-portable.exe` を起動します（インストール不要）。
+1. `TacticalArchivePC.zip` を好きな場所に解凍し、`TacticalArchivePC` フォルダの中の `TacticalArchivePC.exe` を起動します（インストール不要）。
 2. 画面の比率（16:9 / 4:3）を選んで「はじめる」。
 3. 「設定 → 取り込み → スクリーンショットフォルダ」で、PC版ブルーアーカイブのスクリーンショットの保存先を選びます。
 4. 「取り込み」タブの「フォルダを巡回」を押します。
@@ -34,7 +34,7 @@ Web版（`docs/`）の処理をコピーして、デスクトップ向けの機�
 
 ### データの保存場所
 
-exe と同じフォルダ内の `data\`（「設定 → 詳細・トラブル対応 → 保存フォルダを開く」で開けます）
+`TacticalArchivePC.exe` と同じフォルダ内の `data\`（「設定 → 詳細・トラブル対応 → 保存フォルダを開く」で開けます）
 
 | ファイル | 内容 |
 | --- | --- |
@@ -44,7 +44,10 @@ exe と同じフォルダ内の `data\`（「設定 → 詳細・トラブル対
 | `processed-files.json` | 巡回で処理したファイルの記録（「設定 → 詳細・トラブル対応 → 処理済みの記録をリセット」で消せます） |
 | `result-detection-log.jsonl` | リザルト判定のログ（画像ごとの判定値） |
 
-データは exe と同じフォルダの `data\` に保存されるため、PCを汚さずポータブルに利用できます（exe をバージョンアップする際は `data\` フォルダをそのまま引き継げます）。
+データは exe と同じフォルダの `data\` に保存されるため、PCを汚さずポータブルに利用できます。
+
+- **バージョンアップ**：新しい zip を同じ場所に解凍して上書きします。zip に `data\` は入っていないので、データはそのまま残ります。
+- **v1.1.4 以前（exe 1つの版）から移る場合**：古い exe と同じフォルダに zip を解凍すると（`…\TacticalArchivePC\TacticalArchivePC.exe` になる）、初回起動時に古い exe の横の `data\` を自動でコピーします。別の場所に解凍した場合は、古い `data\` フォルダを `TacticalArchivePC.exe` の横へ手動でコピーしてください。
 
 ## リザルト画面の判定
 
@@ -70,7 +73,8 @@ exe と同じフォルダ内の `data\`（「設定 → 詳細・トラブル対
 cd pc-app
 npm install
 npm start          # 開発用に起動
-npm run dist       # dist/ に portable exe を作る
+npm run dist       # dist/win-unpacked/ を作り、../release/TacticalArchivePC.zip にまとめる（配布用）
+npm run dist:portable  # 1ファイルの portable exe を作る場合（起動のたびに一時フォルダへ展開するので遅い）
 npm run dist:nsis  # インストーラー版を作る場合
 ```
 
@@ -78,9 +82,9 @@ npm run dist:nsis  # インストーラー版を作る場合
 
 `npm start` / `npm run dist` の前に `scripts/copy-vendor.js` が `node_modules` から次のものを `renderer/vendor/` にコピーします（git には入れません）。
 
-- tesseract.js 5.1.1（本体・worker）、tesseract.js-core 5.1.1（LSTM 版 wasm）
+- tesseract.js 5.1.1（本体・worker）、tesseract.js-core 5.1.1（LSTM 版。wasm を埋め込んだ `.wasm.js` だけ）
 - 日本語学習データ `jpn.traineddata.gz`（`@tesseract.js-data/jpn` の 4.0.0_best_int。Web版が CDN から読むものと同じ）
-- Font Awesome Free 6.4.0
+- Font Awesome Free 6.4.0（css と woff2。ttf とブランドアイコンは使わないのでコピーしない）
 
 ## 構成
 

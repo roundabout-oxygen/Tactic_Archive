@@ -32,6 +32,7 @@ function openDialog(buildBody) {
         };
         const api = buildBody(box, close);
         const onKey = (e) => {
+            if (e.key === 'Escape' && box.dataset.busy) { e.preventDefault(); e.stopPropagation(); return; } // still working
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(api && 'cancelValue' in api ? api.cancelValue : null); }
             else if (e.key === 'Enter' && api && api.onEnter) { e.preventDefault(); e.stopPropagation(); api.onEnter(); }
         };
@@ -347,6 +348,14 @@ async function runPatrol() {
         toast(`未処理の画像はありません（フォルダ内の画像 ${res.total}件）`, 'success');
         return;
     }
+    // A manual import may have started while the folder was being listed; it would refuse this batch
+    // without calling onBatchEnd, which would leave the patrol button disabled
+    if (typeof window.isUploadBusy === 'function' && window.isUploadBusy()) {
+        patrolRunning = false;
+        updatePatrolButton();
+        toast('取り込み中です。終わってからもう一度お試しください', 'warn');
+        return;
+    }
     toast(`未処理の画像 ${res.files.length}件を取り込みます`, 'info', 3000);
     if (typeof window.switchToTab === 'function') window.switchToTab('upload');
     const entries = res.files.map(makeLazyEntry);
@@ -403,6 +412,9 @@ async function pickFolder() {
 }
 
 function init() {
+    // Student icon picker (was an inline onclick; the CSP no longer allows inline scripts)
+    const iconZone = document.getElementById('icon-drop-zone');
+    if (iconZone) iconZone.addEventListener('click', () => { const inp = document.getElementById('student-icon-input'); if (inp) inp.click(); });
     if (!desk) {
         console.warn('[PC] taDesktop API is not available (not running in the desktop app)');
         return;
