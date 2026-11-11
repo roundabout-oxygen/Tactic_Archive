@@ -1632,6 +1632,21 @@ window.taApp = {
             tx.onabort = () => reject(tx.error);
         });
     },
+    // PC: remember the name the screenshot got when it was organized, so the renamed file is not imported again
+    async setOrganizedFilename(recordId, name) {
+        const rec = currentHistory.find(h => h.id === recordId);
+        const db = await openDB();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction('battle_history', 'readwrite');
+            const store = tx.objectStore('battle_history');
+            const req = store.get(recordId);
+            req.onsuccess = () => { if (req.result) store.put(Object.assign(req.result, { organized_filename: name })); };
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+        if (rec) rec.organized_filename = name;
+    },
     async saveRename(ocrName, correctedName) {
         await saveRename(ocrName, correctedName);
         opponentRenames = await getRenames();
@@ -2124,10 +2139,19 @@ let isFullHistoryLoaded = false;
 let fullHistoryLoadPromise = null;
 
 // Ensure full history is loaded before executing complete search / filter
+// Resolved once startup has started the background full load (or given up on it)
+let markFullHistoryLoadStarted;
+const fullHistoryLoadStarted = new Promise(r => { markFullHistoryLoadStarted = r; });
 async function ensureFullHistoryLoaded() {
     if (isFullHistoryLoaded) return;
-    if (fullHistoryLoadPromise) {
-        await fullHistoryLoadPromise;
+    // Called before startup has begun the background load (e.g. right after launch): wait for it to begin
+    if (!fullHistoryLoadPromise) await fullHistoryLoadStarted;
+    if (fullHistoryLoadPromise) await fullHistoryLoadPromise;
+    if (!isFullHistoryLoaded) {
+        // Startup could not load the history at all: read everything now so callers never work on a partial list
+        currentHistory = (await getHistory()) || [];
+        isFullHistoryLoaded = true;
+        updateHistoryView();
     }
 }
 
@@ -2181,8 +2205,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 refreshHistoryEmptyStates();
             }
         })();
+        markFullHistoryLoadStarted();
     } catch (e) {
         console.error("Failed to load initial database values:", e);
+        markFullHistoryLoadStarted(); // ensureFullHistoryLoaded then reads everything itself
     }
     
     // Initialize Tesseract Worker
@@ -2780,7 +2806,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const validFiles = [];
         
         fileList.forEach(file => {
-            const isDuplicate = currentHistory.some(item => item.filename === file.name);
+            const isDuplicate = isRegisteredScreenshotName(file.name);
             if (isDuplicate) {
                 duplicateNames.push(file.name);
                 reportFileOutcome(file, 'duplicate');
@@ -3865,11 +3891,17 @@ async function analyzeResultScreen(img, profile) {
     return out;
 }
 
+// A screenshot is already registered when a record has its original file name, or the name the PC version gave
+// it when it moved / renamed the image into the 「取り込み済み」 folder (organized_filename)
+function isRegisteredScreenshotName(name) {
+    return currentHistory.some(item => item.filename === name || item.organized_filename === name);
+}
+
 // SCREENSHOT RECOGNITION PIPELINE
 async function handleScreenshotUpload(file) {
     isScanCancelled = false;
     // Check for duplicate upload (preserves duplicate check by filename)
-    const isDuplicate = currentHistory.some(item => item.filename === file.name);
+    const isDuplicate = isRegisteredScreenshotName(file.name);
     if (isDuplicate) {
         if (!batchIsPatrol) alert(`このスクリーンショット「${file.name}」は既にアップロードされています。`);
         reportFileOutcome(file, 'duplicate');

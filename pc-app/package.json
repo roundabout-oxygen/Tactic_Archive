@@ -1,7 +1,7 @@
 {
   "name": "tactical-archive-pc",
   "productName": "Tactical Archive PC",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "ブルーアーカイブ戦術対抗戦の対戦履歴をPC版のスクリーンショットから記録・検索するツール（Windows デスクトップ版）",
   "main": "main.js",
   "private": true,
@@ -12,7 +12,9 @@
     "start": "npm run prepare-vendor && electron .",
     "dist": "npm run prepare-vendor && electron-builder --win dir && node scripts/make-zip.js",
     "dist:nsis": "npm run prepare-vendor && electron-builder --win nsis",
-    "dist:portable": "npm run prepare-vendor && electron-builder --win portable"
+    "dist:portable": "npm run prepare-vendor && electron-builder --win portable",
+    "test:e2e": "npm run prepare-vendor && node test/e2e/run.js all",
+    "test:e2e:zip": "node test/e2e/run.js all --zip ../release/TacticalArchivePC.zip"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^6.4.0",

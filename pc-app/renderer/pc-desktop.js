@@ -255,6 +255,10 @@ const patrolHooks = {
             // Move (and optionally rename) the imported screenshot; the main process updates the processed list
             desk.organizeFile({ path: file.__taPath, mtimeMs: file.__taMtime, record: detail || null })
                 .then(r => {
+                    if (r.ok && !r.unchanged && r.path && detail && detail.recordId != null) {
+                        const name = r.path.split(/[\\/]/).pop();
+                        if (name !== file.name) window.taApp.setOrganizedFilename(detail.recordId, name).catch(e => console.warn('[Organize] could not store the new name', e));
+                    }
                     if (!r.ok) {
                         console.warn('[Organize] failed', file.__taPath, r.error);
                         toast(`「${file.name}」を移動できませんでした（${r.error}）`, 'warn', 6000);
@@ -456,7 +460,7 @@ function init() {
     if (btnReset) btnReset.addEventListener('click', async () => {
         const n = await desk.processedCount();
         if (n === 0) { toast('処理済みの記録はありません', 'info'); return; }
-        if (!confirm(`処理済みの記録 ${n}件を消しますか？\n次の巡回でフォルダ内の全画像を見直します（登録済みの戦績はファイル名で除外されます）。`)) return;
+        if (!confirm(`処理済みの記録 ${n}件を消しますか？\n次の巡回でフォルダ内の全画像を見直します（登録済みの戦績は、元のファイル名と整理で付けた名前のどちらでも除外されます）。`)) return;
         await desk.resetProcessed();
         await refreshProcessedCount();
         toast('処理済みの記録を消しました', 'success');

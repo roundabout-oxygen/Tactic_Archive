@@ -165,6 +165,30 @@ function uniquePath(dir, base, ext) {
     for (let i = 2; fs.existsSync(p); i++) p = path.join(dir, `${base}_${i}${ext}`);
     return p;
 }
+// Move src into dir as base+ext (or base_2+ext, …) without ever replacing an existing file
+// (fs.rename replaces the target on Windows). Hard link + unlink fails with EEXIST when the name is taken;
+// where links are not possible (FAT / exFAT, network drives, another drive) copy with COPYFILE_EXCL instead.
+async function moveNoOverwrite(src, dir, base, ext) {
+    for (let i = 1; i < 1000; i++) {
+        const dest = path.join(dir, i === 1 ? base + ext : `${base}_${i}${ext}`);
+        if (path.resolve(dest).toLowerCase() === path.resolve(src).toLowerCase()) return src; // already has this name
+        if (fs.existsSync(dest)) continue;
+        try {
+            await fsp.link(src, dest);
+        } catch (e) {
+            if (e.code === 'EEXIST') continue;
+            try {
+                await fsp.copyFile(src, dest, fs.constants.COPYFILE_EXCL);
+            } catch (e2) {
+                if (e2.code === 'EEXIST') continue;
+                throw e2;
+            }
+        }
+        await fsp.unlink(src);
+        return dest;
+    }
+    throw new Error('no free file name');
+}
 function pad2(n) { return String(n).padStart(2, '0'); }
 function stamp(d = new Date()) {
     return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
@@ -291,15 +315,23 @@ function registerIpc() {
     });
     // Organize an imported screenshot: move it into <folder>/<subfolder>/ and optionally rename it to
     // "date_opponent_WIN|LOSE_攻撃|防衛.ext". The processed list follows the file (old and new path).
-    ipcMain.handle('ta:organize-file', async (_e, req) => {
+    // Organize requests run one at a time: two images that get the same name would otherwise both pick the same
+    // free name before either is moved, and the second move would replace the first file
+    let organizeChain = Promise.resolve();
+    ipcMain.handle('ta:organize-file', (_e, req) => {
+        const job = organizeChain.then(() => organizeFile(req));
+        organizeChain = job.catch(() => {});
+        return job;
+    });
+    async function organizeFile(req) {
         const c = getConfig();
         if (!req || typeof req.path !== 'string') return { ok: false, error: 'bad-request' };
         const src = req.path;
+        if (!isInsideFolder(src, c.folder) || !IMAGE_EXTS.has(path.extname(src).toLowerCase())) return { ok: false, error: 'outside-folder' };
         const mtimeMs = Number(req.mtimeMs) || 0;
         const entries = getProcessed().entries;
         entries[processedKey(src, mtimeMs)] = { status: 'imported', at: Date.now(), name: path.basename(src) };
         saveProcessedSoon();
-        if (!isInsideFolder(src, c.folder) || !IMAGE_EXTS.has(path.extname(src).toLowerCase())) return { ok: false, error: 'outside-folder' };
         const subName = sanitizeFolderName(c.organizeSubfolder) || DEFAULT_ORGANIZE_SUBFOLDER;
         const destDir = path.join(c.folder, subName);
         const ext = path.extname(src).toLowerCase();
@@ -318,14 +350,7 @@ function registerIpc() {
                 return { ok: true, path: src, unchanged: true };
             }
             await fsp.mkdir(destDir, { recursive: true });
-            const dest = uniquePath(destDir, base, ext);
-            try {
-                await fsp.rename(src, dest);
-            } catch (e) {
-                if (e.code !== 'EXDEV') throw e;
-                await fsp.copyFile(src, dest);
-                await fsp.unlink(src);
-            }
+            const dest = await moveNoOverwrite(src, destDir, base, ext);
             const st = await fsp.stat(dest);
             entries[processedKey(dest, Math.round(st.mtimeMs))] = { status: 'imported', at: Date.now(), name: path.basename(dest), movedFrom: path.basename(src) };
             saveProcessedSoon();
@@ -333,7 +358,7 @@ function registerIpc() {
         } catch (e) {
             return { ok: false, error: e.message || String(e) };
         }
-    });
+    }
 
     // ----- automatic backup -----
     ipcMain.handle('ta:pick-backup-folder', async () => {

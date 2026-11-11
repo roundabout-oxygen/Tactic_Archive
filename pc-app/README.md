@@ -78,6 +78,15 @@ npm run dist:portable  # 1ファイルの portable exe を作る場合（起動�
 npm run dist:nsis  # インストーラー版を作る場合
 ```
 
+### テスト
+
+```bash
+npm run test:e2e      # 開発起動で E2E テスト（匿名化デモデータ docs/demo/demo-data.json を使用）
+npm run test:e2e:zip  # npm run dist で作った ../release/TacticalArchivePC.zip を展開して同じテスト＋配布物の確認
+```
+
+テストは `test/e2e/`（Chrome DevTools Protocol でアプリを操作）。出力は `test/e2e/out/`（git には入れません）。
+
 `npm install` で electron の実行ファイルがダウンロードされない場合（npm の install script 制限）は、`node node_modules/electron/install.js` を実行してください。
 
 `npm start` / `npm run dist` の前に `scripts/copy-vendor.js` が `node_modules` から次のものを `renderer/vendor/` にコピーします（git には入れません）。

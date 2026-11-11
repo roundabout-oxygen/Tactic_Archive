@@ -59,6 +59,7 @@ async function openOpponentReplace() {
             run.disabled = true;
             run.textContent = '処理中...';
             box.dataset.busy = '1';
+            box.querySelector('[data-act="cancel"]').disabled = true; // closing mid-way would hide the result
             try {
                 const backupFile = await preEditBackup();
                 const changed = targets.map(h => Object.assign({}, h, { commander_name: n }));
@@ -79,6 +80,7 @@ async function openOpponentReplace() {
                 run.disabled = false;
                 run.textContent = '置き換える';
                 delete box.dataset.busy;
+                box.querySelector('[data-act="cancel"]').disabled = false;
                 alert('一括置換に失敗しました：' + (e && e.message || e));
             }
         };
@@ -161,6 +163,7 @@ async function openStudentMerge() {
             run.disabled = true;
             run.textContent = '処理中...';
             box.dataset.busy = '1';
+            box.querySelector('[data-act="cancel"]').disabled = true; // closing mid-way would hide the result
             try {
                 const backupFile = await preEditBackup();
                 const changed = [];
@@ -194,6 +197,7 @@ async function openStudentMerge() {
                 run.disabled = false;
                 run.textContent = '置き換える';
                 delete box.dataset.busy;
+                box.querySelector('[data-act="cancel"]').disabled = false;
                 alert('一括置換に失敗しました：' + (e && e.message || e));
             }
         };
