@@ -54,3 +54,6 @@ ehthumbs.db
 
 # Kotlin
 .kotlin/
+
+# PC version is distributed via GitHub Releases (too large for the repo)
+release/TacticalArchivePC.zip
